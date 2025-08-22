@@ -14,7 +14,56 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          created_at: string
+          email_addresses: string[] | null
+          full_name: string
+          id: string
+          invited_by: string | null
+          is_active: boolean | null
+          phone_numbers: string[] | null
+          preferred_contact_method: string | null
+          role: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email_addresses?: string[] | null
+          full_name: string
+          id?: string
+          invited_by?: string | null
+          is_active?: boolean | null
+          phone_numbers?: string[] | null
+          preferred_contact_method?: string | null
+          role?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email_addresses?: string[] | null
+          full_name?: string
+          id?: string
+          invited_by?: string | null
+          is_active?: boolean | null
+          phone_numbers?: string[] | null
+          preferred_contact_method?: string | null
+          role?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
