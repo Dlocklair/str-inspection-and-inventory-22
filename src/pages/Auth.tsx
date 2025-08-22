@@ -14,7 +14,9 @@ const Auth = () => {
   const [signInData, setSignInData] = useState({ email: '', password: '' });
   const [signUpData, setSignUpData] = useState({ email: '', password: '', fullName: '', role: 'agent' as 'owner' | 'agent' });
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn, signUp, user, loading } = useAuth();
+  const [showResendEmail, setShowResendEmail] = useState(false);
+  const [signUpEmail, setSignUpEmail] = useState('');
+  const { signIn, signUp, user, loading, resendVerificationEmail } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -37,7 +39,20 @@ const Auth = () => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await signUp(signUpData.email, signUpData.password, signUpData.fullName, signUpData.role);
+      const result = await signUp(signUpData.email, signUpData.password, signUpData.fullName, signUpData.role);
+      if (!result.error) {
+        setSignUpEmail(signUpData.email);
+        setShowResendEmail(true);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendEmail = async () => {
+    setIsLoading(true);
+    try {
+      await resendVerificationEmail(signUpEmail);
     } finally {
       setIsLoading(false);
     }
@@ -183,6 +198,30 @@ const Auth = () => {
                     'Create Account'
                   )}
                 </Button>
+
+                {showResendEmail && (
+                  <div className="space-y-3 pt-4 border-t">
+                    <div className="text-center text-sm text-muted-foreground">
+                      Didn't receive the verification email?
+                    </div>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      className="w-full" 
+                      onClick={handleResendEmail}
+                      disabled={isLoading}
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Resending...
+                        </>
+                      ) : (
+                        'Resend Verification Email'
+                      )}
+                    </Button>
+                  </div>
+                )}
               </form>
             </TabsContent>
           </Tabs>
