@@ -1,0 +1,195 @@
+import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
+import { Shield, User, Loader2 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
+
+const Auth = () => {
+  const [signInData, setSignInData] = useState({ email: '', password: '' });
+  const [signUpData, setSignUpData] = useState({ email: '', password: '', fullName: '', role: 'agent' as 'owner' | 'agent' });
+  const [isLoading, setIsLoading] = useState(false);
+  const { signIn, signUp, user, loading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user && !loading) {
+      navigate('/');
+    }
+  }, [user, loading, navigate]);
+
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      await signIn(signInData.email, signInData.password);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      await signUp(signUpData.email, signUpData.password, signUpData.fullName, signUpData.role);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl">STR Management System</CardTitle>
+          <p className="text-muted-foreground">
+            Welcome to your property management platform
+          </p>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="signin" className="space-y-4">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="signin">Sign In</TabsTrigger>
+              <TabsTrigger value="signup">Sign Up</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="signin" className="space-y-4">
+              <form onSubmit={handleSignIn} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="signin-email">Email</Label>
+                  <Input
+                    id="signin-email"
+                    type="email"
+                    placeholder="Enter your email"
+                    value={signInData.email}
+                    onChange={(e) => setSignInData(prev => ({ ...prev, email: e.target.value }))}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signin-password">Password</Label>
+                  <Input
+                    id="signin-password"
+                    type="password"
+                    placeholder="Enter your password"
+                    value={signInData.password}
+                    onChange={(e) => setSignInData(prev => ({ ...prev, password: e.target.value }))}
+                    required
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Signing In...
+                    </>
+                  ) : (
+                    'Sign In'
+                  )}
+                </Button>
+              </form>
+            </TabsContent>
+
+            <TabsContent value="signup" className="space-y-4">
+              <form onSubmit={handleSignUp} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="signup-name">Full Name</Label>
+                  <Input
+                    id="signup-name"
+                    placeholder="Enter your full name"
+                    value={signUpData.fullName}
+                    onChange={(e) => setSignUpData(prev => ({ ...prev, fullName: e.target.value }))}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signup-email">Email</Label>
+                  <Input
+                    id="signup-email"
+                    type="email"
+                    placeholder="Enter your email"
+                    value={signUpData.email}
+                    onChange={(e) => setSignUpData(prev => ({ ...prev, email: e.target.value }))}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signup-password">Password</Label>
+                  <Input
+                    id="signup-password"
+                    type="password"
+                    placeholder="Create a password"
+                    value={signUpData.password}
+                    onChange={(e) => setSignUpData(prev => ({ ...prev, password: e.target.value }))}
+                    required
+                  />
+                </div>
+
+                <Separator />
+
+                <div className="space-y-3">
+                  <Label>Select Your Role</Label>
+                  <div className="space-y-2">
+                    <Button
+                      type="button"
+                      variant={signUpData.role === 'owner' ? 'default' : 'outline'}
+                      className="w-full justify-start"
+                      onClick={() => setSignUpData(prev => ({ ...prev, role: 'owner' }))}
+                    >
+                      <Shield className="h-4 w-4 mr-2" />
+                      Property Owner
+                      <span className="ml-auto text-xs">Full Access</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={signUpData.role === 'agent' ? 'default' : 'outline'}
+                      className="w-full justify-start"
+                      onClick={() => setSignUpData(prev => ({ ...prev, role: 'agent' }))}
+                    >
+                      <User className="h-4 w-4 mr-2" />
+                      Agent/Contractor
+                      <span className="ml-auto text-xs">Limited Access</span>
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {signUpData.role === 'owner' 
+                      ? 'Owners have full access to all modules and can manage agents.'
+                      : 'Agents receive permissions from property owners for specific modules.'
+                    }
+                  </p>
+                </div>
+
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Creating Account...
+                    </>
+                  ) : (
+                    'Create Account'
+                  )}
+                </Button>
+              </form>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+export default Auth;
