@@ -27,6 +27,7 @@ export const InspectionHistoryView = () => {
   const [inspectionRecords, setInspectionRecords] = useState<InspectionRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedGroups, setExpandedGroups] = useState<{[key: string]: boolean}>({});
+  const [expandedRecords, setExpandedRecords] = useState<{[key: string]: boolean}>({});
 
   // Load inspection records on mount
   useEffect(() => {
@@ -70,6 +71,13 @@ export const InspectionHistoryView = () => {
     setExpandedGroups(prev => ({
       ...prev,
       [templateName]: !prev[templateName]
+    }));
+  };
+
+  const toggleRecord = (recordId: string) => {
+    setExpandedRecords(prev => ({
+      ...prev,
+      [recordId]: !prev[recordId]
     }));
   };
 
@@ -134,10 +142,19 @@ export const InspectionHistoryView = () => {
                 <CollapsibleContent>
                   <CardContent className="space-y-4">
                     {records.map(record => (
-                      <Card key={record.id} className="border-l-4 border-l-primary">
-                        <CardHeader className="pb-3">
-                          <div className="flex items-center justify-between">
+                      <Collapsible
+                        key={record.id}
+                        open={expandedRecords[record.id]}
+                        onOpenChange={() => toggleRecord(record.id)}
+                      >
+                        <CollapsibleTrigger asChild>
+                          <div className="flex items-center justify-between p-3 bg-muted/30 hover:bg-muted/50 rounded-lg cursor-pointer border">
                             <div className="flex items-center gap-3">
+                              {expandedRecords[record.id] ? (
+                                <ChevronDown className="h-4 w-4" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4" />
+                              )}
                               <Calendar className="h-4 w-4 text-muted-foreground" />
                               <span className="font-medium">{format(new Date(record.date), 'PPP')}</span>
                               <Badge 
@@ -150,12 +167,12 @@ export const InspectionHistoryView = () => {
                               Created: {format(new Date(record.createdAt), 'PPp')}
                             </span>
                           </div>
-                        </CardHeader>
+                        </CollapsibleTrigger>
                         
-                        <CardContent>
-                          <div className="space-y-3">
+                        <CollapsibleContent>
+                          <div className="mt-3 space-y-3 pl-6">
                             {record.items.map(item => (
-                              <div key={item.id} className="flex items-start gap-3 p-3 bg-muted/30 rounded-lg">
+                              <div key={item.id} className="flex items-start gap-3 p-3 bg-muted/20 rounded-lg">
                                 <div className="mt-1">
                                   {item.completed ? (
                                     <CheckCircle className="h-4 w-4 text-green-600" />
@@ -177,8 +194,8 @@ export const InspectionHistoryView = () => {
                               </div>
                             ))}
                           </div>
-                        </CardContent>
-                      </Card>
+                        </CollapsibleContent>
+                      </Collapsible>
                     ))}
                   </CardContent>
                 </CollapsibleContent>

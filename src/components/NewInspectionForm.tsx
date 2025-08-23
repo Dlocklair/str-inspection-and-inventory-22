@@ -156,7 +156,9 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
       id: Date.now().toString(),
       templateId: selectedTemplateId,
       templateName: template?.name || '',
-      date: format(selectedDate, 'yyyy-MM-dd'),
+      date: selectedDate.getFullYear() + '-' + 
+            String(selectedDate.getMonth() + 1).padStart(2, '0') + '-' + 
+            String(selectedDate.getDate()).padStart(2, '0'),
       items: currentInspection,
       createdAt: new Date().toISOString()
     };

@@ -81,7 +81,7 @@ export const InventoryEditForm = ({ item, onSave, onCancel, categories }: Invent
             }}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Category" />
+              <SelectValue placeholder="Select product category" />
             </SelectTrigger>
             <SelectContent>
               {categories.map(category => (
@@ -95,28 +95,28 @@ export const InventoryEditForm = ({ item, onSave, onCancel, categories }: Invent
           
           {/* Item - Second field */}
           <Input
-            placeholder="Item name"
+            placeholder="Enter the name of the inventory item"
             value={editingData.name}
             onChange={(e) => setEditingData(prev => ({ ...prev, name: e.target.value }))}
           />
           
           {/* Units - Third field */}
           <Input
-            placeholder="Units (e.g., bottles, rolls)"
+            placeholder="How items are counted (bottles, rolls, boxes, etc.)"
             value={editingData.unit}
             onChange={(e) => setEditingData(prev => ({ ...prev, unit: e.target.value }))}
           />
           
           {/* Supplier - Fourth field */}
           <Input
-            placeholder="Supplier"
+            placeholder="Name of supplier or vendor"
             value={editingData.supplier}
             onChange={(e) => setEditingData(prev => ({ ...prev, supplier: e.target.value }))}
           />
           
           {/* URL - Fifth field */}
           <Input
-            placeholder="Supplier URL"
+            placeholder="Website URL for ordering this item"
             value={editingData.supplierUrl || ''}
             onChange={(e) => setEditingData(prev => ({ ...prev, supplierUrl: e.target.value }))}
           />
@@ -125,7 +125,7 @@ export const InventoryEditForm = ({ item, onSave, onCancel, categories }: Invent
           <Input
             type="number"
             step="0.01"
-            placeholder="Cost per unit"
+            placeholder="Price per individual unit ($)"
             value={editingData.cost || ''}
             onChange={(e) => setEditingData(prev => ({ ...prev, cost: Number(e.target.value) }))}
           />
@@ -133,7 +133,7 @@ export const InventoryEditForm = ({ item, onSave, onCancel, categories }: Invent
           {/* Restock level - Seventh field */}
           <Input
             type="number"
-            placeholder="Restock level"
+            placeholder="Minimum quantity before reordering"
             value={editingData.restockLevel || ''}
             onChange={(e) => setEditingData(prev => ({ ...prev, restockLevel: Number(e.target.value) }))}
           />
@@ -141,7 +141,7 @@ export const InventoryEditForm = ({ item, onSave, onCancel, categories }: Invent
           {/* Current stock */}
           <Input
             type="number"
-            placeholder="Current stock"
+            placeholder="How many you have right now"
             value={editingData.currentStock || ''}
             onChange={(e) => setEditingData(prev => ({ ...prev, currentStock: Number(e.target.value) }))}
           />
@@ -164,7 +164,7 @@ export const InventoryEditForm = ({ item, onSave, onCancel, categories }: Invent
         {/* Notes - Last field */}
         <div className="mt-4">
           <Textarea
-            placeholder="Notes (optional)"
+            placeholder="Additional notes, special instructions, or details about this item"
             value={editingData.notes}
             onChange={(e) => setEditingData(prev => ({ ...prev, notes: e.target.value }))}
             rows={2}
