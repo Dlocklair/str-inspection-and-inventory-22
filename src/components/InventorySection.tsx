@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Plus, Edit, Save, X, Trash2, Package2, AlertTriangle, CheckCircle, CalendarIcon, Send } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { EmailNotificationSettings } from './EmailNotificationSettings';
+import { InventoryEditForm } from './InventoryEditForm';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -168,6 +169,22 @@ export const InventorySection = () => {
   const startEditing = (item: InventoryItem) => {
     setEditingItem(item.id);
     setEditingData({ ...item });
+    setShowAddForm(false); // Hide add form when editing
+  };
+
+  const handleEditSave = (updatedItem: InventoryItem) => {
+    setInventoryItems(prev => prev.map(item => 
+      item.id === editingItem 
+        ? updatedItem
+        : item
+    ));
+    setEditingItem(null);
+    setEditingData({});
+  };
+
+  const handleEditCancel = () => {
+    setEditingItem(null);
+    setEditingData({});
   };
 
   const saveEdit = () => {
@@ -370,13 +387,25 @@ Inventory Management Team`;
     <div className="w-full">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold">Inventory Management</h2>
-        {!showAddForm && (
+        {!showAddForm && !editingItem && (
           <Button onClick={() => setShowAddForm(true)} className="flex items-center gap-2">
             <Plus className="h-4 w-4" />
             Add Inventory Item
           </Button>
         )}
       </div>
+
+      {/* Show edit form when editing */}
+      {editingItem && editingData.id && (
+        <div className="mb-6">
+          <InventoryEditForm
+            item={editingData as InventoryItem}
+            onSave={handleEditSave}
+            onCancel={handleEditCancel}
+            categories={getUniqueCategories()}
+          />
+        </div>
+      )}
       
       <Tabs defaultValue="inventory" className="w-full">
         <TabsList className="grid w-full grid-cols-3">

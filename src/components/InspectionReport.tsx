@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
-import { ChecklistSection } from './ChecklistSection';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Home, Package, AlertTriangle, Settings } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Home, Package, AlertTriangle, Settings, FileText, History, Settings as TemplateIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { NewInspectionForm } from './NewInspectionForm';
+import { InspectionHistoryView } from './InspectionHistoryView';
+import { InspectionTemplateManager } from './InspectionTemplateManager';
 
 interface User {
   id: string;
@@ -20,6 +23,7 @@ interface User {
 export const InspectionReport = () => {
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [selectedView, setSelectedView] = useState<string>('new-inspection');
 
   useEffect(() => {
     const savedSettings = localStorage.getItem('user-settings');
@@ -92,7 +96,40 @@ export const InspectionReport = () => {
               Manage property inspection checklists and records
             </p>
           </div>
-          <ChecklistSection />
+
+          {/* Main Navigation */}
+          <div className="flex justify-center">
+            <Select value={selectedView} onValueChange={setSelectedView}>
+              <SelectTrigger className="w-64">
+                <SelectValue placeholder="Select inspection view" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="new-inspection">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    New Inspection
+                  </div>
+                </SelectItem>
+                <SelectItem value="inspection-history">
+                  <div className="flex items-center gap-2">
+                    <History className="h-4 w-4" />
+                    Inspection History
+                  </div>
+                </SelectItem>
+                <SelectItem value="manage-templates">
+                  <div className="flex items-center gap-2">
+                    <TemplateIcon className="h-4 w-4" />
+                    Manage Inspection Templates
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Content based on selected view */}
+          {selectedView === 'new-inspection' && <NewInspectionForm />}
+          {selectedView === 'inspection-history' && <InspectionHistoryView />}
+          {selectedView === 'manage-templates' && <InspectionTemplateManager />}
         </div>
       </div>
     </div>

@@ -305,7 +305,13 @@ export const DamageReport = () => {
                   />
                   <Select 
                     value={newReport.location} 
-                    onValueChange={(value) => setNewReport(prev => ({ ...prev, location: value }))}
+                    onValueChange={(value) => {
+                      if (value === 'add-new-location') {
+                        // This will trigger the location input to show
+                      } else {
+                        setNewReport(prev => ({ ...prev, location: value }));
+                      }
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select location" />
@@ -321,8 +327,17 @@ export const DamageReport = () => {
                       <SelectItem value="Master Bedroom">Master Bedroom</SelectItem>
                       <SelectItem value="Guest Bedroom">Guest Bedroom</SelectItem>
                       <SelectItem value="Exterior">Exterior</SelectItem>
+                      <SelectItem value="add-new-location">+ Add new location</SelectItem>
                     </SelectContent>
                   </Select>
+                  {newReport.location === 'add-new-location' && (
+                    <Input
+                      placeholder="Enter new location"
+                      value=""
+                      onChange={(e) => setNewReport(prev => ({ ...prev, location: e.target.value }))}
+                      className="mt-2"
+                    />
+                  )}
                   <Select 
                     value={newReport.severity} 
                     onValueChange={(value: any) => setNewReport(prev => ({ ...prev, severity: value }))}
@@ -353,6 +368,21 @@ export const DamageReport = () => {
                     onChange={(e) => setNewReport(prev => ({ ...prev, assignedTo: e.target.value }))}
                   />
                 </div>
+                
+                {/* Photo Upload Section */}
+                <div className="col-span-2">
+                  <label className="text-sm font-medium mb-2 block">Photos (up to 3)</label>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {[1, 2, 3].map(photoIndex => (
+                      <div key={photoIndex} className="border-2 border-dashed border-border rounded-lg p-4 h-32 flex flex-col items-center justify-center">
+                        <Camera className="h-8 w-8 text-muted-foreground mb-2" />
+                        <span className="text-sm text-muted-foreground">Photo {photoIndex}</span>
+                        <span className="text-xs text-muted-foreground">Click to add</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
                 <Textarea
                   placeholder="Detailed description of the damage"
                   value={newReport.description}
