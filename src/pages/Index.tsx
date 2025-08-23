@@ -1,109 +1,26 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ClipboardList, Package, AlertTriangle, Settings, User, Shield, Loader2, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
-
-interface AgentPermissions {
-  inspections: boolean;
-  inventory: boolean;
-  damage: boolean;
-  can_create_inspections: boolean;
-  can_add_inspection_items: boolean;
-}
 
 const Index = () => {
   const navigate = useNavigate();
   const { user, profile, loading, signOut } = useAuth();
-  const [permissions, setPermissions] = useState<AgentPermissions | null>(null);
-  const [permissionsLoading, setPermissionsLoading] = useState(true);
 
   useEffect(() => {
-    if (!user && !loading) {
+    if (!loading && !user) {
       navigate('/auth');
     }
   }, [user, loading, navigate]);
-
-  useEffect(() => {
-    const fetchPermissions = async () => {
-      if (!profile) {
-        setPermissionsLoading(false);
-        return;
-      }
-
-      try {
-        if (profile.role === 'owner') {
-          // Owners have full permissions
-          setPermissions({
-            inspections: true,
-            inventory: true,
-            damage: true,
-            can_create_inspections: true,
-            can_add_inspection_items: true
-          });
-        } else {
-          // Fetch agent permissions
-          const { data, error } = await supabase
-            .from('agent_permissions')
-            .select('*')
-            .eq('agent_id', profile.id)
-            .single();
-
-          if (error) {
-            console.error('Error fetching permissions:', error);
-            setPermissions({
-              inspections: false,
-              inventory: false,
-              damage: false,
-              can_create_inspections: false,
-              can_add_inspection_items: false
-            });
-          } else {
-            setPermissions(data);
-          }
-        }
-      } catch (error) {
-        console.error('Error in fetchPermissions:', error);
-        setPermissions({
-          inspections: false,
-          inventory: false,
-          damage: false,
-          can_create_inspections: false,
-          can_add_inspection_items: false
-        });
-      } finally {
-        setPermissionsLoading(false);
-      }
-    };
-
-    fetchPermissions();
-  }, [profile]);
-
-  const hasAccess = (module: keyof Pick<AgentPermissions, 'inspections' | 'inventory' | 'damage'>) => {
-    if (!permissions) return false;
-    return permissions[module];
-  };
-
-  const hasAnyAccess = permissions ? 
-    (permissions.inspections || permissions.inventory || permissions.damage) : false;
-
-  const getAccessBadge = (module: keyof Pick<AgentPermissions, 'inspections' | 'inventory' | 'damage'>) => {
-    const access = hasAccess(module);
-    return (
-      <Badge variant={access ? 'default' : 'secondary'} className="ml-2">
-        {access ? 'Allowed' : 'No Access'}
-      </Badge>
-    );
-  };
 
   const handleSignOut = async () => {
     await signOut();
   };
 
-  if (loading || permissionsLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -111,7 +28,7 @@ const Index = () => {
     );
   }
 
-  if (!user || !profile) {
+  if (!user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <Card className="w-full max-w-md text-center">
@@ -147,12 +64,12 @@ const Index = () => {
           <div className="flex flex-col items-end gap-2">
             <div className="flex items-center gap-2">
               <div className="text-right">
-                <p className="font-medium">{profile.full_name}</p>
+                <p className="font-medium">{profile?.full_name || 'User'}</p>
                 <div className="flex items-center gap-1">
-                  <Badge variant={profile.role === 'owner' ? 'default' : 'secondary'}>
-                    {profile.role}
+                  <Badge variant={profile?.role === 'owner' ? 'default' : 'secondary'}>
+                    {profile?.role || 'agent'}
                   </Badge>
-                  {profile.role === 'owner' && <Shield className="h-4 w-4 text-primary" />}
+                  {profile?.role === 'owner' && <Shield className="h-4 w-4 text-primary" />}
                 </div>
               </div>
             </div>
@@ -169,30 +86,15 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Access Warning */}
-        {!hasAnyAccess && profile.role === 'agent' && (
-          <Card className="mb-8 border-destructive">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-destructive">
-                <Shield className="h-5 w-5" />
-                <p className="font-medium">No Access Granted</p>
-              </div>
-              <p className="text-sm text-muted-foreground mt-1">
-                You don't have access to any modules. Please contact your property owner to grant permissions.
-              </p>
-            </CardContent>
-          </Card>
-        )}
-
         {/* Main Content - Report Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Inspection Reports */}
-          <Card className={`cursor-pointer transition-all hover:shadow-lg ${!hasAccess('inspections') ? 'opacity-50' : ''}`}>
+          <Card className="cursor-pointer transition-all hover:shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <ClipboardList className="h-6 w-6 text-primary" />
                 Inspections
-                {getAccessBadge('inspections')}
+                <Badge variant="default" className="ml-2">Enabled</Badge>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -200,22 +102,21 @@ const Index = () => {
                 Manage property inspection checklists with Per Visit, Monthly, Quarterly, and Yearly templates. Track inspection history and get automated notifications.
               </p>
               <Button 
-                onClick={() => hasAccess('inspections') && navigate('/inspections')}
+                onClick={() => navigate('/inspections')}
                 className="w-full"
-                disabled={!hasAccess('inspections')}
               >
-                {hasAccess('inspections') ? 'Open Inspections' : 'Access Denied'}
+                Open Inspections
               </Button>
             </CardContent>
           </Card>
 
           {/* Inventory Reports */}
-          <Card className={`cursor-pointer transition-all hover:shadow-lg ${!hasAccess('inventory') ? 'opacity-50' : ''}`}>
+          <Card className="cursor-pointer transition-all hover:shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Package className="h-6 w-6 text-primary" />
                 Inventory
-                {getAccessBadge('inventory')}
+                <Badge variant="default" className="ml-2">Enabled</Badge>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -223,22 +124,21 @@ const Index = () => {
                 Track stock levels with predefined categories (Toiletries, Linen, Consumables), manage restock thresholds, and get Amazon reorder links.
               </p>
               <Button 
-                onClick={() => hasAccess('inventory') && navigate('/inventory')}
+                onClick={() => navigate('/inventory')}
                 className="w-full"
-                disabled={!hasAccess('inventory')}
               >
-                {hasAccess('inventory') ? 'Open Inventory' : 'Access Denied'}
+                Open Inventory
               </Button>
             </CardContent>
           </Card>
 
           {/* Damage Reports */}
-          <Card className={`cursor-pointer transition-all hover:shadow-lg ${!hasAccess('damage') ? 'opacity-50' : ''}`}>
+          <Card className="cursor-pointer transition-all hover:shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <AlertTriangle className="h-6 w-6 text-primary" />
                 Damage Reports
-                {getAccessBadge('damage')}
+                <Badge variant="default" className="ml-2">Enabled</Badge>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -246,61 +146,52 @@ const Index = () => {
                 Document property damage with photos, track repair status, estimate costs, and generate reports for Airbnb/VRBO claims.
               </p>
               <Button 
-                onClick={() => hasAccess('damage') && navigate('/damage')}
+                onClick={() => navigate('/damage')}
                 className="w-full"
-                disabled={!hasAccess('damage')}
               >
-                {hasAccess('damage') ? 'Open Damage Reports' : 'Access Denied'}
+                Open Damage Reports
               </Button>
             </CardContent>
           </Card>
         </div>
 
-        {/* Quick Stats (only for users with access) */}
-        {hasAnyAccess && (
-          <div className="mt-12">
-            <h2 className="text-2xl font-semibold text-foreground mb-6">Quick Overview</h2>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {hasAccess('inspections') && (
-                <Card>
-                  <CardContent className="p-4 text-center">
-                    <ClipboardList className="h-8 w-8 mx-auto text-primary mb-2" />
-                    <p className="text-sm text-muted-foreground">Recent Inspections</p>
-                    <p className="text-2xl font-bold">12</p>
-                  </CardContent>
-                </Card>
-              )}
-              {hasAccess('inventory') && (
-                <Card>
-                  <CardContent className="p-4 text-center">
-                    <Package className="h-8 w-8 mx-auto text-primary mb-2" />
-                    <p className="text-sm text-muted-foreground">Low Stock Items</p>
-                    <p className="text-2xl font-bold">3</p>
-                  </CardContent>
-                </Card>
-              )}
-              {hasAccess('damage') && (
-                <Card>
-                  <CardContent className="p-4 text-center">
-                    <AlertTriangle className="h-8 w-8 mx-auto text-destructive mb-2" />
-                    <p className="text-sm text-muted-foreground">Open Damage Reports</p>
-                    <p className="text-2xl font-bold">2</p>
-                  </CardContent>
-                </Card>
-              )}
-              <Card>
-                <CardContent className="p-4 text-center">
-                  <Shield className="h-8 w-8 mx-auto text-primary mb-2" />
-                  <p className="text-sm text-muted-foreground">System Status</p>
-                  <p className="text-sm font-medium text-green-600">All Good</p>
-                </CardContent>
-              </Card>
-            </div>
+        {/* Quick Stats */}
+        <div className="mt-12">
+          <h2 className="text-2xl font-semibold text-foreground mb-6">Quick Overview</h2>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="p-4 text-center">
+                <ClipboardList className="h-8 w-8 mx-auto text-primary mb-2" />
+                <p className="text-sm text-muted-foreground">Recent Inspections</p>
+                <p className="text-2xl font-bold">12</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <Package className="h-8 w-8 mx-auto text-primary mb-2" />
+                <p className="text-sm text-muted-foreground">Low Stock Items</p>
+                <p className="text-2xl font-bold">3</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <AlertTriangle className="h-8 w-8 mx-auto text-destructive mb-2" />
+                <p className="text-sm text-muted-foreground">Open Damage Reports</p>
+                <p className="text-2xl font-bold">2</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <Shield className="h-8 w-8 mx-auto text-primary mb-2" />
+                <p className="text-sm text-muted-foreground">System Status</p>
+                <p className="text-sm font-medium text-green-600">All Good</p>
+              </CardContent>
+            </Card>
           </div>
-        )}
+        </div>
 
         {/* Owner Features */}
-        {profile.role === 'owner' && (
+        {profile?.role === 'owner' && (
           <div className="mt-12">
             <h2 className="text-2xl font-semibold text-foreground mb-6">Owner Tools</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
