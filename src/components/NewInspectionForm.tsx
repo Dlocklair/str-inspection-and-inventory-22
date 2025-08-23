@@ -2,15 +2,14 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarIcon, Save, AlertCircle } from 'lucide-react';
+import { CalendarIcon, Save, Settings } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface ChecklistItem {
   id: string;
@@ -41,14 +40,17 @@ interface InspectionRecord {
   createdAt: string;
 }
 
-export const NewInspectionForm = () => {
+interface NewInspectionFormProps {
+  onNavigateToTemplateManager?: () => void;
+}
+
+export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspectionFormProps) => {
   const { toast } = useToast();
   
   const [templates, setTemplates] = useState<InspectionTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [currentInspection, setCurrentInspection] = useState<InspectionItem[]>([]);
-  const [showDateNote, setShowDateNote] = useState(false);
 
   // Load templates on mount
   useEffect(() => {
@@ -60,6 +62,11 @@ export const NewInspectionForm = () => {
 
   // Load template items when template is selected
   const handleTemplateChange = (templateId: string) => {
+    if (templateId === 'create-custom') {
+      onNavigateToTemplateManager?.();
+      return;
+    }
+    
     setSelectedTemplateId(templateId);
     const template = templates.find(t => t.id === templateId);
     
@@ -71,7 +78,6 @@ export const NewInspectionForm = () => {
         notes: ''
       }));
       setCurrentInspection(inspectionItems);
-      setShowDateNote(false);
       setSelectedDate(undefined);
     }
   };
@@ -79,9 +85,6 @@ export const NewInspectionForm = () => {
   // Handle date selection
   const handleDateChange = (date: Date | undefined) => {
     setSelectedDate(date);
-    if (date && currentInspection.length > 0) {
-      setShowDateNote(true);
-    }
   };
 
   // Update inspection item
@@ -140,7 +143,6 @@ export const NewInspectionForm = () => {
     setCurrentInspection([]);
     setSelectedTemplateId('');
     setSelectedDate(undefined);
-    setShowDateNote(false);
 
     toast({
       title: "Inspection saved successfully!",
@@ -149,33 +151,49 @@ export const NewInspectionForm = () => {
   };
 
   const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
+  const canSave = selectedTemplateId && selectedDate && currentInspection.length > 0;
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>New Inspection</CardTitle>
+          <CardTitle className="flex items-center justify-between">
+            New Inspection
+            {canSave && (
+              <Button onClick={saveInspection} size="sm">
+                <Save className="h-4 w-4 mr-2" />
+                Save Inspection
+              </Button>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Template Selection */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Select Inspection Template</label>
-            <Select value={selectedTemplateId} onValueChange={handleTemplateChange}>
-              <SelectTrigger>
-                <SelectValue placeholder="Choose an inspection template" />
-              </SelectTrigger>
-              <SelectContent>
-                {templates.map(template => (
-                  <SelectItem key={template.id} value={template.id}>
-                    {template.name}
+          {/* Template Selection and Date on Same Line */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Template Selection */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Select Inspection Template</label>
+              <Select value={selectedTemplateId} onValueChange={handleTemplateChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose an inspection template" />
+                </SelectTrigger>
+                <SelectContent>
+                  {templates.map(template => (
+                    <SelectItem key={template.id} value={template.id}>
+                      {template.name}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="create-custom">
+                    <div className="flex items-center">
+                      <Settings className="h-4 w-4 mr-2" />
+                      Define Custom Template
+                    </div>
                   </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+                </SelectContent>
+              </Select>
+            </div>
 
-          {/* Date Selection */}
-          {selectedTemplateId && (
+            {/* Date Selection */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Inspection Date</label>
               <Popover>
@@ -186,6 +204,7 @@ export const NewInspectionForm = () => {
                       "justify-start text-left font-normal w-full",
                       !selectedDate && "text-muted-foreground"
                     )}
+                    disabled={!selectedTemplateId}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
@@ -202,64 +221,51 @@ export const NewInspectionForm = () => {
                 </PopoverContent>
               </Popover>
             </div>
-          )}
-
-          {/* Date Selection Note */}
-          {showDateNote && (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Please select items completed and enter notes as required.
-              </AlertDescription>
-            </Alert>
-          )}
+          </div>
 
           {/* Inspection Items */}
           {currentInspection.length > 0 && (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">{selectedTemplate?.name} Inspection</h3>
+              <h3 className="text-lg font-semibold border-b pb-2">{selectedTemplate?.name} Inspection</h3>
               
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {currentInspection.map(item => (
-                  <Card key={item.id} className="border-l-4 border-l-primary">
-                    <CardContent className="pt-4">
-                      <div className="space-y-3">
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id={item.id}
-                            checked={item.completed}
-                            onCheckedChange={(checked) => 
-                              updateInspectionItem(item.id, { completed: checked as boolean })
-                            }
-                          />
-                          <label 
-                            htmlFor={item.id}
-                            className={cn(
-                              "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
-                              item.completed && "line-through text-muted-foreground"
-                            )}
-                          >
-                            {item.description}
-                          </label>
-                        </div>
-                        
-                        <Textarea
-                          placeholder="Add notes (optional)"
-                          value={item.notes}
-                          onChange={(e) => updateInspectionItem(item.id, { notes: e.target.value })}
-                          rows={2}
-                          className="text-sm"
-                        />
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <div key={item.id} className="flex items-start gap-4 p-3 bg-muted/30 rounded-lg">
+                    <Checkbox
+                      id={item.id}
+                      checked={item.completed}
+                      onCheckedChange={(checked) => 
+                        updateInspectionItem(item.id, { completed: checked as boolean })
+                      }
+                      className="mt-1"
+                    />
+                    <div className="flex-1 space-y-2">
+                      <label 
+                        htmlFor={item.id}
+                        className={cn(
+                          "text-sm font-medium cursor-pointer",
+                          item.completed && "line-through text-muted-foreground"
+                        )}
+                      >
+                        {item.description}
+                      </label>
+                      <Input
+                        placeholder="Add notes..."
+                        value={item.notes}
+                        onChange={(e) => updateInspectionItem(item.id, { notes: e.target.value })}
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
                 ))}
               </div>
 
+              {/* Bottom Save Button */}
               <Button 
                 onClick={saveInspection}
                 className="w-full"
                 size="lg"
+                disabled={!canSave}
               >
                 <Save className="h-4 w-4 mr-2" />
                 Save Inspection

@@ -127,7 +127,11 @@ export const InspectionReport = () => {
           </div>
 
           {/* Content based on selected view */}
-          {selectedView === 'new-inspection' && <NewInspectionForm />}
+          {selectedView === 'new-inspection' && (
+            <NewInspectionForm 
+              onNavigateToTemplateManager={() => setSelectedView('manage-templates')}
+            />
+          )}
           {selectedView === 'inspection-history' && <InspectionHistoryView />}
           {selectedView === 'manage-templates' && <InspectionTemplateManager />}
         </div>
