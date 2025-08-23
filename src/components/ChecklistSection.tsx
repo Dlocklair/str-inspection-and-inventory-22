@@ -454,8 +454,19 @@ export const ChecklistSection = () => {
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="single"
-                    selected={entryDates[type] ? new Date(entryDates[type]) : undefined}
-                    onSelect={(date) => setEntryDates(prev => ({ ...prev, [type]: date ? format(date, 'yyyy-MM-dd') : '' }))}
+                    selected={entryDates[type] ? new Date(entryDates[type] + 'T00:00:00') : undefined}
+                    onSelect={(date) => {
+                      if (date) {
+                        // Format date as YYYY-MM-DD to avoid timezone issues
+                        const year = date.getFullYear();
+                        const month = String(date.getMonth() + 1).padStart(2, '0');
+                        const day = String(date.getDate()).padStart(2, '0');
+                        const formattedDate = `${year}-${month}-${day}`;
+                        setEntryDates(prev => ({ ...prev, [type]: formattedDate }));
+                      } else {
+                        setEntryDates(prev => ({ ...prev, [type]: '' }));
+                      }
+                    }}
                     initialFocus
                     className="p-3 pointer-events-auto"
                   />
