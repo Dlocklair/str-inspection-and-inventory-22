@@ -579,22 +579,22 @@ Inventory Management Team`;
                       <h3 className="text-lg font-semibold text-primary border-b border-border pb-2">
                         {category}
                       </h3>
-                      <div className="overflow-x-auto">
-                        <table className="w-full border-collapse">
-                          <thead>
-                            <tr className="border-b bg-muted/30">
-                              <th className="text-left p-2 text-xs">Status</th>
-                              <th className="text-left p-2 text-xs">Item</th>
-                              <th className="text-center p-2 text-xs">Stock</th>
-                              <th className="text-center p-2 text-xs">Restock Level</th>
-                              <th className="text-left p-2 text-xs">Unit</th>
-                              <th className="text-left p-2 text-xs">Supplier</th>
-                              <th className="text-left p-2 text-xs">Cost</th>
-                              <th className="text-center p-2 text-xs">Request</th>
-                              <th className="text-center p-2 text-xs">Date</th>
-                              <th className="text-left p-2 text-xs">Actions</th>
-                            </tr>
-                          </thead>
+                       <div className="overflow-x-auto">
+                         <table className="w-full border-collapse">
+                           <thead>
+                             <tr className="border-b bg-muted/30">
+                               <th className="text-left p-2 text-xs sticky left-0 bg-muted/30 z-10 min-w-[120px]">Item</th>
+                               <th className="text-left p-2 text-xs">Status</th>
+                               <th className="text-center p-2 text-xs">Stock</th>
+                               <th className="text-center p-2 text-xs">Restock Level</th>
+                               <th className="text-left p-2 text-xs">Unit</th>
+                               <th className="text-left p-2 text-xs">Supplier</th>
+                               <th className="text-left p-2 text-xs">Cost</th>
+                               <th className="text-center p-2 text-xs">Request</th>
+                               <th className="text-center p-2 text-xs">Date</th>
+                               <th className="text-left p-2 text-xs">Actions</th>
+                             </tr>
+                           </thead>
                           <tbody>
                             {sortedInventoryItems
                               .filter(item => item.category === category)
@@ -602,35 +602,35 @@ Inventory Management Team`;
                                 const stockStatus = getStockStatus(item);
                                 const StatusIcon = stockStatus.icon;
                                 
-                                return (
-                                  <tr key={item.id} className="border-b hover:bg-muted/50">
-                                    <td className="p-2">
-                                      <Badge 
-                                        variant={stockStatus.color as any} 
-                                        className={cn(
-                                          "flex items-center gap-1 w-fit text-xs",
-                                          stockStatus.status === 'low' && "bg-destructive hover:bg-destructive/90 text-destructive-foreground",
-                                          stockStatus.status === 'good' && "bg-success hover:bg-success/90 text-success-foreground"
-                                        )}
-                                      >
-                                        <StatusIcon className="h-3 w-3" />
-                                        {stockStatus.status}
-                                      </Badge>
-                                    </td>
-                                    <td className="p-2">
-                                      {editingItem === item.id ? (
-                                        <Input
-                                          value={editingData.name || ''}
-                                          onChange={(e) => setEditingData(prev => ({ ...prev, name: e.target.value }))}
-                                          className="text-sm"
-                                        />
-                                      ) : (
-                                        <div>
-                                          <div className="font-medium text-sm">{item.name}</div>
-                                          {item.notes && <div className="text-xs text-muted-foreground">{item.notes}</div>}
-                                        </div>
-                                      )}
-                                    </td>
+                                 return (
+                                   <tr key={item.id} className="border-b hover:bg-muted/50">
+                                     <td className="p-2 sticky left-0 bg-background z-10 min-w-[120px]">
+                                       {editingItem === item.id ? (
+                                         <Input
+                                           value={editingData.name || ''}
+                                           onChange={(e) => setEditingData(prev => ({ ...prev, name: e.target.value }))}
+                                           className="text-sm"
+                                         />
+                                       ) : (
+                                         <div>
+                                           <div className="font-medium text-sm">{item.name}</div>
+                                           {item.notes && <div className="text-xs text-muted-foreground">{item.notes}</div>}
+                                         </div>
+                                       )}
+                                     </td>
+                                     <td className="p-2">
+                                       <Badge 
+                                         variant={stockStatus.color as any} 
+                                         className={cn(
+                                           "flex items-center gap-1 w-fit text-xs",
+                                           stockStatus.status === 'low' && "bg-destructive hover:bg-destructive/90 text-destructive-foreground",
+                                           stockStatus.status === 'good' && "bg-success hover:bg-success/90 text-success-foreground"
+                                         )}
+                                       >
+                                         <StatusIcon className="h-3 w-3" />
+                                         {stockStatus.status}
+                                       </Badge>
+                                     </td>
                                     <td className="p-2 text-center">
                                       {editingItem === item.id ? (
                                         <Input
