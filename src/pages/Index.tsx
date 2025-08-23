@@ -11,17 +11,23 @@ const Index = () => {
   const { user, profile, loading, signOut } = useAuth();
 
   useEffect(() => {
+    console.log('Index useEffect - loading:', loading, 'user:', user?.email || 'no user');
     if (!loading && !user) {
+      console.log('Redirecting to auth - no user found');
       navigate('/auth');
     }
   }, [user, loading, navigate]);
 
   if (loading) {
+    console.log('Showing loading screen...');
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-primary" />
           <p className="text-lg text-muted-foreground">Loading your dashboard...</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            If this persists, please refresh the page
+          </p>
         </div>
       </div>
     );

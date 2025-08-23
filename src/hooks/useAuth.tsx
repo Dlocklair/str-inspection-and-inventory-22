@@ -78,10 +78,24 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   useEffect(() => {
+    let isMounted = true;
+    let initTimeout: NodeJS.Timeout | null = null;
+
+    // Safety timeout to prevent infinite loading
+    const safetyTimeout = setTimeout(() => {
+      if (isMounted && loading) {
+        console.warn('Auth initialization taking too long, forcing loading to false');
+        setLoading(false);
+      }
+    }, 10000); // 10 second safety net
+
     // Simple initialization
     const initAuth = async () => {
       try {
+        console.log('Initializing auth...');
         const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (!isMounted) return;
         
         // If there's an auth error, clear everything and sign out
         if (error) {
@@ -98,24 +112,43 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          const profileData = await fetchProfile(session.user.id);
-          setProfile(profileData);
+          console.log('Fetching profile for user:', session.user.email);
+          try {
+            const profileData = await fetchProfile(session.user.id);
+            if (isMounted) {
+              setProfile(profileData);
+            }
+          } catch (profileError) {
+            console.error('Profile fetch failed:', profileError);
+            if (isMounted) {
+              setProfile(null);
+            }
+          }
+        } else {
+          console.log('No active session found');
         }
         
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+          console.log('Auth initialization complete');
+        }
       } catch (error) {
         console.error('Auth init error:', error);
-        // Clear auth state on error
-        setSession(null);
-        setUser(null);
-        setProfile(null);
-        setLoading(false);
+        if (isMounted) {
+          // Clear auth state on error
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          setLoading(false);
+        }
       }
     };
 
     // Auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state change:', event, session?.user?.email);
+      
+      if (!isMounted) return;
       
       // Handle auth errors by clearing state
       if (event === 'TOKEN_REFRESHED' && !session) {
@@ -129,16 +162,35 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setUser(session?.user ?? null);
       
       if (session?.user && event !== 'SIGNED_OUT') {
-        const profileData = await fetchProfile(session.user.id);
-        setProfile(profileData);
+        try {
+          const profileData = await fetchProfile(session.user.id);
+          if (isMounted) {
+            setProfile(profileData);
+          }
+        } catch (profileError) {
+          console.error('Profile fetch failed in auth change:', profileError);
+          if (isMounted) {
+            setProfile(null);
+          }
+        }
       } else {
         setProfile(null);
+      }
+      
+      // Ensure loading is set to false after any auth state change
+      if (isMounted && loading) {
+        setLoading(false);
       }
     });
 
     initAuth();
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      clearTimeout(safetyTimeout);
+      if (initTimeout) clearTimeout(initTimeout);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signUp = async (email: string, password: string, fullName: string, role: 'owner' | 'agent' = 'agent') => {
