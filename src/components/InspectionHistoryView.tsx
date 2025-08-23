@@ -40,11 +40,11 @@ export const InspectionHistoryView = () => {
   const filteredRecords = inspectionRecords.filter(record => {
     const searchLower = searchTerm.toLowerCase();
     return (
-      record.templateName.toLowerCase().includes(searchLower) ||
-      record.date.includes(searchLower) ||
-      record.items.some(item => 
-        item.description.toLowerCase().includes(searchLower) ||
-        item.notes.toLowerCase().includes(searchLower)
+      record.templateName?.toLowerCase().includes(searchLower) ||
+      record.date?.includes(searchLower) ||
+      record.items?.some(item => 
+        item.description?.toLowerCase().includes(searchLower) ||
+        item.notes?.toLowerCase().includes(searchLower)
       )
     );
   });
