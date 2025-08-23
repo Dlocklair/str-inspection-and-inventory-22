@@ -92,6 +92,7 @@ export const InventorySection = () => {
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [showAddForm, setShowAddForm] = useState(false);
   const [newCategory, setNewCategory] = useState('');
+  const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
 
   // Load saved data from localStorage on component mount
   useEffect(() => {
@@ -147,6 +148,8 @@ export const InventorySection = () => {
       cost: 0,
       notes: ''
     });
+    setShowNewCategoryInput(false);
+    setNewCategory('');
 
     if (closeForm) {
       setShowAddForm(false);
@@ -436,11 +439,14 @@ Inventory Management Team`;
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {/* Category - First field */}
                     <Select 
-                      value={newItem.category} 
+                      value={showNewCategoryInput ? 'add-new' : newItem.category} 
                       onValueChange={(value) => {
                         if (value === 'add-new') {
+                          setShowNewCategoryInput(true);
                           setNewCategory('');
+                          setNewItem(prev => ({ ...prev, category: '' }));
                         } else {
+                          setShowNewCategoryInput(false);
                           setNewItem(prev => ({ ...prev, category: value }));
                         }
                       }}
@@ -513,7 +519,7 @@ Inventory Management Team`;
                   </div>
                   
                   {/* New category input if needed */}
-                  {newItem.category === '' && (
+                  {showNewCategoryInput && (
                     <div className="mt-4">
                       <Input
                         placeholder="Enter new category name"
@@ -522,6 +528,7 @@ Inventory Management Team`;
                           setNewCategory(e.target.value);
                           setNewItem(prev => ({ ...prev, category: e.target.value }));
                         }}
+                        autoFocus
                       />
                     </div>
                   )}

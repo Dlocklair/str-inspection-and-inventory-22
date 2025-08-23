@@ -52,11 +52,39 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [currentInspection, setCurrentInspection] = useState<InspectionItem[]>([]);
 
-  // Load templates on mount
+  // Load templates on mount and add default templates if none exist
   useEffect(() => {
     const savedTemplates = localStorage.getItem('inspection-templates');
     if (savedTemplates) {
       setTemplates(JSON.parse(savedTemplates));
+    } else {
+      // Add default templates
+      const defaultTemplates = [
+        {
+          id: 'default-1',
+          name: 'Standard Property Inspection',
+          isPredefined: true,
+          items: [
+            { id: '1', description: 'Check all light fixtures and bulbs', notes: '' },
+            { id: '2', description: 'Inspect HVAC filters', notes: '' },
+            { id: '3', description: 'Test smoke detectors', notes: '' },
+            { id: '4', description: 'Check plumbing for leaks', notes: '' },
+            { id: '5', description: 'Inspect doors and windows', notes: '' }
+          ]
+        },
+        {
+          id: 'default-2',
+          name: 'Quick Maintenance Check',
+          isPredefined: true,
+          items: [
+            { id: '1', description: 'Check thermostat settings', notes: '' },
+            { id: '2', description: 'Test all electrical outlets', notes: '' },
+            { id: '3', description: 'Inspect exterior lighting', notes: '' }
+          ]
+        }
+      ];
+      setTemplates(defaultTemplates);
+      localStorage.setItem('inspection-templates', JSON.stringify(defaultTemplates));
     }
   }, []);
 
