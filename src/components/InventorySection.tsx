@@ -436,105 +436,139 @@ Inventory Management Team`;
                   <CardTitle>Add New Inventory Item</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                     {/* Category - First field */}
-                     <Select 
-                       value={showNewCategoryInput ? 'add-new' : newItem.category} 
-                       onValueChange={(value) => {
-                         if (value === 'add-new') {
-                           setShowNewCategoryInput(true);
-                           setNewCategory('');
-                           setNewItem(prev => ({ ...prev, category: '' }));
-                         } else {
-                           setShowNewCategoryInput(false);
-                           setNewItem(prev => ({ ...prev, category: value }));
-                         }
-                       }}
-                     >
-                       <SelectTrigger>
-                         <SelectValue placeholder="Select product category" />
-                       </SelectTrigger>
-                       <SelectContent>
-                         {getUniqueCategories().map(category => (
-                           <SelectItem key={category} value={category}>
-                             {category}
-                           </SelectItem>
-                         ))}
-                         <SelectItem value="add-new">+ Add new category</SelectItem>
-                       </SelectContent>
-                     </Select>
+                   <div className="space-y-4">
+                     {/* Add New Category Button */}
+                     <div className="flex items-center gap-2">
+                       <Button
+                         variant="outline"
+                         size="sm"
+                         onClick={() => setShowNewCategoryInput(!showNewCategoryInput)}
+                         className="flex items-center gap-2"
+                       >
+                         <Plus className="h-4 w-4" />
+                         Add New Category
+                       </Button>
+                     </div>
                      
-                     {/* Item - Second field */}
-                     <Input
-                       placeholder="Enter the name of the inventory item"
-                       value={newItem.name}
-                       onChange={(e) => setNewItem(prev => ({ ...prev, name: e.target.value }))}
-                     />
+                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                       {/* Category - First field */}
+                       <div className="space-y-2">
+                         <label className="text-sm font-medium">Category</label>
+                         <Select 
+                           value={newItem.category} 
+                           onValueChange={(value) => {
+                             setShowNewCategoryInput(false);
+                             setNewItem(prev => ({ ...prev, category: value }));
+                           }}
+                         >
+                           <SelectTrigger>
+                             <SelectValue placeholder="Select product category" />
+                           </SelectTrigger>
+                           <SelectContent>
+                             {getUniqueCategories().map(category => (
+                               <SelectItem key={category} value={category}>
+                                 {category}
+                               </SelectItem>
+                             ))}
+                           </SelectContent>
+                         </Select>
+                       </div>
                      
-                     {/* Units - Third field */}
-                     <Input
-                       placeholder="How items are counted (bottles, rolls, boxes, etc.)"
-                       value={newItem.unit}
-                       onChange={(e) => setNewItem(prev => ({ ...prev, unit: e.target.value }))}
-                     />
-                     
-                     {/* Supplier - Fourth field */}
-                     <Input
-                       placeholder="Name of supplier or vendor"
-                       value={newItem.supplier}
-                       onChange={(e) => setNewItem(prev => ({ ...prev, supplier: e.target.value }))}
-                     />
-                     
-                     {/* URL - Fifth field */}
-                     <Input
-                       placeholder="Website URL for ordering this item"
-                       value={newItem.supplierUrl || ''}
-                       onChange={(e) => setNewItem(prev => ({ ...prev, supplierUrl: e.target.value }))}
-                     />
-                     
-                     {/* Cost per unit - Sixth field */}
-                     <Input
-                       type="number"
-                       step="0.01"
-                       placeholder="Price per individual unit ($)"
-                       value={newItem.cost || ''}
-                       onChange={(e) => setNewItem(prev => ({ ...prev, cost: Number(e.target.value) }))}
-                     />
-                     
-                     {/* Restock level - Seventh field */}
-                     <Input
-                       type="number"
-                       placeholder="Minimum quantity before reordering"
-                       value={newItem.restockLevel || ''}
-                       onChange={(e) => setNewItem(prev => ({ ...prev, restockLevel: Number(e.target.value) }))}
-                     />
-                     
-                     {/* Current stock */}
-                     <Input
-                       type="number"
-                       placeholder="How many you have right now"
-                       value={newItem.currentStock || ''}
-                       onChange={(e) => setNewItem(prev => ({ ...prev, currentStock: Number(e.target.value) }))}
-                     />
-                  </div>
-                  
-                  {/* New category input if needed */}
-                  {showNewCategoryInput && (
-                    <div className="mt-4">
-                      <Input
-                        placeholder="Enter new category name"
-                        value={newCategory}
-                        onChange={(e) => {
-                          setNewCategory(e.target.value);
-                          setNewItem(prev => ({ ...prev, category: e.target.value }));
-                        }}
-                        autoFocus
-                      />
+                       {/* Item - Second field */}
+                       <div className="space-y-2">
+                         <label className="text-sm font-medium">Item Name</label>
+                         <Input
+                           placeholder="Enter the name of the inventory item"
+                           value={newItem.name}
+                           onChange={(e) => setNewItem(prev => ({ ...prev, name: e.target.value }))}
+                         />
+                       </div>
+                       
+                       {/* Units - Third field */}
+                       <div className="space-y-2">
+                         <label className="text-sm font-medium">Unit</label>
+                         <Input
+                           placeholder="How items are counted (bottles, rolls, boxes, etc.)"
+                           value={newItem.unit}
+                           onChange={(e) => setNewItem(prev => ({ ...prev, unit: e.target.value }))}
+                         />
+                       </div>
+                       
+                       {/* Supplier - Fourth field */}
+                       <div className="space-y-2">
+                         <label className="text-sm font-medium">Supplier</label>
+                         <Input
+                           placeholder="Name of supplier or vendor"
+                           value={newItem.supplier}
+                           onChange={(e) => setNewItem(prev => ({ ...prev, supplier: e.target.value }))}
+                         />
+                       </div>
+                       
+                       {/* URL - Fifth field */}
+                       <div className="space-y-2">
+                         <label className="text-sm font-medium">Supplier URL</label>
+                         <Input
+                           placeholder="Website URL for ordering this item"
+                           value={newItem.supplierUrl || ''}
+                           onChange={(e) => setNewItem(prev => ({ ...prev, supplierUrl: e.target.value }))}
+                         />
+                       </div>
+                       
+                       {/* Cost per unit - Sixth field */}
+                       <div className="space-y-2">
+                         <label className="text-sm font-medium">Cost per Unit</label>
+                         <Input
+                           type="number"
+                           step="0.01"
+                           placeholder="Price per individual unit ($)"
+                           value={newItem.cost || ''}
+                           onChange={(e) => setNewItem(prev => ({ ...prev, cost: Number(e.target.value) }))}
+                         />
+                       </div>
+                       
+                       {/* Restock level - Seventh field */}
+                       <div className="space-y-2">
+                         <label className="text-sm font-medium">Restock Level</label>
+                         <Input
+                           type="number"
+                           placeholder="Minimum quantity before reordering"
+                           value={newItem.restockLevel || ''}
+                           onChange={(e) => setNewItem(prev => ({ ...prev, restockLevel: Number(e.target.value) }))}
+                         />
+                       </div>
+                       
+                       {/* Current stock */}
+                       <div className="space-y-2">
+                         <label className="text-sm font-medium">Current Stock</label>
+                         <Input
+                           type="number"
+                           placeholder="How many you have right now"
+                           value={newItem.currentStock || ''}
+                           onChange={(e) => setNewItem(prev => ({ ...prev, currentStock: Number(e.target.value) }))}
+                         />
+                       </div>
                     </div>
-                  )}
                   
+                    {/* New category input if needed */}
+                    {showNewCategoryInput && (
+                      <div className="mt-4">
+                        <label className="text-sm font-medium block mb-2">New Category Name</label>
+                        <Input
+                          placeholder="Enter new category name"
+                          value={newCategory}
+                          onChange={(e) => {
+                            setNewCategory(e.target.value);
+                            setNewItem(prev => ({ ...prev, category: e.target.value }));
+                          }}
+                          autoFocus
+                        />
+                      </div>
+                    )}
+                   </div>
+                   
                    {/* Notes - Last field */}
                    <div className="mt-4">
+                     <label className="text-sm font-medium block mb-2">Notes</label>
                      <Textarea
                        placeholder="Additional notes, special instructions, or details about this item"
                        value={newItem.notes}

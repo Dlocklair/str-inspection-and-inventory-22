@@ -70,81 +70,105 @@ export const InventoryEditForm = ({ item, onSave, onCancel, categories }: Invent
       <CardContent>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {/* Category - First field */}
-          <Select 
-            value={editingData.category} 
-            onValueChange={(value) => {
-              if (value === 'add-new') {
-                setNewCategory('');
-              } else {
-                setEditingData(prev => ({ ...prev, category: value }));
-              }
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select product category" />
-            </SelectTrigger>
-            <SelectContent>
-              {categories.map(category => (
-                <SelectItem key={category} value={category}>
-                  {category}
-                </SelectItem>
-              ))}
-              <SelectItem value="add-new">+ Add new category</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Category</label>
+            <Select 
+              value={editingData.category} 
+              onValueChange={(value) => {
+                if (value === 'add-new') {
+                  setNewCategory('');
+                } else {
+                  setEditingData(prev => ({ ...prev, category: value }));
+                }
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select product category" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map(category => (
+                  <SelectItem key={category} value={category}>
+                    {category}
+                  </SelectItem>
+                ))}
+                <SelectItem value="add-new">+ Add new category</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           
           {/* Item - Second field */}
-          <Input
-            placeholder="Enter the name of the inventory item"
-            value={editingData.name}
-            onChange={(e) => setEditingData(prev => ({ ...prev, name: e.target.value }))}
-          />
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Item Name</label>
+            <Input
+              placeholder="Enter the name of the inventory item"
+              value={editingData.name}
+              onChange={(e) => setEditingData(prev => ({ ...prev, name: e.target.value }))}
+            />
+          </div>
           
           {/* Units - Third field */}
-          <Input
-            placeholder="How items are counted (bottles, rolls, boxes, etc.)"
-            value={editingData.unit}
-            onChange={(e) => setEditingData(prev => ({ ...prev, unit: e.target.value }))}
-          />
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Unit</label>
+            <Input
+              placeholder="How items are counted (bottles, rolls, boxes, etc.)"
+              value={editingData.unit}
+              onChange={(e) => setEditingData(prev => ({ ...prev, unit: e.target.value }))}
+            />
+          </div>
           
           {/* Supplier - Fourth field */}
-          <Input
-            placeholder="Name of supplier or vendor"
-            value={editingData.supplier}
-            onChange={(e) => setEditingData(prev => ({ ...prev, supplier: e.target.value }))}
-          />
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Supplier</label>
+            <Input
+              placeholder="Name of supplier or vendor"
+              value={editingData.supplier}
+              onChange={(e) => setEditingData(prev => ({ ...prev, supplier: e.target.value }))}
+            />
+          </div>
           
           {/* URL - Fifth field */}
-          <Input
-            placeholder="Website URL for ordering this item"
-            value={editingData.supplierUrl || ''}
-            onChange={(e) => setEditingData(prev => ({ ...prev, supplierUrl: e.target.value }))}
-          />
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Supplier URL</label>
+            <Input
+              placeholder="Website URL for ordering this item"
+              value={editingData.supplierUrl || ''}
+              onChange={(e) => setEditingData(prev => ({ ...prev, supplierUrl: e.target.value }))}
+            />
+          </div>
           
           {/* Cost per unit - Sixth field */}
-          <Input
-            type="number"
-            step="0.01"
-            placeholder="Price per individual unit ($)"
-            value={editingData.cost || ''}
-            onChange={(e) => setEditingData(prev => ({ ...prev, cost: Number(e.target.value) }))}
-          />
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Cost per Unit</label>
+            <Input
+              type="number"
+              step="0.01"
+              placeholder="Price per individual unit ($)"
+              value={editingData.cost || ''}
+              onChange={(e) => setEditingData(prev => ({ ...prev, cost: Number(e.target.value) }))}
+            />
+          </div>
           
           {/* Restock level - Seventh field */}
-          <Input
-            type="number"
-            placeholder="Minimum quantity before reordering"
-            value={editingData.restockLevel || ''}
-            onChange={(e) => setEditingData(prev => ({ ...prev, restockLevel: Number(e.target.value) }))}
-          />
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Restock Level</label>
+            <Input
+              type="number"
+              placeholder="Minimum quantity before reordering"
+              value={editingData.restockLevel || ''}
+              onChange={(e) => setEditingData(prev => ({ ...prev, restockLevel: Number(e.target.value) }))}
+            />
+          </div>
           
           {/* Current stock */}
-          <Input
-            type="number"
-            placeholder="How many you have right now"
-            value={editingData.currentStock || ''}
-            onChange={(e) => setEditingData(prev => ({ ...prev, currentStock: Number(e.target.value) }))}
-          />
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Current Stock</label>
+            <Input
+              type="number"
+              placeholder="How many you have right now"
+              value={editingData.currentStock || ''}
+              onChange={(e) => setEditingData(prev => ({ ...prev, currentStock: Number(e.target.value) }))}
+            />
+          </div>
         </div>
         
         {/* New category input if needed */}
@@ -178,7 +202,7 @@ export const InventoryEditForm = ({ item, onSave, onCancel, categories }: Invent
           </Button>
           <Button onClick={onCancel} variant="outline" className="flex items-center gap-2">
             <X className="h-4 w-4" />
-            Cancel
+            Return to Inventory List
           </Button>
         </div>
       </CardContent>

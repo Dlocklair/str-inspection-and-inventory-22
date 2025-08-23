@@ -152,11 +152,18 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
     }
 
     const template = templates.find(t => t.id === selectedTemplateId);
+    
+    // Format date as ISO string then extract date part to avoid timezone issues
+    const year = selectedDate.getFullYear();
+    const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+    const day = String(selectedDate.getDate()).padStart(2, '0');
+    const dateString = `${year}-${month}-${day}`;
+    
     const newRecord: InspectionRecord = {
       id: Date.now().toString(),
       templateId: selectedTemplateId,
       templateName: template?.name || '',
-      date: format(selectedDate, 'yyyy-MM-dd'),
+      date: dateString,
       items: currentInspection,
       createdAt: new Date().toISOString()
     };

@@ -506,11 +506,11 @@ export const DamageReport = () => {
                           {[0, 1, 2].map(photoIndex => (
                             <div key={photoIndex} className="relative">
                               {newReport.photos[photoIndex] ? (
-                                <div className="border-2 border-border rounded-lg p-2 h-32 flex flex-col items-center justify-center relative">
+                                <div className="border-2 border-border rounded-lg p-2 aspect-[4/3] flex items-center justify-center relative">
                                   <img
                                     src={URL.createObjectURL(newReport.photos[photoIndex])}
                                     alt={`Photo ${photoIndex + 1}`}
-                                    className="w-full h-full object-cover rounded"
+                                    className="w-full h-full object-contain rounded"
                                   />
                                   <Button
                                     variant="destructive"
@@ -522,7 +522,7 @@ export const DamageReport = () => {
                                   </Button>
                                 </div>
                               ) : (
-                                <label className="border-2 border-dashed border-border rounded-lg p-4 h-32 flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors">
+                                <label className="border-2 border-dashed border-border rounded-lg p-4 aspect-[4/3] flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors">
                                   <input
                                     type="file"
                                     accept="image/*"
