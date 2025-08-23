@@ -527,6 +527,24 @@ export type Database = {
           },
         ]
       }
+      Messages: {
+        Row: {
+          Content: string | null
+          created_at: string
+          id: number
+        }
+        Insert: {
+          Content?: string | null
+          created_at?: string
+          id?: number
+        }
+        Update: {
+          Content?: string | null
+          created_at?: string
+          id?: number
+        }
+        Relationships: []
+      }
       notification_settings: {
         Row: {
           created_at: string
