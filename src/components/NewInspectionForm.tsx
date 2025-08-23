@@ -228,22 +228,21 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
             <div className="space-y-4">
               <h3 className="text-lg font-semibold border-b pb-2">{selectedTemplate?.name} Inspection</h3>
               
-              <div className="space-y-2">
+              <div className="space-y-1">
                 {currentInspection.map(item => (
-                  <div key={item.id} className="flex items-start gap-4 p-3 bg-muted/30 rounded-lg">
+                  <div key={item.id} className="flex items-center gap-3 p-2 bg-muted/20 rounded">
                     <Checkbox
                       id={item.id}
                       checked={item.completed}
                       onCheckedChange={(checked) => 
                         updateInspectionItem(item.id, { completed: checked as boolean })
                       }
-                      className="mt-1"
                     />
-                    <div className="flex-1 space-y-2">
+                    <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2">
                       <label 
                         htmlFor={item.id}
                         className={cn(
-                          "text-sm font-medium cursor-pointer",
+                          "text-sm font-medium cursor-pointer flex items-center",
                           item.completed && "line-through text-muted-foreground"
                         )}
                       >
@@ -253,7 +252,7 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
                         placeholder="Add notes..."
                         value={item.notes}
                         onChange={(e) => updateInspectionItem(item.id, { notes: e.target.value })}
-                        className="text-sm"
+                        className="text-sm h-8"
                       />
                     </div>
                   </div>

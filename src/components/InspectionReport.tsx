@@ -5,8 +5,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Home, Package, AlertTriangle, Settings, FileText, History, Settings as TemplateIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { NewInspectionForm } from './NewInspectionForm';
-import { InspectionHistoryView } from './InspectionHistoryView';
-import { InspectionTemplateManager } from './InspectionTemplateManager';
+import { EditableInspectionHistoryView } from './EditableInspectionHistoryView';
+import { ImprovedInspectionTemplateManager } from './ImprovedInspectionTemplateManager';
 
 interface User {
   id: string;
@@ -132,8 +132,8 @@ export const InspectionReport = () => {
               onNavigateToTemplateManager={() => setSelectedView('manage-templates')}
             />
           )}
-          {selectedView === 'inspection-history' && <InspectionHistoryView />}
-          {selectedView === 'manage-templates' && <InspectionTemplateManager />}
+          {selectedView === 'inspection-history' && <EditableInspectionHistoryView />}
+          {selectedView === 'manage-templates' && <ImprovedInspectionTemplateManager />}
         </div>
       </div>
     </div>

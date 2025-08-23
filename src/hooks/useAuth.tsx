@@ -81,7 +81,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     // Simple initialization
     const initAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        // If there's an auth error, clear everything and sign out
+        if (error) {
+          console.error('Auth session error:', error);
+          await supabase.auth.signOut();
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          setLoading(false);
+          return;
+        }
+        
         setSession(session);
         setUser(session?.user ?? null);
         
@@ -93,18 +105,33 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setLoading(false);
       } catch (error) {
         console.error('Auth init error:', error);
+        // Clear auth state on error
+        setSession(null);
+        setUser(null);
+        setProfile(null);
         setLoading(false);
       }
     };
 
     // Auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state change:', event, session?.user?.email);
+      
+      // Handle auth errors by clearing state
+      if (event === 'TOKEN_REFRESHED' && !session) {
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        return;
+      }
+      
       setSession(session);
       setUser(session?.user ?? null);
       
-      if (session?.user && !profile) {
-        fetchProfile(session.user.id).then(setProfile);
-      } else if (!session?.user) {
+      if (session?.user && event !== 'SIGNED_OUT') {
+        const profileData = await fetchProfile(session.user.id);
+        setProfile(profileData);
+      } else {
         setProfile(null);
       }
     });
