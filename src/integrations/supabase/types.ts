@@ -532,16 +532,31 @@ export type Database = {
           Content: string | null
           created_at: string
           id: number
+          message_type: string | null
+          recipient_id: string | null
+          sender_id: string | null
+          thread_id: string | null
+          updated_at: string | null
         }
         Insert: {
           Content?: string | null
           created_at?: string
           id?: number
+          message_type?: string | null
+          recipient_id?: string | null
+          sender_id?: string | null
+          thread_id?: string | null
+          updated_at?: string | null
         }
         Update: {
           Content?: string | null
           created_at?: string
           id?: number
+          message_type?: string | null
+          recipient_id?: string | null
+          sender_id?: string | null
+          thread_id?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -650,7 +665,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_current_user_profile: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          profile_id: string
+          user_role: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
