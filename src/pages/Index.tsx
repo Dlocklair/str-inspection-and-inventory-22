@@ -29,7 +29,10 @@ const Index = () => {
 
   useEffect(() => {
     const fetchPermissions = async () => {
-      if (!profile) return;
+      if (!profile) {
+        setPermissionsLoading(false);
+        return;
+      }
 
       try {
         if (profile.role === 'owner') {
@@ -76,9 +79,7 @@ const Index = () => {
       }
     };
 
-    if (profile) {
-      fetchPermissions();
-    }
+    fetchPermissions();
   }, [profile]);
 
   const hasAccess = (module: keyof Pick<AgentPermissions, 'inspections' | 'inventory' | 'damage'>) => {
