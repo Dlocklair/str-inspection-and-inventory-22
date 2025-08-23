@@ -3,47 +3,27 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { User, Settings as SettingsIcon, Shield, UserPlus, Trash2, Save } from 'lucide-react';
+import { User, LogOut, Shield, UserPlus, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: 'owner' | 'agent';
-  permissions: {
-    inspections: boolean;
-    inventory: boolean;
-    damage: boolean;
-  };
-  createdAt: string;
-  isActive: boolean;
-}
-
-interface UserSettings {
-  currentUser: User | null;
-  users: User[];
-}
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
 const Settings = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { user, profile, signOut, loading } = useAuth();
   
-  const [userSettings, setUserSettings] = useState<UserSettings>({
-    currentUser: null,
-    users: []
-  });
-
-  const [newUser, setNewUser] = useState({
-    name: '',
+  const [agents, setAgents] = useState<any[]>([]);
+  const [permissions, setPermissions] = useState<any[]>([]);
+  const [newInvitation, setNewInvitation] = useState({
     email: '',
-    role: 'agent' as const,
+    fullName: '',
+    phone: '',
     permissions: {
       inspections: false,
       inventory: false,
@@ -51,33 +31,53 @@ const Settings = () => {
     }
   });
 
-  const [showRegistration, setShowRegistration] = useState(false);
-  const [editingUser, setEditingUser] = useState<string | null>(null);
-  const [editingData, setEditingData] = useState<Partial<User>>({});
-
-  // Load settings from localStorage
+  // Fetch agents and permissions on mount
   useEffect(() => {
-    const savedSettings = localStorage.getItem('user-settings');
-    if (savedSettings) {
-      const settings = JSON.parse(savedSettings);
-      setUserSettings(settings);
-      
-      // If no current user is set, show registration
-      if (!settings.currentUser) {
-        setShowRegistration(true);
-      }
-    } else {
-      setShowRegistration(true);
+    if (user && profile?.role === 'owner') {
+      fetchAgentsAndPermissions();
     }
-  }, []);
+  }, [user, profile]);
 
-  // Save settings to localStorage
-  useEffect(() => {
-    localStorage.setItem('user-settings', JSON.stringify(userSettings));
-  }, [userSettings]);
+  const fetchAgentsAndPermissions = async () => {
+    try {
+      // Fetch agent permissions for this owner
+      const { data: agentPerms, error: permsError } = await supabase
+        .from('agent_permissions')
+        .select(`
+          *,
+          agent:profiles!agent_permissions_agent_id_fkey(*)
+        `)
+        .eq('owner_id', profile?.id);
 
-  const registerUser = (role: 'owner' | 'agent') => {
-    if (!newUser.name.trim() || !newUser.email.trim()) {
+      if (permsError) throw permsError;
+
+      setAgents(agentPerms || []);
+      setPermissions(agentPerms || []);
+    } catch (error) {
+      console.error('Error fetching agents:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch agents and permissions.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      navigate('/auth');
+    } catch (error) {
+      toast({
+        title: "Sign out failed",
+        description: "There was an error signing out.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const sendInvitation = async () => {
+    if (!newInvitation.email.trim() || !newInvitation.fullName.trim()) {
       toast({
         title: "Required fields missing",
         description: "Please fill in name and email.",
@@ -86,206 +86,88 @@ const Settings = () => {
       return;
     }
 
-    const user: User = {
-      id: Date.now().toString(),
-      name: newUser.name.trim(),
-      email: newUser.email.trim(),
-      role,
-      permissions: role === 'owner' ? {
-        inspections: true,
-        inventory: true, 
-        damage: true
-      } : newUser.permissions,
-      createdAt: new Date().toISOString(),
-      isActive: true
-    };
+    try {
+      const { error } = await supabase
+        .from('invitations')
+        .insert({
+          owner_id: profile?.id,
+          email: newInvitation.email.trim(),
+          full_name: newInvitation.fullName.trim(),
+          phone: newInvitation.phone.trim() || null,
+          permissions: newInvitation.permissions
+        });
 
-    setUserSettings(prev => ({
-      currentUser: user,
-      users: [...prev.users, user]
-    }));
+      if (error) throw error;
 
-    setNewUser({
-      name: '',
-      email: '',
-      role: 'agent',
-      permissions: {
-        inspections: false,
-        inventory: false,
-        damage: false
-      }
-    });
+      setNewInvitation({
+        email: '',
+        fullName: '',
+        phone: '',
+        permissions: {
+          inspections: false,
+          inventory: false,
+          damage: false
+        }
+      });
 
-    setShowRegistration(false);
-
-    toast({
-      title: "Registration successful",
-      description: `Welcome ${user.name}! You're registered as ${role}.`,
-    });
-  };
-
-  const addAgent = () => {
-    if (userSettings.currentUser?.role !== 'owner') {
       toast({
-        title: "Permission denied",
-        description: "Only owners can add agents.",
+        title: "Invitation sent",
+        description: `Invitation sent to ${newInvitation.fullName}.`,
+      });
+    } catch (error) {
+      console.error('Error sending invitation:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send invitation.",
         variant: "destructive"
       });
-      return;
     }
+  };
 
-    if (!newUser.name.trim() || !newUser.email.trim()) {
+  const updateAgentPermissions = async (agentId: string, newPermissions: any) => {
+    try {
+      const { error } = await supabase
+        .from('agent_permissions')
+        .update({
+          inspections: newPermissions.inspections,
+          inventory: newPermissions.inventory,
+          damage: newPermissions.damage
+        })
+        .eq('agent_id', agentId)
+        .eq('owner_id', profile?.id);
+
+      if (error) throw error;
+
+      await fetchAgentsAndPermissions();
+
       toast({
-        title: "Required fields missing",
-        description: "Please fill in name and email.",
+        title: "Permissions updated",
+        description: "Agent permissions have been updated successfully.",
+      });
+    } catch (error) {
+      console.error('Error updating permissions:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update permissions.",
         variant: "destructive"
       });
-      return;
-    }
-
-    const agent: User = {
-      id: Date.now().toString(),
-      name: newUser.name.trim(),
-      email: newUser.email.trim(),
-      role: 'agent',
-      permissions: newUser.permissions,
-      createdAt: new Date().toISOString(),
-      isActive: true
-    };
-
-    setUserSettings(prev => ({
-      ...prev,
-      users: [...prev.users, agent]
-    }));
-
-    setNewUser({
-      name: '',
-      email: '',
-      role: 'agent',
-      permissions: {
-        inspections: false,
-        inventory: false,
-        damage: false
-      }
-    });
-
-    toast({
-      title: "Agent added",
-      description: `${agent.name} has been added as an agent.`,
-    });
-  };
-
-  const updateUserPermissions = (userId: string, permissions: User['permissions']) => {
-    setUserSettings(prev => ({
-      ...prev,
-      users: prev.users.map(user =>
-        user.id === userId ? { ...user, permissions } : user
-      ),
-      currentUser: prev.currentUser?.id === userId 
-        ? { ...prev.currentUser, permissions }
-        : prev.currentUser
-    }));
-
-    toast({
-      title: "Permissions updated",
-      description: "User permissions have been updated successfully.",
-    });
-  };
-
-  const deleteUser = (userId: string) => {
-    if (userSettings.currentUser?.id === userId) {
-      toast({
-        title: "Cannot delete current user",
-        description: "You cannot delete your own account.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setUserSettings(prev => ({
-      ...prev,
-      users: prev.users.filter(user => user.id !== userId)
-    }));
-
-    toast({
-      title: "User deleted",
-      description: "User has been removed successfully.",
-    });
-  };
-
-  const switchUser = (userId: string) => {
-    const user = userSettings.users.find(u => u.id === userId);
-    if (user) {
-      setUserSettings(prev => ({
-        ...prev,
-        currentUser: user
-      }));
-      
-      toast({
-        title: "User switched",
-        description: `Now logged in as ${user.name}.`,
-      });
     }
   };
 
-  // Check if current user has access to any modules
-  const hasAnyAccess = userSettings.currentUser ? 
-    Object.values(userSettings.currentUser.permissions).some(permission => permission) : false;
-
-  if (showRegistration && !userSettings.currentUser) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Welcome</CardTitle>
-            <p className="text-muted-foreground">
-              Register to start using the STR Management System
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
-              <Input
-                id="name"
-                placeholder="Enter your full name"
-                value={newUser.name}
-                onChange={(e) => setNewUser(prev => ({ ...prev, name: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email Address</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="Enter your email"
-                value={newUser.email}
-                onChange={(e) => setNewUser(prev => ({ ...prev, email: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-4">
-              <Button 
-                onClick={() => registerUser('owner')} 
-                className="w-full"
-              >
-                <Shield className="h-4 w-4 mr-2" />
-                Register as Owner
-              </Button>
-              <Button 
-                onClick={() => registerUser('agent')} 
-                variant="outline" 
-                className="w-full"
-              >
-                <User className="h-4 w-4 mr-2" />
-                Register as Agent
-              </Button>
-            </div>
-            <p className="text-sm text-muted-foreground text-center">
-              Owners have full access. Agents need permissions from owners.
-            </p>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
       </div>
     );
+  }
+
+  if (!user) {
+    navigate('/auth');
+    return null;
   }
 
   return (
@@ -297,34 +179,25 @@ const Settings = () => {
               Settings
             </h1>
             <p className="text-muted-foreground text-lg">
-              Manage users, roles, and system permissions
+              Manage your profile and system permissions
             </p>
           </div>
-          <Button onClick={() => navigate('/')} variant="outline">
-            Back to Dashboard
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => navigate('/')} variant="outline">
+              Back to Dashboard
+            </Button>
+            <Button onClick={handleSignOut} variant="destructive">
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
+            </Button>
+          </div>
         </div>
-
-        {/* Access Warning */}
-        {!hasAnyAccess && userSettings.currentUser?.role === 'agent' && (
-          <Card className="mb-6 border-destructive">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-destructive">
-                <Shield className="h-5 w-5" />
-                <p className="font-medium">No Access Granted</p>
-              </div>
-              <p className="text-sm text-muted-foreground mt-1">
-                You don't have access to any modules. Please contact your property owner to grant permissions.
-              </p>
-            </CardContent>
-          </Card>
-        )}
 
         <Tabs defaultValue="profile" className="space-y-6">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="profile">Profile</TabsTrigger>
-            <TabsTrigger value="users">User Management</TabsTrigger>
-            <TabsTrigger value="permissions">Permissions</TabsTrigger>
+            <TabsTrigger value="users" disabled={profile?.role !== 'owner'}>User Management</TabsTrigger>
+            <TabsTrigger value="permissions" disabled={profile?.role !== 'owner'}>Permissions</TabsTrigger>
           </TabsList>
 
           <TabsContent value="profile" className="space-y-6">
@@ -333,41 +206,26 @@ const Settings = () => {
                 <CardTitle>Current User</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {userSettings.currentUser && (
+                {profile && (
                   <div className="space-y-4">
                     <div className="flex items-center gap-4">
                       <div className="space-y-1">
-                        <p className="font-medium">{userSettings.currentUser.name}</p>
-                        <p className="text-sm text-muted-foreground">{userSettings.currentUser.email}</p>
-                        <Badge variant={userSettings.currentUser.role === 'owner' ? 'default' : 'secondary'}>
-                          {userSettings.currentUser.role}
+                        <p className="font-medium">{profile.full_name}</p>
+                        <p className="text-sm text-muted-foreground">{user.email}</p>
+                        <Badge variant={profile.role === 'owner' ? 'default' : 'secondary'}>
+                          {profile.role}
                         </Badge>
                       </div>
                     </div>
                     <Separator />
-                    <div>
-                      <h4 className="font-medium mb-2">Module Access</h4>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span>Inspections</span>
-                          <Badge variant={userSettings.currentUser.permissions.inspections ? 'default' : 'secondary'}>
-                            {userSettings.currentUser.permissions.inspections ? 'Granted' : 'Denied'}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span>Inventory</span>
-                          <Badge variant={userSettings.currentUser.permissions.inventory ? 'default' : 'secondary'}>
-                            {userSettings.currentUser.permissions.inventory ? 'Granted' : 'Denied'}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span>Damage Reports</span>
-                          <Badge variant={userSettings.currentUser.permissions.damage ? 'default' : 'secondary'}>
-                            {userSettings.currentUser.permissions.damage ? 'Granted' : 'Denied'}
-                          </Badge>
-                        </div>
+                    {profile.role === 'owner' && (
+                      <div>
+                        <h4 className="font-medium mb-2">Owner Access</h4>
+                        <p className="text-sm text-muted-foreground">
+                          As an owner, you have full access to all modules and can manage agents.
+                        </p>
                       </div>
-                    </div>
+                    )}
                   </div>
                 )}
               </CardContent>
@@ -375,19 +233,19 @@ const Settings = () => {
           </TabsContent>
 
           <TabsContent value="users" className="space-y-6">
-            {userSettings.currentUser?.role === 'owner' && (
+            {profile?.role === 'owner' && (
               <Card>
                 <CardHeader>
-                  <CardTitle>Add New Agent</CardTitle>
+                  <CardTitle>Invite New Agent</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Name</Label>
+                      <Label>Full Name</Label>
                       <Input
-                        placeholder="Agent name"
-                        value={newUser.name}
-                        onChange={(e) => setNewUser(prev => ({ ...prev, name: e.target.value }))}
+                        placeholder="Agent full name"
+                        value={newInvitation.fullName}
+                        onChange={(e) => setNewInvitation(prev => ({ ...prev, fullName: e.target.value }))}
                       />
                     </div>
                     <div className="space-y-2">
@@ -395,10 +253,18 @@ const Settings = () => {
                       <Input
                         type="email"
                         placeholder="Agent email"
-                        value={newUser.email}
-                        onChange={(e) => setNewUser(prev => ({ ...prev, email: e.target.value }))}
+                        value={newInvitation.email}
+                        onChange={(e) => setNewInvitation(prev => ({ ...prev, email: e.target.value }))}
                       />
                     </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Phone (Optional)</Label>
+                    <Input
+                      placeholder="Agent phone number"
+                      value={newInvitation.phone}
+                      onChange={(e) => setNewInvitation(prev => ({ ...prev, phone: e.target.value }))}
+                    />
                   </div>
                   <div className="space-y-3">
                     <Label>Module Permissions</Label>
@@ -406,9 +272,9 @@ const Settings = () => {
                       <div className="flex items-center space-x-2">
                         <Switch
                           id="inspections"
-                          checked={newUser.permissions.inspections}
+                          checked={newInvitation.permissions.inspections}
                           onCheckedChange={(checked) => 
-                            setNewUser(prev => ({ 
+                            setNewInvitation(prev => ({ 
                               ...prev, 
                               permissions: { ...prev.permissions, inspections: checked }
                             }))
@@ -419,9 +285,9 @@ const Settings = () => {
                       <div className="flex items-center space-x-2">
                         <Switch
                           id="inventory"
-                          checked={newUser.permissions.inventory}
+                          checked={newInvitation.permissions.inventory}
                           onCheckedChange={(checked) => 
-                            setNewUser(prev => ({ 
+                            setNewInvitation(prev => ({ 
                               ...prev, 
                               permissions: { ...prev.permissions, inventory: checked }
                             }))
@@ -432,9 +298,9 @@ const Settings = () => {
                       <div className="flex items-center space-x-2">
                         <Switch
                           id="damage"
-                          checked={newUser.permissions.damage}
+                          checked={newInvitation.permissions.damage}
                           onCheckedChange={(checked) => 
-                            setNewUser(prev => ({ 
+                            setNewInvitation(prev => ({ 
                               ...prev, 
                               permissions: { ...prev.permissions, damage: checked }
                             }))
@@ -444,9 +310,9 @@ const Settings = () => {
                       </div>
                     </div>
                   </div>
-                  <Button onClick={addAgent} className="flex items-center gap-2">
+                  <Button onClick={sendInvitation} className="flex items-center gap-2">
                     <UserPlus className="h-4 w-4" />
-                    Add Agent
+                    Send Invitation
                   </Button>
                 </CardContent>
               </Card>
@@ -454,119 +320,114 @@ const Settings = () => {
 
             <Card>
               <CardHeader>
-                <CardTitle>All Users</CardTitle>
+                <CardTitle>Current Agents</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {userSettings.users.map(user => (
-                    <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  {agents.map(agent => (
+                    <div key={agent.id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                          <p className="font-medium">{user.name}</p>
-                          {userSettings.currentUser?.id === user.id && (
-                            <Badge variant="outline">Current</Badge>
-                          )}
-                          <Badge variant={user.role === 'owner' ? 'default' : 'secondary'}>
-                            {user.role}
-                          </Badge>
+                          <p className="font-medium">{agent.agent?.full_name}</p>
+                          <Badge variant="secondary">Agent</Badge>
                         </div>
-                        <p className="text-sm text-muted-foreground">{user.email}</p>
+                        <p className="text-sm text-muted-foreground">{agent.agent?.email_addresses?.[0] || 'No email'}</p>
                       </div>
                       <div className="flex gap-2">
-                        {userSettings.currentUser?.id !== user.id && (
-                          <>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => switchUser(user.id)}
-                            >
-                              Switch
-                            </Button>
-                            {userSettings.currentUser?.role === 'owner' && (
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => deleteUser(user.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </>
-                        )}
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {/* TODO: Remove agent */}}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                   ))}
+                  {agents.length === 0 && (
+                    <p className="text-muted-foreground text-center py-4">No agents found.</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="permissions" className="space-y-6">
-            {userSettings.currentUser?.role === 'owner' ? (
-              <div className="space-y-4">
-                {userSettings.users.filter(user => user.role === 'agent').map(agent => (
-                  <Card key={agent.id}>
-                    <CardHeader>
-                      <CardTitle className="text-lg">{agent.name}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="space-y-3">
-                        <div className="flex items-center space-x-2">
-                          <Switch
-                            id={`${agent.id}-inspections`}
-                            checked={agent.permissions.inspections}
-                            onCheckedChange={(checked) => 
-                              updateUserPermissions(agent.id, { 
-                                ...agent.permissions, 
-                                inspections: checked 
-                              })
-                            }
-                          />
-                          <Label htmlFor={`${agent.id}-inspections`}>Inspections</Label>
+            {profile?.role === 'owner' ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Manage Agent Permissions</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    {permissions.map(permission => (
+                      <div key={permission.id} className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium">{permission.agent?.full_name}</p>
+                            <p className="text-sm text-muted-foreground">{permission.agent?.email_addresses?.[0] || 'No email'}</p>
+                          </div>
+                          <Badge variant="secondary">Agent</Badge>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <Switch
-                            id={`${agent.id}-inventory`}
-                            checked={agent.permissions.inventory}
-                            onCheckedChange={(checked) => 
-                              updateUserPermissions(agent.id, { 
-                                ...agent.permissions, 
-                                inventory: checked 
-                              })
-                            }
-                          />
-                          <Label htmlFor={`${agent.id}-inventory`}>Inventory</Label>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="flex items-center justify-between p-3 border rounded">
+                            <span className="text-sm">Inspections</span>
+                            <Switch
+                              checked={permission.inspections}
+                              onCheckedChange={(checked) => 
+                                updateAgentPermissions(permission.agent_id, { 
+                                  ...permission, 
+                                  inspections: checked 
+                                })
+                              }
+                            />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded">
+                            <span className="text-sm">Inventory</span>
+                            <Switch
+                              checked={permission.inventory}
+                              onCheckedChange={(checked) => 
+                                updateAgentPermissions(permission.agent_id, { 
+                                  ...permission, 
+                                  inventory: checked 
+                                })
+                              }
+                            />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded">
+                            <span className="text-sm">Damage Reports</span>
+                            <Switch
+                              checked={permission.damage}
+                              onCheckedChange={(checked) => 
+                                updateAgentPermissions(permission.agent_id, { 
+                                  ...permission, 
+                                  damage: checked 
+                                })
+                              }
+                            />
+                          </div>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <Switch
-                            id={`${agent.id}-damage`}
-                            checked={agent.permissions.damage}
-                            onCheckedChange={(checked) => 
-                              updateUserPermissions(agent.id, { 
-                                ...agent.permissions, 
-                                damage: checked 
-                              })
-                            }
-                          />
-                          <Label htmlFor={`${agent.id}-damage`}>Damage Reports</Label>
-                        </div>
+                        <Separator />
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-                {userSettings.users.filter(user => user.role === 'agent').length === 0 && (
-                  <Card>
-                    <CardContent className="p-8 text-center">
-                      <p className="text-muted-foreground">No agents found. Add agents in the User Management tab.</p>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
+                    ))}
+                    {permissions.length === 0 && (
+                      <p className="text-muted-foreground text-center py-4">
+                        No agents to manage. Invite agents in the User Management tab.
+                      </p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             ) : (
               <Card>
-                <CardContent className="p-8 text-center">
-                  <Shield className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">Only owners can manage permissions.</p>
+                <CardContent className="p-6">
+                  <div className="text-center">
+                    <Shield className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-medium mb-2">Access Denied</h3>
+                    <p className="text-muted-foreground">
+                      Only owners can manage permissions. Contact your property owner for access.
+                    </p>
+                  </div>
                 </CardContent>
               </Card>
             )}
