@@ -64,16 +64,7 @@ const Settings = () => {
   };
 
   const handleSignOut = async () => {
-    try {
-      await signOut();
-      navigate('/auth');
-    } catch (error) {
-      toast({
-        title: "Sign out failed",
-        description: "There was an error signing out.",
-        variant: "destructive"
-      });
-    }
+    await signOut();
   };
 
   const sendInvitation = async () => {
