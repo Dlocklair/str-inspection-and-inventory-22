@@ -5,11 +5,14 @@ import { Badge } from '@/components/ui/badge';
 import { ClipboardList, Package, AlertTriangle, Settings, User, Shield, Loader2, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-
 const Index = () => {
   const navigate = useNavigate();
-  const { user, profile, loading, signOut } = useAuth();
-
+  const {
+    user,
+    profile,
+    loading,
+    signOut
+  } = useAuth();
   useEffect(() => {
     console.log('Index useEffect - loading:', loading, 'user:', user?.email || 'no user');
     if (!loading && !user) {
@@ -17,11 +20,9 @@ const Index = () => {
       navigate('/auth');
     }
   }, [user, loading, navigate]);
-
   if (loading) {
     console.log('Showing loading screen...');
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+    return <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-primary" />
           <p className="text-lg text-muted-foreground">Loading your dashboard...</p>
@@ -29,13 +30,10 @@ const Index = () => {
             If this persists, please refresh the page
           </p>
         </div>
-      </div>
-    );
+      </div>;
   }
-
   if (!user) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    return <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <Card className="w-full max-w-md text-center">
           <CardContent className="p-8">
             <User className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
@@ -49,12 +47,9 @@ const Index = () => {
             </Button>
           </CardContent>
         </Card>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="min-h-screen bg-background">
+  return <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex justify-between items-start mb-8">
@@ -90,21 +85,18 @@ const Index = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           {/* Inspection Reports */}
           <Card className="cursor-pointer transition-all hover:shadow-lg border-2 hover:border-primary/20">
-            <CardHeader>
+            <CardHeader className="bg-slate-900">
               <CardTitle className="flex items-center gap-2">
                 <ClipboardList className="h-6 w-6 text-primary" />
                 Inspections
                 <Badge variant="default" className="ml-2">Active</Badge>
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="bg-slate-900">
               <p className="text-muted-foreground mb-4">
                 Manage property inspections with customizable templates and automated notifications.
               </p>
-              <Button 
-                onClick={() => navigate('/inspections')}
-                className="w-full"
-              >
+              <Button onClick={() => navigate('/inspections')} className="w-full">
                 Open Inspections
               </Button>
             </CardContent>
@@ -112,21 +104,18 @@ const Index = () => {
 
           {/* Inventory Reports */}
           <Card className="cursor-pointer transition-all hover:shadow-lg border-2 hover:border-primary/20">
-            <CardHeader>
+            <CardHeader className="bg-slate-900">
               <CardTitle className="flex items-center gap-2">
                 <Package className="h-6 w-6 text-primary" />
                 Inventory
                 <Badge variant="default" className="ml-2">Active</Badge>
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="bg-slate-900">
               <p className="text-muted-foreground mb-4">
                 Track stock levels, manage categories, and get automated reorder notifications.
               </p>
-              <Button 
-                onClick={() => navigate('/inventory')}
-                className="w-full"
-              >
+              <Button onClick={() => navigate('/inventory')} className="w-full">
                 Open Inventory
               </Button>
             </CardContent>
@@ -134,21 +123,18 @@ const Index = () => {
 
           {/* Damage Reports */}
           <Card className="cursor-pointer transition-all hover:shadow-lg border-2 hover:border-primary/20">
-            <CardHeader>
+            <CardHeader className="bg-slate-900">
               <CardTitle className="flex items-center gap-2">
                 <AlertTriangle className="h-6 w-6 text-primary" />
                 Damage Reports
                 <Badge variant="default" className="ml-2">Active</Badge>
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="bg-slate-900">
               <p className="text-muted-foreground mb-4">
                 Document damage with photos, track repairs, and generate insurance claims.
               </p>
-              <Button 
-                onClick={() => navigate('/damage')}
-                className="w-full"
-              >
+              <Button onClick={() => navigate('/damage')} className="w-full">
                 Open Damage Reports
               </Button>
             </CardContent>
@@ -191,18 +177,17 @@ const Index = () => {
         </div>
 
         {/* Owner Features */}
-        {profile?.role === 'owner' && (
-          <div>
+        {profile?.role === 'owner' && <div>
             <h2 className="text-2xl font-semibold text-foreground mb-6">Owner Management</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Card className="border-2 border-primary/20">
-                <CardHeader>
+                <CardHeader className="bg-slate-900">
                   <CardTitle className="flex items-center gap-2">
                     <User className="h-5 w-5 text-primary" />
                     Agent Management
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="bg-slate-900">
                   <p className="text-muted-foreground mb-4">
                     Invite agents, manage permissions, and control access to different modules.
                   </p>
@@ -212,13 +197,13 @@ const Index = () => {
                 </CardContent>
               </Card>
               <Card className="border-2 border-primary/20">
-                <CardHeader>
+                <CardHeader className="bg-slate-900">
                   <CardTitle className="flex items-center gap-2">
                     <Settings className="h-5 w-5 text-primary" />
                     System Configuration
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="bg-slate-900">
                   <p className="text-muted-foreground mb-4">
                     Configure notifications, inspection schedules, and system preferences.
                   </p>
@@ -228,11 +213,8 @@ const Index = () => {
                 </CardContent>
               </Card>
             </div>
-          </div>
-        )}
+          </div>}
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default Index;
