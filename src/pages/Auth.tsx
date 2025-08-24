@@ -20,7 +20,8 @@ const Auth = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user && !loading) {
+    // Only redirect if we have a verified user and auth is not loading
+    if (user && !loading && user.email_confirmed_at) {
       navigate('/');
     }
   }, [user, loading, navigate]);
