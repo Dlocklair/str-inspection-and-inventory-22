@@ -47,6 +47,9 @@ export const InventorySection = () => {
   const { toast } = useToast();
   const { profile } = useAuth();
   
+  // Debug: Log the profile to check the role
+  console.log('InventorySection - Profile:', profile, 'Role:', profile?.role);
+  
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([
     // Linen and Bedding
     { id: '1', name: 'Bed Sheets - Queen', category: 'Linen and Bedding', currentStock: 8, restockLevel: 6, unit: 'sets', supplier: 'LinenCorp', cost: 45.99, notes: 'White cotton blend', lastUpdated: new Date().toISOString(), restockRequested: false },
@@ -640,20 +643,20 @@ Inventory Management Team`;
                       </h3>
                        <div className="overflow-x-auto">
                          <table className="w-full border-collapse">
-                           <thead>
-                             <tr className="border-b bg-muted/30">
-                               <th className="text-left p-2 text-xs sticky left-0 bg-muted/30 z-10 min-w-[120px]">Item</th>
-                               <th className="text-left p-2 text-xs">Status</th>
-                               <th className="text-center p-2 text-xs">Stock</th>
-                               <th className="text-center p-2 text-xs">Restock Level</th>
-                               <th className="text-left p-2 text-xs">Unit</th>
-                               <th className="text-left p-2 text-xs">Supplier</th>
-                               <th className="text-left p-2 text-xs">Cost</th>
-                               <th className="text-center p-2 text-xs">Request</th>
-                               <th className="text-center p-2 text-xs">Date</th>
-                               <th className="text-left p-2 text-xs">Actions</th>
-                             </tr>
-                           </thead>
+                            <thead>
+                              <tr className="border-b bg-muted/30">
+                                <th className="text-left p-2 text-xs sticky left-0 bg-muted/30 z-10 min-w-[120px]">Item</th>
+                                <th className="text-center p-2 text-xs">Status</th>
+                                <th className="text-center p-2 text-xs">Stock</th>
+                                <th className="text-center p-2 text-xs">Restock Level</th>
+                                <th className="text-center p-2 text-xs">Unit</th>
+                                <th className="text-center p-2 text-xs">Supplier</th>
+                                <th className="text-center p-2 text-xs">Cost</th>
+                                <th className="text-center p-2 text-xs">Request</th>
+                                <th className="text-center p-2 text-xs">Date</th>
+                                <th className="text-center p-2 text-xs">Actions</th>
+                              </tr>
+                            </thead>
                           <tbody>
                             {sortedInventoryItems
                               .filter(item => item.category === category)
@@ -677,19 +680,21 @@ Inventory Management Team`;
                                          </div>
                                        )}
                                      </td>
-                                     <td className="p-2">
-                                       <Badge 
-                                         variant={stockStatus.color as any} 
-                                         className={cn(
-                                           "flex items-center gap-1 w-fit text-xs",
-                                           stockStatus.status === 'low' && "bg-destructive hover:bg-destructive/90 text-destructive-foreground",
-                                           stockStatus.status === 'good' && "bg-success hover:bg-success/90 text-success-foreground"
-                                         )}
-                                       >
-                                         <StatusIcon className="h-3 w-3" />
-                                         {stockStatus.status}
-                                       </Badge>
-                                     </td>
+                                      <td className="p-2 text-center">
+                                        <div className="flex justify-center">
+                                          <Badge 
+                                            variant={stockStatus.color as any} 
+                                            className={cn(
+                                              "flex items-center gap-1 w-fit text-xs",
+                                              stockStatus.status === 'low' && "bg-destructive hover:bg-destructive/90 text-destructive-foreground",
+                                              stockStatus.status === 'good' && "bg-success hover:bg-success/90 text-success-foreground"
+                                            )}
+                                          >
+                                            <StatusIcon className="h-3 w-3" />
+                                            {stockStatus.status}
+                                          </Badge>
+                                        </div>
+                                      </td>
                                      <td className="p-2 text-center">
                                        {updateMode ? (
                                          <Input
@@ -729,53 +734,53 @@ Inventory Management Team`;
                                         <span className="text-sm">{item.restockLevel}</span>
                                       )}
                                     </td>
-                                    <td className="p-2">
-                                      {editingItem === item.id ? (
-                                        <Input
-                                          value={editingData.unit || ''}
-                                          onChange={(e) => setEditingData(prev => ({ ...prev, unit: e.target.value }))}
-                                          className="text-sm"
-                                        />
-                                      ) : (
-                                        <span className="text-sm">{item.unit}</span>
-                                      )}
-                                    </td>
-                                     <td className="p-2">
+                                     <td className="p-2 text-center">
                                        {editingItem === item.id ? (
                                          <Input
-                                           value={editingData.supplier || ''}
-                                           onChange={(e) => setEditingData(prev => ({ ...prev, supplier: e.target.value }))}
-                                           className="text-sm"
+                                           value={editingData.unit || ''}
+                                           onChange={(e) => setEditingData(prev => ({ ...prev, unit: e.target.value }))}
+                                           className="text-sm text-center"
                                          />
                                        ) : (
-                                         <div className="text-sm">
-                                           <div>{item.supplier}</div>
-                                           {item.supplierUrl && (
-                                             <a 
-                                               href={item.supplierUrl.startsWith('http') ? item.supplierUrl : `https://${item.supplierUrl}`}
-                                               target="_blank" 
-                                               rel="noopener noreferrer"
-                                               className="text-xs text-blue-600 hover:text-blue-800 underline"
-                                             >
-                                               Visit supplier page
-                                             </a>
-                                           )}
-                                         </div>
+                                         <span className="text-sm">{item.unit}</span>
                                        )}
                                      </td>
-                                    <td className="p-2">
-                                      {editingItem === item.id ? (
-                                        <Input
-                                          type="number"
-                                          step="0.01"
-                                          value={editingData.cost || ''}
-                                          onChange={(e) => setEditingData(prev => ({ ...prev, cost: Number(e.target.value) }))}
-                                          className="text-sm w-24"
-                                        />
-                                      ) : (
-                                        <span className="text-sm">${item.cost.toFixed(2)}</span>
-                                      )}
-                                    </td>
+                                      <td className="p-2 text-center">
+                                        {editingItem === item.id ? (
+                                          <Input
+                                            value={editingData.supplier || ''}
+                                            onChange={(e) => setEditingData(prev => ({ ...prev, supplier: e.target.value }))}
+                                            className="text-sm text-center"
+                                          />
+                                        ) : (
+                                          <div className="text-sm text-center">
+                                            <div>{item.supplier}</div>
+                                            {item.supplierUrl && (
+                                              <a 
+                                                href={item.supplierUrl.startsWith('http') ? item.supplierUrl : `https://${item.supplierUrl}`}
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                className="text-xs text-blue-600 hover:text-blue-800 underline"
+                                              >
+                                                Visit supplier page
+                                              </a>
+                                            )}
+                                          </div>
+                                        )}
+                                      </td>
+                                     <td className="p-2 text-center">
+                                       {editingItem === item.id ? (
+                                         <Input
+                                           type="number"
+                                           step="0.01"
+                                           value={editingData.cost || ''}
+                                           onChange={(e) => setEditingData(prev => ({ ...prev, cost: Number(e.target.value) }))}
+                                           className="text-sm w-24 text-center"
+                                         />
+                                       ) : (
+                                         <span className="text-sm">${item.cost.toFixed(2)}</span>
+                                       )}
+                                     </td>
                                     <td className="p-2 text-center">
                                       <Checkbox
                                         id={`request-${item.id}`}
@@ -794,55 +799,55 @@ Inventory Management Team`;
                                         className="mx-auto"
                                       />
                                     </td>
-                                    <td className="p-2 text-center">
-                                      <span className="text-xs">{formatDateShort(item.requestDate || '')}</span>
-                                    </td>
-                                    <td className="p-2">
-                                      <div className="flex gap-1">
-                                        {editingItem === item.id ? (
-                                          <>
-                                            <Button
-                                              size="sm"
-                                              variant="ghost"
-                                              onClick={saveEdit}
-                                              className="h-8 w-8 p-0"
-                                            >
-                                              <Save className="h-4 w-4" />
-                                            </Button>
-                                            <Button
-                                              size="sm"
-                                              variant="ghost"
-                                              onClick={cancelEdit}
-                                              className="h-8 w-8 p-0"
-                                            >
-                                              <X className="h-4 w-4" />
-                                            </Button>
-                                          </>
-                                        ) : (
-                                          <>
+                                     <td className="p-2 text-center">
+                                       <span className="text-xs">{formatDateShort(item.lastUpdated)}</span>
+                                     </td>
+                                     <td className="p-2 text-center">
+                                       <div className="flex gap-1 justify-center">
+                                         {editingItem === item.id ? (
+                                           <>
                                              <Button
                                                size="sm"
                                                variant="ghost"
-                                               onClick={() => startEditing(item)}
+                                               onClick={saveEdit}
                                                className="h-8 w-8 p-0"
                                              >
-                                               <Edit className="h-4 w-4" />
+                                               <Save className="h-4 w-4" />
                                              </Button>
-                                             {/* Only show delete button for owners */}
-                                             {profile?.role === 'owner' && (
-                                               <Button
-                                                 size="sm"
-                                                 variant="ghost"
-                                                 onClick={() => deleteItem(item.id)}
-                                                 className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                                               >
-                                                 <Trash2 className="h-4 w-4" />
-                                               </Button>
-                                             )}
-                                          </>
-                                        )}
-                                      </div>
-                                    </td>
+                                             <Button
+                                               size="sm"
+                                               variant="ghost"
+                                               onClick={cancelEdit}
+                                               className="h-8 w-8 p-0"
+                                             >
+                                               <X className="h-4 w-4" />
+                                             </Button>
+                                           </>
+                                         ) : (
+                                           <>
+                                              <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={() => startEditing(item)}
+                                                className="h-8 w-8 p-0"
+                                              >
+                                                <Edit className="h-4 w-4" />
+                                              </Button>
+                                              {/* Only show delete button for owners */}
+                                              {profile?.role === 'owner' && (
+                                                <Button
+                                                  size="sm"
+                                                  variant="ghost"
+                                                  onClick={() => deleteItem(item.id)}
+                                                  className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                                                >
+                                                  <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                              )}
+                                           </>
+                                         )}
+                                       </div>
+                                     </td>
                                   </tr>
                                 );
                               })}
