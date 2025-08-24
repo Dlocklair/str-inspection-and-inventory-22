@@ -156,7 +156,7 @@ export const InspectionHistoryView = () => {
                                 <ChevronRight className="h-4 w-4" />
                               )}
                               <Calendar className="h-4 w-4 text-muted-foreground" />
-                              <span className="font-medium">{format(new Date(record.date), 'PPP')}</span>
+                              <span className="font-medium">{format(new Date(record.date + 'T00:00:00'), 'PPP')}</span>
                               <Badge 
                                 variant={getCompletionPercentage(record.items) === 100 ? 'default' : 'secondary'}
                               >

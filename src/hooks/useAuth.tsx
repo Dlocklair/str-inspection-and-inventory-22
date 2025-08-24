@@ -274,49 +274,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const signOut = async () => {
     try {
-      setLoading(true);
-      
-      // Clear local state first
+      // Clear local state immediately
       setSession(null);
       setUser(null);
       setProfile(null);
       
-      // Sign out from Supabase
-      const { error } = await supabase.auth.signOut({ scope: 'global' });
+      // Sign out from Supabase without setting loading state to prevent loops
+      await supabase.auth.signOut({ scope: 'global' });
       
-      if (error) {
-        console.error('Sign out error:', error);
-        toast({
-          title: "Sign out failed",
-          description: error.message,
-          variant: "destructive"
-        });
-      } else {
-        toast({
-          title: "Signed out",
-          description: "You have been successfully signed out.",
-        });
-      }
-      
-      // Force redirect to auth page
-      window.location.href = '/auth';
+      // Force immediate redirect to auth page
+      window.location.replace('/auth');
     } catch (error: any) {
-      console.error('Sign out catch error:', error);
-      // Clear state even on error
+      console.error('Sign out error:', error);
+      // Clear state even on error and redirect
       setSession(null);
       setUser(null);
       setProfile(null);
-      
-      toast({
-        title: "Sign out failed",
-        description: error.message,
-        variant: "destructive"
-      });
-      
-      // Still redirect to auth page
-      window.location.href = '/auth';
-    } finally {
-      setLoading(false);
+      window.location.replace('/auth');
     }
   };
 

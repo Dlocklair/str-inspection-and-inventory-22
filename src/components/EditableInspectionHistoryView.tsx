@@ -216,7 +216,7 @@ export const EditableInspectionHistoryView = () => {
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
                                 <Calendar className="h-4 w-4 text-muted-foreground" />
-                                <span className="font-medium">{format(new Date(record.date), 'PPP')}</span>
+                                <span className="font-medium">{format(new Date(record.date + 'T00:00:00'), 'PPP')}</span>
                                 <Badge 
                                   variant={getCompletionPercentage(record.items) === 100 ? 'default' : 'secondary'}
                                 >
@@ -243,7 +243,7 @@ export const EditableInspectionHistoryView = () => {
                                           <AlertDialogHeader>
                                             <AlertDialogTitle>Delete Inspection</AlertDialogTitle>
                                             <AlertDialogDescription>
-                                              Are you sure you want to delete this inspection record from {format(new Date(record.date), 'PPP')}? This action cannot be undone.
+                                              Are you sure you want to delete this inspection record from {format(new Date(record.date + 'T00:00:00'), 'PPP')}? This action cannot be undone.
                                             </AlertDialogDescription>
                                           </AlertDialogHeader>
                                           <AlertDialogFooter>
