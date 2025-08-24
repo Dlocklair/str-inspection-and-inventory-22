@@ -126,15 +126,17 @@ const DamageReportHistory: React.FC<DamageReportHistoryProps> = ({ reports, onVi
                     )}
                   </div>
                   
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onViewReport(report)}
-                    className="ml-4"
-                  >
-                    <Eye className="h-4 w-4 mr-1" />
-                    View
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onViewReport(report)}
+                    >
+                      <Eye className="h-4 w-4 mr-1" />
+                      View
+                    </Button>
+                    {/* Only show edit button for owners - will be handled by parent component */}
+                  </div>
                 </div>
               </div>
             ))}

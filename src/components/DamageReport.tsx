@@ -386,23 +386,12 @@ export const DamageReport = () => {
 
           {/* Main Report View */}
           {!showHistory && !selectedHistoryReport && (
-            <Tabs defaultValue="reports" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="reports" className="flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  Damage Reports
-                </TabsTrigger>
-                <TabsTrigger value="analytics" className="flex items-center gap-2">
-                  <DollarSign className="h-4 w-4" />
-                  Cost Analytics
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="reports" className="space-y-6">
-                {/* Add New Report Button and History */}
-                <div className="flex justify-between items-center">
+            <div className="space-y-6">
+              {/* Top Action Bar */}
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-4">
+                  <h2 className="text-xl font-semibold">Current Reports</h2>
                   <div className="flex gap-2">
-                    <h2 className="text-xl font-semibold">Current Reports</h2>
                     <Button 
                       variant="outline" 
                       onClick={() => setShowHistory(true)}
@@ -411,14 +400,26 @@ export const DamageReport = () => {
                       <History className="h-4 w-4" />
                       Damage Report History
                     </Button>
-                  </div>
-                  {!showAddForm && (
-                    <Button onClick={() => setShowAddForm(true)} className="flex items-center gap-2">
-                      <Plus className="h-4 w-4" />
-                      Create Damage Report
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {/* Analytics logic */}}
+                      className="flex items-center gap-2"
+                    >
+                      <DollarSign className="h-4 w-4" />
+                      $ Cost Analytics
                     </Button>
-                  )}
+                  </div>
                 </div>
+                {!showAddForm && (
+                  <Button onClick={() => setShowAddForm(true)} className="flex items-center gap-2">
+                    <Plus className="h-4 w-4" />
+                    Create Damage Report
+                  </Button>
+                )}
+              </div>
+              
+              <Tabs defaultValue="reports" className="w-full">
+                <TabsContent value="reports" className="space-y-6 mt-0">{/* No additional tabs content header */}
 
                 {/* Add New Report Form */}
                 {showAddForm && (
@@ -427,281 +428,313 @@ export const DamageReport = () => {
                       <CardTitle>Create Damage Report</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Input
-                          placeholder="Damage title"
-                          value={newReport.title}
-                          onChange={(e) => setNewReport(prev => ({ ...prev, title: e.target.value }))}
-                        />
-                        
-                        <Select value={newReport.location} onValueChange={handleLocationSelect}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select location" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {locations.map(location => (
-                              <SelectItem key={location} value={location}>{location}</SelectItem>
-                            ))}
-                            <SelectItem value="manage-locations">
-                              <div className="flex items-center gap-2">
-                                <MapPin className="h-4 w-4" />
-                                Manage locations
-                              </div>
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                        
-                        <Input
-                          type="date"
-                          value={newReport.reportDate}
-                          onChange={(e) => setNewReport(prev => ({ ...prev, reportDate: e.target.value }))}
-                        />
-                        
-                        <Select 
-                          value={newReport.severity} 
-                          onValueChange={(value: any) => setNewReport(prev => ({ ...prev, severity: value }))}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Severity" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="minor">Minor</SelectItem>
-                            <SelectItem value="moderate">Moderate</SelectItem>
-                            <SelectItem value="severe">Severe</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        
-                        <Input
-                          placeholder="Category (e.g., Plumbing, Electrical)"
-                          value={newReport.category}
-                          onChange={(e) => setNewReport(prev => ({ ...prev, category: e.target.value }))}
-                        />
-                        
-                        <Input
-                          type="number"
-                          placeholder="Estimated repair cost"
-                          value={newReport.estimatedCost || ''}
-                          onChange={(e) => setNewReport(prev => ({ ...prev, estimatedCost: Number(e.target.value) }))}
-                        />
-                        
-                        <Select 
-                          value={newReport.responsibleParty} 
-                          onValueChange={(value: any) => setNewReport(prev => ({ ...prev, responsibleParty: value }))}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Responsible party" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="guest">Guest</SelectItem>
-                            <SelectItem value="owner">Owner</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      {/* Photo Upload Section */}
-                      <div className="col-span-2">
-                        <label className="text-sm font-medium mb-2 block">Photos (up to 3)</label>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          {[0, 1, 2].map(photoIndex => (
-                            <div key={photoIndex} className="relative">
-                              {newReport.photos[photoIndex] ? (
-                                <div className="border-2 border-border rounded-lg p-2 aspect-[4/3] flex items-center justify-center relative">
-                                  <img
-                                    src={URL.createObjectURL(newReport.photos[photoIndex])}
-                                    alt={`Photo ${photoIndex + 1}`}
-                                    className="w-full h-full object-contain rounded"
-                                  />
-                                  <Button
-                                    variant="destructive"
-                                    size="sm"
-                                    className="absolute top-1 right-1"
-                                    onClick={() => removePhoto(photoIndex)}
-                                  >
-                                    <X className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                              ) : (
-                                <label className="border-2 border-dashed border-border rounded-lg p-4 aspect-[4/3] flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors">
-                                  <input
-                                    type="file"
-                                    accept="image/*"
-                                    className="hidden"
-                                    onChange={(e) => {
-                                      const file = e.target.files?.[0];
-                                      if (file) handlePhotoUpload(photoIndex, file);
-                                    }}
-                                  />
-                                  <Upload className="h-8 w-8 text-muted-foreground mb-2" />
-                                  <span className="text-sm text-muted-foreground">Photo {photoIndex + 1}</span>
-                                  <span className="text-xs text-muted-foreground">Click to add</span>
-                                </label>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                      
-                      <Textarea
-                        placeholder="Detailed description of the damage"
-                        value={newReport.description}
-                        onChange={(e) => setNewReport(prev => ({ ...prev, description: e.target.value }))}
-                        rows={3}
-                      />
-                      <Textarea
-                        placeholder="Additional notes"
-                        value={newReport.notes}
-                        onChange={(e) => setNewReport(prev => ({ ...prev, notes: e.target.value }))}
-                        rows={2}
-                      />
-                      <div className="flex gap-2">
-                        <Button onClick={addNewReport}>Create Report</Button>
-                        <Button variant="outline" onClick={() => setShowAddForm(false)}>Cancel</Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Reports List - Only show when not adding new report */}
-                {!showAddForm && (
-                  <div className="space-y-4">
-                    {damageReports.map(report => (
-                      <Card key={report.id}>
-                        <CardContent className="p-6">
-                          {editingReport === report.id ? (
-                            <div className="space-y-4">
-                              <Input
-                                value={editingData.title || ''}
-                                onChange={(e) => setEditingData(prev => ({ ...prev, title: e.target.value }))}
-                              />
-                              <Textarea
-                                value={editingData.description || ''}
-                                onChange={(e) => setEditingData(prev => ({ ...prev, description: e.target.value }))}
-                                rows={3}
-                              />
-                              <div className="grid grid-cols-2 gap-4">
-                                <Select 
-                                  value={editingData.status} 
-                                  onValueChange={(value: any) => setEditingData(prev => ({ ...prev, status: value }))}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="reported">Reported</SelectItem>
-                                    <SelectItem value="assessed">Assessed</SelectItem>
-                                    <SelectItem value="approved">Approved</SelectItem>
-                                    <SelectItem value="in-repair">In Repair</SelectItem>
-                                    <SelectItem value="completed">Completed</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <Input
-                                  type="number"
-                                  placeholder="Estimated cost"
-                                  value={editingData.estimatedCost || ''}
-                                  onChange={(e) => setEditingData(prev => ({ ...prev, estimatedCost: Number(e.target.value) }))}
-                                />
-                              </div>
-                              <div className="flex gap-2">
-                                <Button onClick={saveEdit} size="sm">
-                                  <Save className="h-4 w-4 mr-1" />
-                                  Save
-                                </Button>
-                                <Button variant="outline" onClick={() => setEditingReport(null)} size="sm">
-                                  <X className="h-4 w-4 mr-1" />
-                                  Cancel
-                                </Button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="space-y-4">
-                              <div className="flex justify-between items-start">
-                                <div className="space-y-2">
-                                  <h3 className="text-lg font-semibold">{report.title}</h3>
-                                  <p className="text-muted-foreground">{report.description}</p>
-                                  <div className="flex flex-wrap gap-2">
-                                    <Badge variant="outline">{report.location}</Badge>
-                                    <Badge variant={severityColors[report.severity] as any}>
-                                      {report.severity}
-                                    </Badge>
-                                    <Badge variant={statusColors[report.status] as any}>
-                                      {report.status}
-                                    </Badge>
-                                    {report.category && <Badge variant="secondary">{report.category}</Badge>}
+                        {/* Damage Information Section */}
+                        <div className="space-y-4">
+                          <h4 className="font-medium text-lg">Basic Information</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <Input
+                              placeholder="Damage title"
+                              value={newReport.title}
+                              onChange={(e) => setNewReport(prev => ({ ...prev, title: e.target.value }))}
+                            />
+                            
+                            <Select value={newReport.location} onValueChange={handleLocationSelect}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select location" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {locations.map(location => (
+                                  <SelectItem key={location} value={location}>{location}</SelectItem>
+                                ))}
+                                <SelectItem value="manage-locations">
+                                  <div className="flex items-center gap-2">
+                                    <MapPin className="h-4 w-4" />
+                                    Manage locations
                                   </div>
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                            
+                            <Input
+                              type="date"
+                              value={newReport.reportDate}
+                              onChange={(e) => setNewReport(prev => ({ ...prev, reportDate: e.target.value }))}
+                            />
+                            
+                            <Select 
+                              value={newReport.severity} 
+                              onValueChange={(value: any) => setNewReport(prev => ({ ...prev, severity: value }))}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Severity" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="minor">Minor</SelectItem>
+                                <SelectItem value="moderate">Moderate</SelectItem>
+                                <SelectItem value="severe">Severe</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            
+                            <Input
+                              placeholder="Category (e.g., Plumbing, Electrical)"
+                              value={newReport.category}
+                              onChange={(e) => setNewReport(prev => ({ ...prev, category: e.target.value }))}
+                            />
+                            
+                            <div className="relative">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="Estimated repair cost"
+                                value={newReport.estimatedCost || ''}
+                                onChange={(e) => setNewReport(prev => ({ ...prev, estimatedCost: Number(e.target.value) }))}
+                                className="pl-8"
+                              />
+                            </div>
+                            
+                            <Select 
+                              value={newReport.responsibleParty} 
+                              onValueChange={(value: any) => setNewReport(prev => ({ ...prev, responsibleParty: value }))}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Responsible party" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="guest">Guest</SelectItem>
+                                <SelectItem value="owner">Owner</SelectItem>
+                                <SelectItem value="other">Other</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        {/* Description Section */}
+                        <div className="space-y-3">
+                          <h4 className="font-medium text-lg">Detailed Description</h4>
+                          <Textarea
+                            placeholder="Detailed description of the damage..."
+                            value={newReport.description}
+                            onChange={(e) => setNewReport(prev => ({ ...prev, description: e.target.value }))}
+                            rows={3}
+                          />
+                        </div>
+
+                        {/* Photo Upload Section */}
+                        <div className="space-y-3">
+                          <h4 className="font-medium text-lg">Photos</h4>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            {[0, 1, 2, 3].map((index) => (
+                              <div 
+                                key={index} 
+                                className="aspect-[4/3] border-2 border-dashed border-border rounded-lg p-2 flex flex-col items-center justify-center hover:border-primary/50 transition-colors relative"
+                              >
+                                {newReport.photos[index] ? (
+                                  <>
+                                    <img 
+                                      src={URL.createObjectURL(newReport.photos[index])} 
+                                      alt={`Damage photo ${index + 1}`}
+                                      className="w-full h-full object-cover rounded"
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="destructive"
+                                      size="sm"
+                                      onClick={() => removePhoto(index)}
+                                      className="absolute top-1 right-1 h-6 w-6 p-0"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </Button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Camera className="h-8 w-8 text-muted-foreground mb-2" />
+                                    <label 
+                                      htmlFor={`photo-${index}`}
+                                      className="text-sm text-muted-foreground cursor-pointer hover:text-foreground transition-colors text-center"
+                                    >
+                                      Add Photo {index + 1}
+                                    </label>
+                                    <input
+                                      id={`photo-${index}`}
+                                      type="file"
+                                      accept="image/*"
+                                      className="hidden"
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) handlePhotoUpload(index, file);
+                                      }}
+                                    />
+                                  </>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Notes Section */}
+                        <div className="space-y-3">
+                          <h4 className="font-medium text-lg">Additional Notes</h4>
+                          <Textarea
+                            placeholder="Additional notes (optional)"
+                            value={newReport.notes}
+                            onChange={(e) => setNewReport(prev => ({ ...prev, notes: e.target.value }))}
+                            rows={2}
+                          />
+                        </div>
+
+                        <div className="flex gap-2">
+                          <Button onClick={addNewReport}>Create Report</Button>
+                          <Button variant="outline" onClick={() => setShowAddForm(false)}>Cancel</Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Reports List - Only show when not adding new report */}
+                  {!showAddForm && (
+                    <div className="space-y-4">
+                      {damageReports.map(report => (
+                        <Card key={report.id}>
+                          <CardContent className="p-6">
+                            {editingReport === report.id ? (
+                              <div className="space-y-4">
+                                <Input
+                                  value={editingData.title || ''}
+                                  onChange={(e) => setEditingData(prev => ({ ...prev, title: e.target.value }))}
+                                />
+                                <Textarea
+                                  value={editingData.description || ''}
+                                  onChange={(e) => setEditingData(prev => ({ ...prev, description: e.target.value }))}
+                                  rows={3}
+                                />
+                                <div className="grid grid-cols-2 gap-4">
+                                  <Select 
+                                    value={editingData.status} 
+                                    onValueChange={(value: any) => setEditingData(prev => ({ ...prev, status: value }))}
+                                  >
+                                    <SelectTrigger>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="reported">Reported</SelectItem>
+                                      <SelectItem value="assessed">Assessed</SelectItem>
+                                      <SelectItem value="approved">Approved</SelectItem>
+                                      <SelectItem value="in-repair">In Repair</SelectItem>
+                                      <SelectItem value="completed">Completed</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <Input
+                                    type="number"
+                                    placeholder="Estimated cost"
+                                    value={editingData.estimatedCost || ''}
+                                    onChange={(e) => setEditingData(prev => ({ ...prev, estimatedCost: Number(e.target.value) }))}
+                                  />
                                 </div>
                                 <div className="flex gap-2">
-                                  <Button variant="outline" size="sm" onClick={() => startEditing(report)}>
-                                    <Edit className="h-4 w-4" />
+                                  <Button onClick={saveEdit} size="sm">
+                                    <Save className="h-4 w-4 mr-1" />
+                                    Save
                                   </Button>
-                                  <Button variant="outline" size="sm" onClick={() => deleteReport(report.id)}>
-                                    <Trash2 className="h-4 w-4" />
+                                  <Button variant="outline" onClick={() => setEditingReport(null)} size="sm">
+                                    <X className="h-4 w-4 mr-1" />
+                                    Cancel
                                   </Button>
                                 </div>
                               </div>
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                                <div>
-                                  <span className="font-medium">Reported:</span> {format(new Date(report.reportedDate), 'PPP')}
+                            ) : (
+                              <div className="space-y-4">
+                                   <div className="flex justify-between items-start">
+                                     <div className="space-y-2">
+                                       <h3 className="text-lg font-semibold">{report.title}</h3>
+                                       <p className="text-muted-foreground">{report.description}</p>
+                                       <div className="flex flex-wrap gap-2">
+                                         <Badge variant="outline">{report.location}</Badge>
+                                         <Badge variant={severityColors[report.severity] as any}>
+                                           {report.severity}
+                                         </Badge>
+                                         <Badge variant={statusColors[report.status] as any}>
+                                           {report.status}
+                                         </Badge>
+                                         {report.category && <Badge variant="secondary">{report.category}</Badge>}
+                                       </div>
+                                     </div>
+                                     {/* Only show edit/delete buttons for owners */}
+                                     {currentUser?.role === 'owner' && (
+                                       <div className="flex gap-2">
+                                         <Button variant="outline" size="sm" onClick={() => startEditing(report)}>
+                                           <Edit className="h-4 w-4" />
+                                         </Button>
+                                         <Button variant="outline" size="sm" onClick={() => deleteReport(report.id)}>
+                                           <Trash2 className="h-4 w-4" />
+                                         </Button>
+                                       </div>
+                                     )}
+                                   </div>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                                  <div>
+                                    <span className="font-medium">Reported:</span> {format(new Date(report.reportedDate), 'PPP')}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">Est. Cost:</span> ${report.estimatedCost.toFixed(2)}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">Responsible Party:</span> {report.responsibleParty}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">Report Date:</span> {format(new Date(report.reportDate), 'PPP')}
+                                  </div>
                                 </div>
-                                <div>
-                                  <span className="font-medium">Est. Cost:</span> ${report.estimatedCost.toFixed(2)}
-                                </div>
-                                <div>
-                                  <span className="font-medium">Responsible Party:</span> {report.responsibleParty}
-                                </div>
-                                <div>
-                                  <span className="font-medium">Report Date:</span> {format(new Date(report.reportDate), 'PPP')}
-                                </div>
+                                {report.notes && (
+                                  <div className="pt-2 border-t">
+                                    <span className="font-medium">Notes:</span> {report.notes}
+                                  </div>
+                                )}
                               </div>
-                              {report.notes && (
-                                <div className="pt-2 border-t">
-                                  <span className="font-medium">Notes:</span> {report.notes}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </TabsContent>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
 
-              <TabsContent value="analytics" className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Total Reports</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-3xl font-bold">{damageReports.length}</div>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Total Estimated Cost</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-3xl font-bold">
-                        ${damageReports.reduce((sum, report) => sum + report.estimatedCost, 0).toFixed(2)}
-                      </div>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Open Reports</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-3xl font-bold">
-                        {damageReports.filter(report => report.status !== 'completed').length}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </TabsContent>
-            </Tabs>
+                <TabsContent value="analytics" className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Total Reports</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-3xl font-bold">{damageReports.length}</div>
+                      </CardContent>
+                    </Card>
+                    
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Total Estimated Cost</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-3xl font-bold">
+                          ${damageReports.reduce((sum, report) => sum + report.estimatedCost, 0).toFixed(2)}
+                        </div>
+                      </CardContent>
+                    </Card>
+                    
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Open Reports</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-3xl font-bold">
+                          {damageReports.filter(report => report.status !== 'completed').length}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </div>
           )}
         </div>
 
