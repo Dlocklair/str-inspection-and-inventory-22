@@ -387,7 +387,7 @@ export const DamageReport = () => {
               {/* Top Action Bar */}
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-4">
-                  <h2 className="text-xl font-semibold">Current Reports</h2>
+                  <h2 className="text-xl font-semibold text-sky-600">Current Reports</h2>
                   <div className="flex gap-2">
                     <Button 
                       variant="outline" 
@@ -591,7 +591,7 @@ export const DamageReport = () => {
                   {/* Reports List - Only show when not adding new report */}
                   {!showAddForm && (
                     <div className="space-y-4">
-                      {damageReports.map(report => (
+                      {damageReports.filter(report => report.status !== 'completed').map(report => (
                         <Card key={report.id}>
                           <CardContent className="p-6">
                             {editingReport === report.id ? (

@@ -9,9 +9,10 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Edit, Save, X, Trash2, Package2, AlertTriangle, CheckCircle, CalendarIcon, Send } from 'lucide-react';
+import { Plus, Edit, Save, X, Trash2, Package2, AlertTriangle, CheckCircle, CalendarIcon, Send, Home, ClipboardList } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 import { EmailNotificationSettings } from './EmailNotificationSettings';
 import { InventoryEditForm } from './InventoryEditForm';
 import { format } from 'date-fns';
@@ -46,6 +47,7 @@ interface RestockRequest {
 export const InventorySection = () => {
   const { toast } = useToast();
   const { profile } = useAuth();
+  const navigate = useNavigate();
   
   // Debug: Log the profile to check the role
   console.log('InventorySection - Profile:', profile, 'Role:', profile?.role);
@@ -333,7 +335,8 @@ ${itemsNeedingRestock.map(item =>
   Current Stock: ${item.currentStock} ${item.unit}
   Restock Level: ${item.restockLevel} ${item.unit}
   Supplier: ${item.supplier}
-  Cost per Unit: $${item.cost.toFixed(2)}`
+  Cost per Unit: $${item.cost.toFixed(2)}${item.supplierUrl ? `
+  Product URL: ${item.supplierUrl.startsWith('http') ? item.supplierUrl : `https://${item.supplierUrl}`}` : ''}`
 ).join('\n\n')}
 
 Please process these restock orders at your earliest convenience.
@@ -407,6 +410,30 @@ Inventory Management Team`;
   return (
     <div className="w-full">
       <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" onClick={() => navigate('/')}>
+            <Home className="h-4 w-4 mr-2" />
+            Dashboard
+          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="ghost" 
+              onClick={() => navigate('/inspections')}
+              className="flex items-center gap-2"
+            >
+              <ClipboardList className="h-4 w-4" />
+              Inspections
+            </Button>
+            <Button 
+              variant="ghost" 
+              onClick={() => navigate('/damage')}
+              className="flex items-center gap-2"
+            >
+              <AlertTriangle className="h-4 w-4" />
+              Damage Reports
+            </Button>
+          </div>
+        </div>
         <h2 className="text-2xl font-bold">Inventory Management</h2>
         {!showAddForm && !editingItem && (
           <Button onClick={() => setShowAddForm(true)} className="flex items-center gap-2">
@@ -432,7 +459,7 @@ Inventory Management Team`;
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="inventory" className="flex items-center gap-2">
             <Package2 className="h-4 w-4" />
-            Inventory Items
+            Current Inventory
           </TabsTrigger>
           <TabsTrigger value="requests" className="flex items-center gap-2">
             <AlertTriangle className="h-4 w-4" />
@@ -468,10 +495,10 @@ Inventory Management Team`;
                        </Button>
                      </div>
                      
-                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                       {/* Category - First field */}
-                       <div className="space-y-2">
-                         <label className="text-sm font-medium">Category</label>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {/* Category - First field */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-sky-600">Category</label>
                          <Select 
                            value={newItem.category} 
                            onValueChange={(value) => {
@@ -492,9 +519,9 @@ Inventory Management Team`;
                          </Select>
                        </div>
                      
-                       {/* Item - Second field */}
-                       <div className="space-y-2">
-                         <label className="text-sm font-medium">Item Name</label>
+                        {/* Item - Second field */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-sky-600">Item Name</label>
                          <Input
                            placeholder="Enter the name of the inventory item"
                            value={newItem.name}
@@ -502,9 +529,9 @@ Inventory Management Team`;
                          />
                        </div>
                        
-                       {/* Units - Third field */}
-                       <div className="space-y-2">
-                         <label className="text-sm font-medium">Unit</label>
+                        {/* Units - Third field */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-sky-600">Unit</label>
                          <Input
                            placeholder="How items are counted (bottles, rolls, boxes, etc.)"
                            value={newItem.unit}
@@ -512,9 +539,9 @@ Inventory Management Team`;
                          />
                        </div>
                        
-                       {/* Supplier - Fourth field */}
-                       <div className="space-y-2">
-                         <label className="text-sm font-medium">Supplier</label>
+                        {/* Supplier - Fourth field */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-sky-600">Supplier</label>
                          <Input
                            placeholder="Name of supplier or vendor"
                            value={newItem.supplier}
@@ -522,9 +549,9 @@ Inventory Management Team`;
                          />
                        </div>
                        
-                       {/* URL - Fifth field */}
-                       <div className="space-y-2">
-                         <label className="text-sm font-medium">Supplier URL</label>
+                        {/* URL - Fifth field */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-sky-600">Supplier URL</label>
                          <Input
                            placeholder="Website URL for ordering this item"
                            value={newItem.supplierUrl || ''}
@@ -532,9 +559,9 @@ Inventory Management Team`;
                          />
                        </div>
                        
-                       {/* Cost per unit - Sixth field */}
-                       <div className="space-y-2">
-                         <label className="text-sm font-medium">Cost per Unit</label>
+                        {/* Cost per unit - Sixth field */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-sky-600">Cost per Unit</label>
                          <Input
                            type="number"
                            step="0.01"
@@ -544,9 +571,9 @@ Inventory Management Team`;
                          />
                        </div>
                        
-                       {/* Restock level - Seventh field */}
-                       <div className="space-y-2">
-                         <label className="text-sm font-medium">Restock Level</label>
+                        {/* Restock level - Seventh field */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-sky-600">Restock Level</label>
                          <Input
                            type="number"
                            placeholder="Minimum quantity before reordering"
@@ -555,9 +582,9 @@ Inventory Management Team`;
                          />
                        </div>
                        
-                       {/* Current stock */}
-                       <div className="space-y-2">
-                         <label className="text-sm font-medium">Current Stock</label>
+                        {/* Current stock */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-sky-600">Current Stock</label>
                          <Input
                            type="number"
                            placeholder="How many you have right now"
@@ -584,9 +611,9 @@ Inventory Management Team`;
                     )}
                    </div>
                    
-                   {/* Notes - Last field */}
-                   <div className="mt-4">
-                     <label className="text-sm font-medium block mb-2">Notes</label>
+                    {/* Notes - Last field */}
+                    <div className="mt-4">
+                      <label className="text-sm font-medium text-sky-600 block mb-2">Notes</label>
                      <Textarea
                        placeholder="Additional notes, special instructions, or details about this item"
                        value={newItem.notes}
@@ -610,11 +637,12 @@ Inventory Management Team`;
               </Card>
             )}
 
-            {/* Inventory Items List */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Current Inventory</CardTitle>
+            {/* Inventory Items List - Only show when not adding */}
+            {!showAddForm && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle>Current Inventory</CardTitle>
                   <div className="flex gap-2">
                     <Button 
                       variant="outline"
@@ -697,31 +725,33 @@ Inventory Management Team`;
                                        </td>
                                       <td className="p-2 text-center w-20">
                                         <div className="flex justify-center">
-                                          {updateMode ? (
-                                            <Input
-                                              type="number"
-                                              value={item.currentStock}
-                                              onChange={(e) => {
-                                                const newStock = Number(e.target.value);
-                                                setInventoryItems(prev => prev.map(prevItem => 
-                                                  prevItem.id === item.id 
-                                                    ? { 
-                                                        ...prevItem, 
-                                                        currentStock: newStock,
-                                                        lastUpdated: new Date().toISOString(),
-                                                        restockRequested: newStock <= prevItem.restockLevel,
-                                                        requestDate: newStock <= prevItem.restockLevel 
-                                                          ? new Date().toISOString().split('T')[0] 
-                                                          : undefined
-                                                      }
-                                                    : prevItem
-                                                ));
-                                              }}
-                                              className="text-sm w-16 text-center"
-                                            />
-                                          ) : (
-                                            <span className="text-sm">{item.currentStock}</span>
-                                          )}
+                                           {updateMode ? (
+                                             <Input
+                                               type="number"
+                                               value={item.currentStock}
+                                               onChange={(e) => {
+                                                 const newStock = Number(e.target.value);
+                                                 setInventoryItems(prev => prev.map(prevItem => 
+                                                   prevItem.id === item.id 
+                                                     ? { 
+                                                         ...prevItem, 
+                                                         currentStock: newStock,
+                                                         lastUpdated: new Date().toISOString(),
+                                                         restockRequested: newStock <= prevItem.restockLevel,
+                                                         requestDate: newStock <= prevItem.restockLevel 
+                                                           ? new Date().toISOString().split('T')[0] 
+                                                           : undefined
+                                                       }
+                                                     : prevItem
+                                                 ));
+                                               }}
+                                               className="text-sm w-16 text-center"
+                                               onFocus={(e) => e.target.select()}
+                                               style={{ MozAppearance: 'textfield' }}
+                                             />
+                                           ) : (
+                                             <span className="text-sm">{item.currentStock}</span>
+                                           )}
                                         </div>
                                       </td>
                                      <td className="p-2 text-center w-24">
@@ -872,6 +902,7 @@ Inventory Management Team`;
                 </div>
               </CardContent>
             </Card>
+            )}
           </div>
         </TabsContent>
         
