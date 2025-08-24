@@ -5,9 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Search, ChevronDown, ChevronRight, Calendar, FileText, CheckCircle, X, Edit, Save } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Search, ChevronDown, ChevronRight, Calendar, FileText, CheckCircle, X, Edit, Save, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 
 interface InspectionItem {
@@ -28,6 +30,7 @@ interface InspectionRecord {
 
 export const EditableInspectionHistoryView = () => {
   const { toast } = useToast();
+  const { profile } = useAuth();
   const [inspectionRecords, setInspectionRecords] = useState<InspectionRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedGroups, setExpandedGroups] = useState<{[key: string]: boolean}>({});
@@ -134,6 +137,25 @@ export const EditableInspectionHistoryView = () => {
     ));
   };
 
+  const deleteInspectionRecord = (recordId: string) => {
+    if (profile?.role !== 'owner') {
+      toast({
+        title: "Access denied",
+        description: "Only owners can delete inspection records.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const updatedRecords = inspectionRecords.filter(record => record.id !== recordId);
+    saveRecords(updatedRecords);
+    
+    toast({
+      title: "Inspection deleted",
+      description: "The inspection record has been deleted successfully.",
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -206,9 +228,32 @@ export const EditableInspectionHistoryView = () => {
                                   Created: {format(new Date(record.createdAt), 'PPp')}
                                 </span>
                                 {!isEditing ? (
-                                  <Button size="sm" variant="outline" onClick={() => startEditingRecord(record.id)}>
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
+                                  <div className="flex gap-1">
+                                    <Button size="sm" variant="outline" onClick={() => startEditingRecord(record.id)}>
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                    {profile?.role === 'owner' && (
+                                      <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                          <Button size="sm" variant="outline">
+                                            <Trash2 className="h-4 w-4" />
+                                          </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                          <AlertDialogHeader>
+                                            <AlertDialogTitle>Delete Inspection</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                              Are you sure you want to delete this inspection record from {format(new Date(record.date), 'PPP')}? This action cannot be undone.
+                                            </AlertDialogDescription>
+                                          </AlertDialogHeader>
+                                          <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction onClick={() => deleteInspectionRecord(record.id)}>Delete</AlertDialogAction>
+                                          </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                      </AlertDialog>
+                                    )}
+                                  </div>
                                 ) : (
                                   <div className="flex gap-1">
                                     <Button size="sm" onClick={() => saveEditedRecord(record.id)}>

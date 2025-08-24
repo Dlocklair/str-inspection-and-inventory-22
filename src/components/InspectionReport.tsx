@@ -4,39 +4,15 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Home, Package, AlertTriangle, Settings, FileText, History, Settings as TemplateIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 import { NewInspectionForm } from './NewInspectionForm';
 import { EditableInspectionHistoryView } from './EditableInspectionHistoryView';
 import { ImprovedInspectionTemplateManager } from './ImprovedInspectionTemplateManager';
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: 'owner' | 'agent';
-  permissions: {
-    inspections: boolean;
-    inventory: boolean;
-    damage: boolean;
-  };
-}
-
 export const InspectionReport = () => {
   const navigate = useNavigate();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const { profile } = useAuth();
   const [selectedView, setSelectedView] = useState<string>('new-inspection');
-
-  useEffect(() => {
-    const savedSettings = localStorage.getItem('user-settings');
-    if (savedSettings) {
-      const settings = JSON.parse(savedSettings);
-      setCurrentUser(settings.currentUser);
-    }
-  }, []);
-
-  const hasAccess = (module: keyof User['permissions']) => {
-    if (!currentUser) return false;
-    return currentUser.permissions[module];
-  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -49,34 +25,30 @@ export const InspectionReport = () => {
               Dashboard
             </Button>
             <div className="flex gap-2">
-              {hasAccess('inventory') && (
-                <Button 
-                  variant="ghost" 
-                  onClick={() => navigate('/inventory')}
-                  className="flex items-center gap-2"
-                >
-                  <Package className="h-4 w-4" />
-                  Inventory
-                </Button>
-              )}
-              {hasAccess('damage') && (
-                <Button 
-                  variant="ghost" 
-                  onClick={() => navigate('/damage')}
-                  className="flex items-center gap-2"
-                >
-                  <AlertTriangle className="h-4 w-4" />
-                  Damage Reports
-                </Button>
-              )}
+              <Button 
+                variant="ghost" 
+                onClick={() => navigate('/inventory')}
+                className="flex items-center gap-2"
+              >
+                <Package className="h-4 w-4" />
+                Inventory
+              </Button>
+              <Button 
+                variant="ghost" 
+                onClick={() => navigate('/damage')}
+                className="flex items-center gap-2"
+              >
+                <AlertTriangle className="h-4 w-4" />
+                Damage Reports
+              </Button>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {currentUser && (
+            {profile && (
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">{currentUser.name}</span>
-                <Badge variant={currentUser.role === 'owner' ? 'default' : 'secondary'}>
-                  {currentUser.role}
+                <span className="text-sm text-muted-foreground">{profile.full_name}</span>
+                <Badge variant={profile.role === 'owner' ? 'default' : 'secondary'}>
+                  {profile.role}
                 </Badge>
               </div>
             )}

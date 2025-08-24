@@ -4,8 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Plus, Edit, Save, X, Trash2, GripVertical } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import {
   DndContext,
   closestCenter,
@@ -105,6 +107,7 @@ const SortableItem = ({ item, templateId, isEditing, editingText, onEdit, onSave
 
 export const InspectionTemplateManager = () => {
   const { toast } = useToast();
+  const { profile } = useAuth();
   
   const [templates, setTemplates] = useState<InspectionTemplate[]>([]);
   const [newItemTexts, setNewItemTexts] = useState<{[templateId: string]: string}>({});
@@ -297,10 +300,12 @@ export const InspectionTemplateManager = () => {
 
   const deleteTemplate = (templateId: string) => {
     const template = templates.find(t => t.id === templateId);
-    if (template?.isPredefined) {
+    
+    // Only owners can delete templates
+    if (profile?.role !== 'owner') {
       toast({
-        title: "Cannot delete",
-        description: "Predefined templates cannot be deleted.",
+        title: "Access denied",
+        description: "Only owners can delete templates.",
         variant: "destructive"
       });
       return;
@@ -310,7 +315,7 @@ export const InspectionTemplateManager = () => {
     
     toast({
       title: "Template deleted",
-      description: "Custom template has been deleted.",
+      description: `Template "${template?.name}" has been deleted.`,
     });
   };
 
@@ -345,14 +350,30 @@ export const InspectionTemplateManager = () => {
           <TabsContent key={template.id} value={template.id} className="mt-6">
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>{template.name} Template</CardTitle>
-                  {!template.isPredefined && (
-                    <Button variant="outline" size="sm" onClick={() => deleteTemplate(template.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
+                  <div className="flex items-center justify-between">
+                    <CardTitle>{template.name} Template</CardTitle>
+                    {profile?.role === 'owner' && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="outline" size="sm">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Template</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete the "{template.name}" template? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => deleteTemplate(template.id)}>Delete</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                  </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <DndContext

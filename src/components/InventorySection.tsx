@@ -97,6 +97,7 @@ export const InventorySection = () => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newCategory, setNewCategory] = useState('');
   const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
+  const [updateMode, setUpdateMode] = useState(false);
 
   // Load saved data from localStorage on component mount
   useEffect(() => {
@@ -614,11 +615,11 @@ Inventory Management Team`;
                   <div className="flex gap-2">
                     <Button 
                       variant="outline"
-                      onClick={() => {/* Update inventory mode */}}
+                      onClick={() => setUpdateMode(!updateMode)}
                       className="flex items-center gap-2"
                     >
                       <Edit className="h-4 w-4" />
-                      Update Inventory
+                      {updateMode ? 'Exit Update Mode' : 'Update Inventory'}
                     </Button>
                     <Button 
                       onClick={sendRestockRequests}
@@ -689,18 +690,33 @@ Inventory Management Team`;
                                          {stockStatus.status}
                                        </Badge>
                                      </td>
-                                    <td className="p-2 text-center">
-                                      {editingItem === item.id ? (
-                                        <Input
-                                          type="number"
-                                          value={editingData.currentStock || ''}
-                                          onChange={(e) => setEditingData(prev => ({ ...prev, currentStock: Number(e.target.value) }))}
-                                          className="text-sm w-20 text-center"
-                                        />
-                                      ) : (
-                                        <span className="select-text cursor-text text-sm">{item.currentStock}</span>
-                                      )}
-                                    </td>
+                                     <td className="p-2 text-center">
+                                       {updateMode ? (
+                                         <Input
+                                           type="number"
+                                           value={item.currentStock}
+                                           onChange={(e) => {
+                                             const newStock = Number(e.target.value);
+                                             setInventoryItems(prev => prev.map(prevItem => 
+                                               prevItem.id === item.id 
+                                                 ? { 
+                                                     ...prevItem, 
+                                                     currentStock: newStock,
+                                                     lastUpdated: new Date().toISOString(),
+                                                     restockRequested: newStock <= prevItem.restockLevel,
+                                                     requestDate: newStock <= prevItem.restockLevel 
+                                                       ? new Date().toISOString().split('T')[0] 
+                                                       : undefined
+                                                   }
+                                                 : prevItem
+                                             ));
+                                           }}
+                                           className="text-sm w-20 text-center"
+                                         />
+                                       ) : (
+                                         <span className="select-text cursor-text text-sm">{item.currentStock}</span>
+                                       )}
+                                     </td>
                                     <td className="p-2 text-center">
                                       {editingItem === item.id ? (
                                         <Input

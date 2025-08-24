@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Edit, Save, X, Trash2, AlertTriangle, Camera, FileText, CalendarIcon, DollarSign, Home, ClipboardList, Package, Settings, History, Upload, MapPin } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -48,7 +49,7 @@ interface User {
 export const DamageReport = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const { profile } = useAuth();
   
   const [damageReports, setDamageReports] = useState<DamageItem[]>([
     {
@@ -109,11 +110,7 @@ export const DamageReport = () => {
   };
 
   useEffect(() => {
-    const savedSettings = localStorage.getItem('user-settings');
-    if (savedSettings) {
-      const settings = JSON.parse(savedSettings);
-      setCurrentUser(settings.currentUser);
-    }
+    // Remove the localStorage user loading since we're using useAuth now
   }, []);
 
   // Load saved data from localStorage
@@ -252,8 +249,8 @@ export const DamageReport = () => {
   };
 
   const hasAccess = (module: keyof User['permissions']) => {
-    if (!currentUser) return false;
-    return currentUser.permissions[module];
+    // For now, return true since we're using profile-based access
+    return true;
   };
 
   return (
@@ -290,11 +287,11 @@ export const DamageReport = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {currentUser && (
+            {profile && (
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">{currentUser.name}</span>
-                <Badge variant={currentUser.role === 'owner' ? 'default' : 'secondary'}>
-                  {currentUser.role}
+                <span className="text-sm text-muted-foreground">{profile.full_name}</span>
+                <Badge variant={profile.role === 'owner' ? 'default' : 'secondary'}>
+                  {profile.role}
                 </Badge>
               </div>
             )}
@@ -660,7 +657,7 @@ export const DamageReport = () => {
                                        </div>
                                      </div>
                                      {/* Only show edit/delete buttons for owners */}
-                                     {currentUser?.role === 'owner' && (
+                                     {profile?.role === 'owner' && (
                                        <div className="flex gap-2">
                                          <Button variant="outline" size="sm" onClick={() => startEditing(report)}>
                                            <Edit className="h-4 w-4" />

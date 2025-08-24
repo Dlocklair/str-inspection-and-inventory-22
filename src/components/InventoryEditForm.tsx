@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Save, X } from 'lucide-react';
+import { Save, X, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 interface InventoryItem {
   id: string;
@@ -34,6 +35,7 @@ export const InventoryEditForm = ({ item, onSave, onCancel, categories }: Invent
   const { toast } = useToast();
   const [editingData, setEditingData] = useState<InventoryItem>(item);
   const [newCategory, setNewCategory] = useState('');
+  const [showNewCategoryPopover, setShowNewCategoryPopover] = useState(false);
 
   const handleSave = () => {
     if (!editingData.name.trim()) {
@@ -71,16 +73,62 @@ export const InventoryEditForm = ({ item, onSave, onCancel, categories }: Invent
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {/* Category - First field */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Category</label>
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-blue-600">Category</label>
+              <Popover open={showNewCategoryPopover} onOpenChange={setShowNewCategoryPopover}>
+                <PopoverTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-6 px-2 text-xs"
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    Add New Category
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64" align="start">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">New Category Name</label>
+                    <Input
+                      placeholder="Enter category name"
+                      value={newCategory}
+                      onChange={(e) => setNewCategory(e.target.value)}
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          if (newCategory.trim()) {
+                            setEditingData(prev => ({ ...prev, category: newCategory.trim() }));
+                            setNewCategory('');
+                            setShowNewCategoryPopover(false);
+                            toast({
+                              title: "Category added",
+                              description: `Category "${newCategory.trim()}" has been added.`,
+                            });
+                          }
+                        }}
+                      >
+                        Add
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setShowNewCategoryPopover(false);
+                          setNewCategory('');
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
             <Select 
               value={editingData.category} 
-              onValueChange={(value) => {
-                if (value === 'add-new') {
-                  setNewCategory('');
-                } else {
-                  setEditingData(prev => ({ ...prev, category: value }));
-                }
-              }}
+              onValueChange={(value) => setEditingData(prev => ({ ...prev, category: value }))}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select product category" />
@@ -91,14 +139,13 @@ export const InventoryEditForm = ({ item, onSave, onCancel, categories }: Invent
                     {category}
                   </SelectItem>
                 ))}
-                <SelectItem value="add-new">+ Add new category</SelectItem>
               </SelectContent>
             </Select>
           </div>
           
           {/* Item - Second field */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Item Name</label>
+            <label className="text-sm font-medium text-blue-600">Item Name</label>
             <Input
               placeholder="Enter the name of the inventory item"
               value={editingData.name}
@@ -108,7 +155,7 @@ export const InventoryEditForm = ({ item, onSave, onCancel, categories }: Invent
           
           {/* Units - Third field */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Unit</label>
+            <label className="text-sm font-medium text-blue-600">Unit</label>
             <Input
               placeholder="How items are counted (bottles, rolls, boxes, etc.)"
               value={editingData.unit}
@@ -118,7 +165,7 @@ export const InventoryEditForm = ({ item, onSave, onCancel, categories }: Invent
           
           {/* Supplier - Fourth field */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Supplier</label>
+            <label className="text-sm font-medium text-blue-600">Supplier</label>
             <Input
               placeholder="Name of supplier or vendor"
               value={editingData.supplier}
@@ -128,7 +175,7 @@ export const InventoryEditForm = ({ item, onSave, onCancel, categories }: Invent
           
           {/* URL - Fifth field */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Supplier URL</label>
+            <label className="text-sm font-medium text-blue-600">Supplier URL</label>
             <Input
               placeholder="Website URL for ordering this item"
               value={editingData.supplierUrl || ''}
@@ -138,7 +185,7 @@ export const InventoryEditForm = ({ item, onSave, onCancel, categories }: Invent
           
           {/* Cost per unit - Sixth field */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Cost per Unit</label>
+            <label className="text-sm font-medium text-blue-600">Cost per Unit</label>
             <Input
               type="number"
               step="0.01"
@@ -150,7 +197,7 @@ export const InventoryEditForm = ({ item, onSave, onCancel, categories }: Invent
           
           {/* Restock level - Seventh field */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Restock Level</label>
+            <label className="text-sm font-medium text-blue-600">Restock Level</label>
             <Input
               type="number"
               placeholder="Minimum quantity before reordering"
@@ -161,7 +208,7 @@ export const InventoryEditForm = ({ item, onSave, onCancel, categories }: Invent
           
           {/* Current stock */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Current Stock</label>
+            <label className="text-sm font-medium text-blue-600">Current Stock</label>
             <Input
               type="number"
               placeholder="How many you have right now"
@@ -187,11 +234,13 @@ export const InventoryEditForm = ({ item, onSave, onCancel, categories }: Invent
         
         {/* Notes - Last field */}
         <div className="mt-4">
+          <label className="text-sm font-medium text-blue-600">Additional Notes</label>
           <Textarea
             placeholder="Additional notes, special instructions, or details about this item"
             value={editingData.notes}
             onChange={(e) => setEditingData(prev => ({ ...prev, notes: e.target.value }))}
             rows={2}
+            className="mt-2"
           />
         </div>
         

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarIcon, Save, Settings } from 'lucide-react';
+import { CalendarIcon, Save, Settings, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -194,12 +194,18 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             New Inspection
-            {canSave && (
-              <Button onClick={saveInspection} size="sm">
-                <Save className="h-4 w-4 mr-2" />
-                Save Inspection
+            <div className="flex gap-2">
+              <Button onClick={() => window.history.back()} variant="outline" size="sm">
+                <X className="h-4 w-4 mr-2" />
+                Cancel
               </Button>
-            )}
+              {canSave && (
+                <Button onClick={saveInspection} size="sm">
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Inspection
+                </Button>
+              )}
+            </div>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
