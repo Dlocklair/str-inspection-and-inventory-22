@@ -73,62 +73,16 @@ export const InventoryEditForm = ({ item, onSave, onCancel, categories }: Invent
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {/* Category - First field */}
           <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-blue-600">Category</label>
-              <Popover open={showNewCategoryPopover} onOpenChange={setShowNewCategoryPopover}>
-                <PopoverTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-6 px-2 text-xs"
-                  >
-                    <Plus className="h-3 w-3 mr-1" />
-                    Add New Category
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-64" align="start">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">New Category Name</label>
-                    <Input
-                      placeholder="Enter category name"
-                      value={newCategory}
-                      onChange={(e) => setNewCategory(e.target.value)}
-                    />
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          if (newCategory.trim()) {
-                            setEditingData(prev => ({ ...prev, category: newCategory.trim() }));
-                            setNewCategory('');
-                            setShowNewCategoryPopover(false);
-                            toast({
-                              title: "Category added",
-                              description: `Category "${newCategory.trim()}" has been added.`,
-                            });
-                          }
-                        }}
-                      >
-                        Add
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setShowNewCategoryPopover(false);
-                          setNewCategory('');
-                        }}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
+            <label className="text-sm font-medium text-blue-600">Category</label>
             <Select 
               value={editingData.category} 
-              onValueChange={(value) => setEditingData(prev => ({ ...prev, category: value }))}
+              onValueChange={(value) => {
+                if (value === 'add-new-category') {
+                  setShowNewCategoryPopover(true);
+                } else {
+                  setEditingData(prev => ({ ...prev, category: value }));
+                }
+              }}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select product category" />
@@ -139,8 +93,70 @@ export const InventoryEditForm = ({ item, onSave, onCancel, categories }: Invent
                     {category}
                   </SelectItem>
                 ))}
+                <SelectItem value="add-new-category">
+                  <div className="flex items-center gap-2">
+                    <Plus className="h-3 w-3" />
+                    Add New Category
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
+            
+            {/* New Category Popover */}
+            <Popover open={showNewCategoryPopover} onOpenChange={setShowNewCategoryPopover}>
+              <PopoverTrigger asChild>
+                <div />
+              </PopoverTrigger>
+              <PopoverContent className="w-64" align="start">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">New Category Name</label>
+                  <Input
+                    placeholder="Enter category name"
+                    value={newCategory}
+                    onChange={(e) => setNewCategory(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && newCategory.trim()) {
+                        setEditingData(prev => ({ ...prev, category: newCategory.trim() }));
+                        setNewCategory('');
+                        setShowNewCategoryPopover(false);
+                        toast({
+                          title: "Category added",
+                          description: `Category "${newCategory.trim()}" has been added.`,
+                        });
+                      }
+                    }}
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        if (newCategory.trim()) {
+                          setEditingData(prev => ({ ...prev, category: newCategory.trim() }));
+                          setNewCategory('');
+                          setShowNewCategoryPopover(false);
+                          toast({
+                            title: "Category added",
+                            description: `Category "${newCategory.trim()}" has been added.`,
+                          });
+                        }
+                      }}
+                    >
+                      Add
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setShowNewCategoryPopover(false);
+                        setNewCategory('');
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
           
           {/* Item - Second field */}
@@ -251,7 +267,7 @@ export const InventoryEditForm = ({ item, onSave, onCancel, categories }: Invent
           </Button>
           <Button onClick={onCancel} variant="outline" className="flex items-center gap-2">
             <X className="h-4 w-4" />
-            Return to Inventory List
+            Return to Current Inventory
           </Button>
         </div>
       </CardContent>

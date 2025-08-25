@@ -81,60 +81,101 @@ const Index = () => {
           </div>
         </div>
 
+        {/* Owner Features */}
+        {profile?.role === 'owner' && (
+          <div className="mb-12">
+            <h2 className="text-2xl font-semibold text-foreground mb-6">Owner Management</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Card className="border-2 border-primary/20 min-h-[200px] flex flex-col">
+                <CardHeader className="bg-slate-900">
+                  <CardTitle className="flex items-center gap-2">
+                    <User className="h-5 w-5 text-primary" />
+                    Agent Management
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="bg-slate-900 flex-1 flex flex-col justify-between">
+                  <p className="text-muted-foreground">
+                    Invite agents, manage permissions, and control access to different modules.
+                  </p>
+                  <Button onClick={() => navigate('/settings')} variant="outline" className="w-full mt-4">
+                    Manage Agents
+                  </Button>
+                </CardContent>
+              </Card>
+              <Card className="border-2 border-primary/20 min-h-[200px] flex flex-col">
+                <CardHeader className="bg-slate-900">
+                  <CardTitle className="flex items-center gap-2">
+                    <Settings className="h-5 w-5 text-primary" />
+                    System Configuration
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="bg-slate-900 flex-1 flex flex-col justify-between">
+                  <p className="text-muted-foreground">
+                    Configure notifications, inspection schedules, and system preferences.
+                  </p>
+                  <Button onClick={() => navigate('/settings')} variant="outline" className="w-full mt-4">
+                    System Settings
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        )}
+
         {/* Main Content - Report Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           {/* Inspection Reports */}
-          <Card className="cursor-pointer transition-all hover:shadow-lg border-2 hover:border-primary/20">
-            <CardHeader className="bg-slate-900">
+          <Card className="cursor-pointer transition-all hover:shadow-lg border-2 hover:border-primary/20 min-h-[200px] flex flex-col">
+            <CardHeader className="bg-slate-900 text-white">
               <CardTitle className="flex items-center gap-2">
                 <ClipboardList className="h-6 w-6 text-primary" />
                 Inspections
                 <Badge variant="default" className="ml-2">Active</Badge>
               </CardTitle>
             </CardHeader>
-            <CardContent className="bg-slate-900">
-              <p className="text-muted-foreground mb-4">
+            <CardContent className="bg-slate-900 text-white flex-1 flex flex-col justify-between">
+              <p className="text-muted-foreground">
                 Manage property inspections with customizable templates and automated notifications.
               </p>
-              <Button onClick={() => navigate('/inspections')} className="w-full">
+              <Button onClick={() => navigate('/inspections')} className="w-full mt-4">
                 Open Inspections
               </Button>
             </CardContent>
           </Card>
 
           {/* Inventory Reports */}
-          <Card className="cursor-pointer transition-all hover:shadow-lg border-2 hover:border-primary/20">
-            <CardHeader className="bg-slate-900">
+          <Card className="cursor-pointer transition-all hover:shadow-lg border-2 hover:border-primary/20 min-h-[200px] flex flex-col">
+            <CardHeader className="bg-slate-900 text-white">
               <CardTitle className="flex items-center gap-2">
                 <Package className="h-6 w-6 text-primary" />
                 Inventory
                 <Badge variant="default" className="ml-2">Active</Badge>
               </CardTitle>
             </CardHeader>
-            <CardContent className="bg-slate-900">
-              <p className="text-muted-foreground mb-4">
+            <CardContent className="bg-slate-900 text-white flex-1 flex flex-col justify-between">
+              <p className="text-muted-foreground">
                 Track stock levels, manage categories, and get automated reorder notifications.
               </p>
-              <Button onClick={() => navigate('/inventory')} className="w-full">
+              <Button onClick={() => navigate('/inventory')} className="w-full mt-4">
                 Open Inventory
               </Button>
             </CardContent>
           </Card>
 
           {/* Damage Reports */}
-          <Card className="cursor-pointer transition-all hover:shadow-lg border-2 hover:border-primary/20">
-            <CardHeader className="bg-slate-900">
+          <Card className="cursor-pointer transition-all hover:shadow-lg border-2 hover:border-primary/20 min-h-[200px] flex flex-col">
+            <CardHeader className="bg-slate-900 text-white">
               <CardTitle className="flex items-center gap-2">
                 <AlertTriangle className="h-6 w-6 text-primary" />
                 Damage Reports
                 <Badge variant="default" className="ml-2">Active</Badge>
               </CardTitle>
             </CardHeader>
-            <CardContent className="bg-slate-900">
-              <p className="text-muted-foreground mb-4">
+            <CardContent className="bg-slate-900 text-white flex-1 flex flex-col justify-between">
+              <p className="text-muted-foreground">
                 Document damage with photos, track repairs, and generate insurance claims.
               </p>
-              <Button onClick={() => navigate('/damage')} className="w-full">
+              <Button onClick={() => navigate('/damage')} className="w-full mt-4">
                 Open Damage Reports
               </Button>
             </CardContent>
@@ -175,45 +216,6 @@ const Index = () => {
             </Card>
           </div>
         </div>
-
-        {/* Owner Features */}
-        {profile?.role === 'owner' && <div>
-            <h2 className="text-2xl font-semibold text-foreground mb-6">Owner Management</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Card className="border-2 border-primary/20">
-                <CardHeader className="bg-slate-900">
-                  <CardTitle className="flex items-center gap-2">
-                    <User className="h-5 w-5 text-primary" />
-                    Agent Management
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="bg-slate-900">
-                  <p className="text-muted-foreground mb-4">
-                    Invite agents, manage permissions, and control access to different modules.
-                  </p>
-                  <Button onClick={() => navigate('/settings')} variant="outline" className="w-full">
-                    Manage Agents
-                  </Button>
-                </CardContent>
-              </Card>
-              <Card className="border-2 border-primary/20">
-                <CardHeader className="bg-slate-900">
-                  <CardTitle className="flex items-center gap-2">
-                    <Settings className="h-5 w-5 text-primary" />
-                    System Configuration
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="bg-slate-900">
-                  <p className="text-muted-foreground mb-4">
-                    Configure notifications, inspection schedules, and system preferences.
-                  </p>
-                  <Button onClick={() => navigate('/settings')} variant="outline" className="w-full">
-                    System Settings
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          </div>}
       </div>
     </div>;
 };

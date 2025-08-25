@@ -9,6 +9,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Plus, Edit, Save, X, Trash2, Package2, AlertTriangle, CheckCircle, CalendarIcon, Send, Home, ClipboardList } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -40,6 +41,7 @@ interface RestockRequest {
   requestDate: string;
   reason: string;
   status: 'pending' | 'approved' | 'ordered' | 'received';
+  supplierUrl?: string;
 }
 export const InventorySection = () => {
   const {
@@ -562,6 +564,7 @@ Inventory Management Team`;
       id: Date.now().toString() + item.id,
       itemId: item.id,
       itemName: item.name,
+      supplierUrl: item.supplierUrl,
       requestedQuantity: Math.max(item.restockLevel - item.currentStock, item.restockLevel),
       requestDate: today,
       reason: `Stock level (${item.currentStock}) below restock level (${item.restockLevel})`,
@@ -627,10 +630,151 @@ Inventory Management Team`;
           </Button>}
       </div>
 
-      {/* Show edit form when editing */}
-      {editingItem && editingData.id && <div className="mb-6">
+      {/* Show edit form only when editing */}
+      {editingItem && editingData.id && (
+        <div className="mb-6">
           <InventoryEditForm item={editingData as InventoryItem} onSave={handleEditSave} onCancel={handleEditCancel} categories={getUniqueCategories()} />
-        </div>}
+        </div>
+      )}
+      
+      {/* Show add form only when adding */}
+      {showAddForm && !editingItem && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-blue-600">Add New Inventory Item</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {/* Add New Category Button */}
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setShowNewCategoryInput(!showNewCategoryInput)} className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add New Category
+                </Button>
+              </div>
+              
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {/* Category - First field */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-blue-600">Category</label>
+                  <Select value={newItem.category} onValueChange={value => {
+                    setShowNewCategoryInput(false);
+                    setNewItem(prev => ({
+                      ...prev,
+                      category: value
+                    }));
+                  }}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select product category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getUniqueCategories().map(category => <SelectItem key={category} value={category}>
+                          {category}
+                        </SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                      
+                        {/* Item - Second field */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-blue-600">Item Name</label>
+                         <Input placeholder="Enter the name of the inventory item" value={newItem.name} onChange={e => setNewItem(prev => ({
+                      ...prev,
+                      name: e.target.value
+                    }))} />
+                       </div>
+                       
+                        {/* Units - Third field */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-blue-600">Unit</label>
+                         <Input placeholder="How items are counted (bottles, rolls, boxes, etc.)" value={newItem.unit} onChange={e => setNewItem(prev => ({
+                      ...prev,
+                      unit: e.target.value
+                    }))} />
+                       </div>
+                       
+                        {/* Supplier - Fourth field */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-blue-600">Supplier</label>
+                         <Input placeholder="Name of supplier or vendor" value={newItem.supplier} onChange={e => setNewItem(prev => ({
+                      ...prev,
+                      supplier: e.target.value
+                    }))} />
+                       </div>
+                       
+                        {/* URL - Fifth field */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-blue-600">Supplier URL</label>
+                         <Input placeholder="Website URL for ordering this item" value={newItem.supplierUrl || ''} onChange={e => setNewItem(prev => ({
+                      ...prev,
+                      supplierUrl: e.target.value
+                    }))} />
+                       </div>
+                       
+                        {/* Cost per unit - Sixth field */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-blue-600">Cost per Unit</label>
+                         <Input type="number" step="0.01" placeholder="Price per individual unit ($)" value={newItem.cost || ''} onChange={e => setNewItem(prev => ({
+                      ...prev,
+                      cost: Number(e.target.value)
+                    }))} />
+                       </div>
+                       
+                        {/* Restock level - Seventh field */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-blue-600">Restock Level</label>
+                         <Input type="number" placeholder="Minimum quantity before reordering" value={newItem.restockLevel || ''} onChange={e => setNewItem(prev => ({
+                      ...prev,
+                      restockLevel: Number(e.target.value)
+                    }))} />
+                       </div>
+                       
+                        {/* Current stock */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-blue-600">Current Stock</label>
+                         <Input type="number" placeholder="How many you have right now" value={newItem.currentStock || ''} onChange={e => setNewItem(prev => ({
+                      ...prev,
+                      currentStock: Number(e.target.value)
+                    }))} />
+                       </div>
+                    </div>
+                  
+                    {/* New category input if needed */}
+                    {showNewCategoryInput && <div className="mt-4">
+                        <label className="text-sm font-medium block mb-2">New Category Name</label>
+                        <Input placeholder="Enter new category name" value={newCategory} onChange={e => {
+                    setNewCategory(e.target.value);
+                    setNewItem(prev => ({
+                      ...prev,
+                      category: e.target.value
+                    }));
+                  }} autoFocus />
+                      </div>}
+                   
+                    {/* Notes - Last field */}
+                    <div className="mt-4">
+                      <label className="text-sm font-medium text-blue-600 block mb-2">Notes</label>
+                     <Textarea placeholder="Additional notes, special instructions, or details about this item" value={newItem.notes} onChange={e => setNewItem(prev => ({
+                  ...prev,
+                  notes: e.target.value
+                }))} rows={2} />
+                   </div>
+                  
+                  <div className="flex gap-2 mt-4">
+                    <Button onClick={() => addNewItem(false)} className="flex items-center gap-2">
+                      Accept and Next
+                    </Button>
+                    <Button onClick={() => addNewItem(true)} variant="outline" className="flex items-center gap-2">
+                      Accept and Close
+                    </Button>
+                    <Button onClick={() => setShowAddForm(false)} variant="ghost" className="flex items-center gap-2">
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
       
       <Tabs defaultValue="inventory" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
@@ -651,145 +795,9 @@ Inventory Management Team`;
         <TabsContent value="inventory" className="mt-4">
           <div className="space-y-6">
 
-            {/* Add New Item Form */}
-            {showAddForm && <Card>
-                <CardHeader>
-                  <CardTitle>Add New Inventory Item</CardTitle>
-                </CardHeader>
-                <CardContent>
-                   <div className="space-y-4">
-                     {/* Add New Category Button */}
-                     <div className="flex items-center gap-2">
-                       <Button variant="outline" size="sm" onClick={() => setShowNewCategoryInput(!showNewCategoryInput)} className="flex items-center gap-2">
-                         <Plus className="h-4 w-4" />
-                         Add New Category
-                       </Button>
-                     </div>
-                     
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {/* Category - First field */}
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-sky-600">Category</label>
-                         <Select value={newItem.category} onValueChange={value => {
-                      setShowNewCategoryInput(false);
-                      setNewItem(prev => ({
-                        ...prev,
-                        category: value
-                      }));
-                    }}>
-                           <SelectTrigger>
-                             <SelectValue placeholder="Select product category" />
-                           </SelectTrigger>
-                           <SelectContent>
-                             {getUniqueCategories().map(category => <SelectItem key={category} value={category}>
-                                 {category}
-                               </SelectItem>)}
-                           </SelectContent>
-                         </Select>
-                       </div>
-                     
-                        {/* Item - Second field */}
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-sky-600">Item Name</label>
-                         <Input placeholder="Enter the name of the inventory item" value={newItem.name} onChange={e => setNewItem(prev => ({
-                      ...prev,
-                      name: e.target.value
-                    }))} />
-                       </div>
-                       
-                        {/* Units - Third field */}
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-sky-600">Unit</label>
-                         <Input placeholder="How items are counted (bottles, rolls, boxes, etc.)" value={newItem.unit} onChange={e => setNewItem(prev => ({
-                      ...prev,
-                      unit: e.target.value
-                    }))} />
-                       </div>
-                       
-                        {/* Supplier - Fourth field */}
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-sky-600">Supplier</label>
-                         <Input placeholder="Name of supplier or vendor" value={newItem.supplier} onChange={e => setNewItem(prev => ({
-                      ...prev,
-                      supplier: e.target.value
-                    }))} />
-                       </div>
-                       
-                        {/* URL - Fifth field */}
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-sky-600">Supplier URL</label>
-                         <Input placeholder="Website URL for ordering this item" value={newItem.supplierUrl || ''} onChange={e => setNewItem(prev => ({
-                      ...prev,
-                      supplierUrl: e.target.value
-                    }))} />
-                       </div>
-                       
-                        {/* Cost per unit - Sixth field */}
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-sky-600">Cost per Unit</label>
-                         <Input type="number" step="0.01" placeholder="Price per individual unit ($)" value={newItem.cost || ''} onChange={e => setNewItem(prev => ({
-                      ...prev,
-                      cost: Number(e.target.value)
-                    }))} />
-                       </div>
-                       
-                        {/* Restock level - Seventh field */}
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-sky-600">Restock Level</label>
-                         <Input type="number" placeholder="Minimum quantity before reordering" value={newItem.restockLevel || ''} onChange={e => setNewItem(prev => ({
-                      ...prev,
-                      restockLevel: Number(e.target.value)
-                    }))} />
-                       </div>
-                       
-                        {/* Current stock */}
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-sky-600">Current Stock</label>
-                         <Input type="number" placeholder="How many you have right now" value={newItem.currentStock || ''} onChange={e => setNewItem(prev => ({
-                      ...prev,
-                      currentStock: Number(e.target.value)
-                    }))} />
-                       </div>
-                    </div>
-                  
-                    {/* New category input if needed */}
-                    {showNewCategoryInput && <div className="mt-4">
-                        <label className="text-sm font-medium block mb-2">New Category Name</label>
-                        <Input placeholder="Enter new category name" value={newCategory} onChange={e => {
-                    setNewCategory(e.target.value);
-                    setNewItem(prev => ({
-                      ...prev,
-                      category: e.target.value
-                    }));
-                  }} autoFocus />
-                      </div>}
-                   </div>
-                   
-                    {/* Notes - Last field */}
-                    <div className="mt-4">
-                      <label className="text-sm font-medium text-sky-600 block mb-2">Notes</label>
-                     <Textarea placeholder="Additional notes, special instructions, or details about this item" value={newItem.notes} onChange={e => setNewItem(prev => ({
-                  ...prev,
-                  notes: e.target.value
-                }))} rows={2} />
-                   </div>
-                  
-                  <div className="flex gap-2 mt-4">
-                    <Button onClick={() => addNewItem(false)} className="flex items-center gap-2">
-                      Accept and Next
-                    </Button>
-                    <Button onClick={() => addNewItem(true)} variant="outline" className="flex items-center gap-2">
-                      Accept and Close
-                    </Button>
-                    <Button onClick={() => setShowAddForm(false)} variant="ghost" className="flex items-center gap-2">
-                      Cancel
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>}
-
-            {/* Inventory Items List - Only show when not adding */}
-            {!showAddForm && <Card>
+            {/* Inventory Items List - Only show when not adding or editing */}
+            {!showAddForm && !editingItem && (
+              <Card>
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle>Current Inventory</CardTitle>
@@ -932,9 +940,27 @@ Inventory Management Team`;
                                                  <Edit className="h-4 w-4" />
                                                </Button>
                                                {/* Only show delete button for owners */}
-                                               {profile?.role === 'owner' && <Button size="sm" variant="ghost" onClick={() => deleteItem(item.id)} className="h-8 w-8 p-0 text-destructive hover:text-destructive">
-                                                   <Trash2 className="h-4 w-4" />
-                                                 </Button>}
+                        {profile?.role === 'owner' && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive hover:text-destructive">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Inventory Item</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete "{item.name}"? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => deleteItem(item.id)}>Delete</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
                                             </>}
                                         </div>
                                       </td>
@@ -946,7 +972,8 @@ Inventory Management Team`;
                     </div>)}
                 </div>
               </CardContent>
-            </Card>}
+            </Card>
+            )}
           </div>
         </TabsContent>
         
@@ -970,8 +997,22 @@ Inventory Management Team`;
                     </thead>
                     <tbody>
                       {restockRequests.map(request => <tr key={request.id} className={cn("border-b hover:bg-muted/50", request.status === 'pending' && "bg-destructive/5", request.status === 'approved' && "bg-success/5")}>
-                          <td className="p-2 font-medium">{request.itemName}</td>
-                          <td className="p-2 mx-[6px]">{request.requestedQuantity}</td>
+                          <td className="p-2 text-center">
+                            <div className="flex justify-center">
+                              {request.itemName}
+                              {request.supplierUrl && (
+                                <a 
+                                  href={request.supplierUrl.startsWith('http') ? request.supplierUrl : `https://${request.supplierUrl}`} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer" 
+                                  className="ml-2 text-blue-600 hover:text-blue-800 underline text-xs"
+                                >
+                                  Order Here
+                                </a>
+                              )}
+                            </div>
+                          </td>
+                          <td className="p-2 text-center">{request.requestedQuantity}</td>
                           <td className="p-2">{formatDateShort(request.requestDate)}</td>
                           <td className="p-2 text-sm">{request.reason}</td>
                           <td className="p-2">

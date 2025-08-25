@@ -132,7 +132,7 @@ export const InspectionTemplateManager = () => {
       const defaultTemplates: InspectionTemplate[] = [
         {
           id: 'per-visit',
-          name: 'Per Visit',
+          name: 'Per visit',
           isPredefined: true,
           items: [
             { id: '1', description: 'Check cleanliness of all rooms', notes: '' },
