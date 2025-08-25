@@ -81,47 +81,6 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Owner Features */}
-        {profile?.role === 'owner' && (
-          <div className="mb-12">
-            <h2 className="text-2xl font-semibold text-foreground mb-6">Owner Management</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Card className="border-2 border-primary/20 min-h-[200px] flex flex-col">
-                <CardHeader className="bg-slate-900">
-                  <CardTitle className="flex items-center gap-2">
-                    <User className="h-5 w-5 text-primary" />
-                    Agent Management
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="bg-slate-900 flex-1 flex flex-col justify-between">
-                  <p className="text-muted-foreground">
-                    Invite agents, manage permissions, and control access to different modules.
-                  </p>
-                  <Button onClick={() => navigate('/settings')} variant="outline" className="w-full mt-4">
-                    Manage Agents
-                  </Button>
-                </CardContent>
-              </Card>
-              <Card className="border-2 border-primary/20 min-h-[200px] flex flex-col">
-                <CardHeader className="bg-slate-900">
-                  <CardTitle className="flex items-center gap-2">
-                    <Settings className="h-5 w-5 text-primary" />
-                    System Configuration
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="bg-slate-900 flex-1 flex flex-col justify-between">
-                  <p className="text-muted-foreground">
-                    Configure notifications, inspection schedules, and system preferences.
-                  </p>
-                  <Button onClick={() => navigate('/settings')} variant="outline" className="w-full mt-4">
-                    System Settings
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        )}
-
         {/* Main Content - Report Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           {/* Inspection Reports */}
@@ -181,6 +140,47 @@ const Index = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Owner Features */}
+        {profile?.role === 'owner' && (
+          <div className="mb-12">
+            <h2 className="text-2xl font-semibold text-foreground mb-6">Owner Management</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Card className="border-2 border-primary/20 min-h-[200px] flex flex-col">
+                <CardHeader className="bg-slate-900">
+                  <CardTitle className="flex items-center gap-2">
+                    <User className="h-5 w-5 text-primary" />
+                    Agent Management
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="bg-slate-900 flex-1 flex flex-col justify-between">
+                  <p className="text-muted-foreground">
+                    Invite agents, manage permissions, and control access to different modules.
+                  </p>
+                  <Button onClick={() => navigate('/settings')} variant="outline" className="w-full mt-4">
+                    Manage Agents
+                  </Button>
+                </CardContent>
+              </Card>
+              <Card className="border-2 border-primary/20 min-h-[200px] flex flex-col">
+                <CardHeader className="bg-slate-900">
+                  <CardTitle className="flex items-center gap-2">
+                    <Settings className="h-5 w-5 text-primary" />
+                    System Configuration
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="bg-slate-900 flex-1 flex flex-col justify-between">
+                  <p className="text-muted-foreground">
+                    Configure notifications, inspection schedules, and system preferences.
+                  </p>
+                  <Button onClick={() => navigate('/settings')} variant="outline" className="w-full mt-4">
+                    System Settings
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        )}
 
         {/* Quick Stats */}
         <div className="mb-12">
