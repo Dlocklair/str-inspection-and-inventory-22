@@ -15,11 +15,13 @@ const Index = () => {
   } = useAuth();
   useEffect(() => {
     console.log('Index useEffect - loading:', loading, 'user:', user?.email || 'no user');
+    console.log('Profile data:', profile);
+    console.log('Profile role:', profile?.role);
     if (!loading && !user) {
       console.log('Redirecting to auth - no user found');
       navigate('/auth');
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, navigate, profile]);
   if (loading) {
     console.log('Showing loading screen...');
     return <div className="min-h-screen bg-background flex items-center justify-center">
