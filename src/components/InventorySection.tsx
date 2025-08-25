@@ -332,6 +332,15 @@ export const InventorySection = () => {
   const [newCategory, setNewCategory] = useState('');
   const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
   const [updateMode, setUpdateMode] = useState(false);
+  const [expandedCategories, setExpandedCategories] = useState<{[category: string]: boolean}>({});
+  const [autoDeleteTimeouts, setAutoDeleteTimeouts] = useState<{[requestId: string]: NodeJS.Timeout}>({});
+
+  const toggleCategory = (category: string) => {
+    setExpandedCategories(prev => ({
+      ...prev,
+      [category]: !prev[category]
+    }));
+  };
 
   // Load saved data from localStorage on component mount
   useEffect(() => {
@@ -354,6 +363,15 @@ export const InventorySection = () => {
   useEffect(() => {
     localStorage.setItem('restock-requests', JSON.stringify(restockRequests));
   }, [restockRequests]);
+
+  // Clean up timeouts on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(autoDeleteTimeouts).forEach(timeout => {
+        clearTimeout(timeout);
+      });
+    };
+  }, [autoDeleteTimeouts]);
   const addNewItem = (closeForm = false) => {
     if (!newItem.name.trim()) {
       toast({
@@ -465,15 +483,35 @@ export const InventorySection = () => {
       description: `Request for ${item.name} has been created.`
     });
   };
-  const updateRequestStatus = (requestId: string, status: RestockRequest['status']) => {
-    setRestockRequests(prev => prev.map(request => request.id === requestId ? {
-      ...request,
-      status
-    } : request));
-    toast({
-      title: "Status updated",
-      description: `Request status has been updated to ${status}.`
-    });
+  const updateRequestStatus = (requestId: string, newStatus: RestockRequest['status']) => {
+    setRestockRequests(prev => prev.map(request => 
+      request.id === requestId ? { ...request, status: newStatus } : request
+    ));
+    
+    // Auto-delete after 3 seconds if marked as received
+    if (newStatus === 'received') {
+      const timeout = setTimeout(() => {
+        setRestockRequests(prev => prev.filter(request => request.id !== requestId));
+        toast({
+          title: "Request completed",
+          description: "Received item has been removed from restock requests.",
+        });
+      }, 3000);
+      
+      setAutoDeleteTimeouts(prev => ({
+        ...prev,
+        [requestId]: timeout
+      }));
+    } else {
+      // Clear timeout if status changed from received to something else
+      if (autoDeleteTimeouts[requestId]) {
+        clearTimeout(autoDeleteTimeouts[requestId]);
+        setAutoDeleteTimeouts(prev => {
+          const { [requestId]: removed, ...rest } = prev;
+          return rest;
+        });
+      }
+    }
   };
   const deleteRequest = (requestId: string) => {
     setRestockRequests(prev => prev.filter(request => request.id !== requestId));
@@ -815,161 +853,179 @@ Inventory Management Team`;
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  {getUniqueCategories().map(category => <div key={category} className="space-y-2">
-                      <h3 className="text-lg font-semibold text-primary border-b border-border pb-2">
-                        {category}
-                      </h3>
-                       <div className="overflow-x-auto">
-                         <table className="w-full border-collapse">
-                             <thead>
-                               <tr className="border-b bg-muted/30">
-                                 <th className="text-left p-2 text-xs sticky left-0 bg-muted/30 z-10 min-w-[120px]">Item</th>
-                                 <th className="text-center p-2 text-xs w-20">Status</th>
-                                 <th className="text-center p-2 text-xs w-20">Stock</th>
-                                 <th className="text-center p-2 text-xs w-24">Restock Level</th>
-                                 <th className="text-center p-2 text-xs w-16">Unit</th>
-                                 <th className="text-center p-2 text-xs w-24">Supplier</th>
-                                 <th className="text-center p-2 text-xs w-20">Cost</th>
-                                 <th className="text-center p-2 text-xs w-16">Request</th>
-                                 <th className="text-center p-2 text-xs w-20">Date</th>
-                                 <th className="text-center p-2 text-xs w-24">Actions</th>
-                               </tr>
-                             </thead>
-                          <tbody>
-                            {sortedInventoryItems.filter(item => item.category === category).map(item => {
-                          const stockStatus = getStockStatus(item);
-                          const StatusIcon = stockStatus.icon;
-                          return <tr key={item.id} className="border-b hover:bg-muted/50">
-                                     <td className="p-2 sticky left-0 bg-background z-10 min-w-[120px]">
-                                       {editingItem === item.id ? <Input value={editingData.name || ''} onChange={e => setEditingData(prev => ({
-                                ...prev,
-                                name: e.target.value
-                              }))} className="text-sm" /> : <div>
-                                           <div className="font-medium text-sm">{item.name}</div>
-                                           {item.notes && <div className="text-xs text-muted-foreground">{item.notes}</div>}
-                                         </div>}
-                                     </td>
-                                       <td className="p-2 text-center w-20">
-                                         <div className="flex justify-center">
-                                           <Badge variant={stockStatus.color as any} className={cn("flex items-center gap-1 w-fit text-xs", stockStatus.status === 'low' && "bg-destructive hover:bg-destructive/90 text-destructive-foreground", stockStatus.status === 'good' && "bg-success hover:bg-success/90 text-success-foreground")}>
-                                             <StatusIcon className="h-3 w-3" />
-                                             {stockStatus.status}
-                                           </Badge>
-                                         </div>
-                                       </td>
-                                      <td className="p-2 text-center w-20">
-                                        <div className="flex justify-center">
-                                           {updateMode ? <Input type="number" value={item.currentStock} onChange={e => {
-                                  const newStock = Number(e.target.value);
-                                  setInventoryItems(prev => prev.map(prevItem => prevItem.id === item.id ? {
-                                    ...prevItem,
-                                    currentStock: newStock,
-                                    lastUpdated: new Date().toISOString(),
-                                    restockRequested: newStock <= prevItem.restockLevel,
-                                    requestDate: newStock <= prevItem.restockLevel ? new Date().toISOString().split('T')[0] : undefined
-                                  } : prevItem));
-                                }} className="text-sm w-16 text-center" onFocus={e => e.target.select()} style={{
-                                  MozAppearance: 'textfield'
-                                }} /> : <span className="text-sm">{item.currentStock}</span>}
-                                        </div>
-                                      </td>
-                                     <td className="p-2 text-center w-24">
-                                       <div className="flex justify-center">
-                                         {editingItem === item.id ? <Input type="number" value={editingData.restockLevel || ''} onChange={e => setEditingData(prev => ({
-                                  ...prev,
-                                  restockLevel: Number(e.target.value)
-                                }))} className="text-sm w-16 text-center" /> : <span className="text-sm">{item.restockLevel}</span>}
-                                       </div>
-                                     </td>
-                                      <td className="p-2 text-center w-16">
-                                        <div className="flex justify-center">
-                                          {editingItem === item.id ? <Input value={editingData.unit || ''} onChange={e => setEditingData(prev => ({
-                                  ...prev,
-                                  unit: e.target.value
-                                }))} className="text-sm w-12 text-center" /> : <span className="text-sm">{item.unit}</span>}
-                                        </div>
-                                      </td>
-                                       <td className="p-2 text-center w-24">
-                                         <div className="flex justify-center">
-                                           {editingItem === item.id ? <Input value={editingData.supplier || ''} onChange={e => setEditingData(prev => ({
-                                  ...prev,
-                                  supplier: e.target.value
-                                }))} className="text-sm w-20 text-center" /> : <div className="text-sm text-center">
-                                               <div>{item.supplier}</div>
-                                               {item.supplierUrl && <a href={item.supplierUrl.startsWith('http') ? item.supplierUrl : `https://${item.supplierUrl}`} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:text-blue-800 underline">
-                                                   Visit supplier page
-                                                 </a>}
-                                             </div>}
-                                         </div>
-                                       </td>
-                                      <td className="p-2 text-center w-20">
-                                        <div className="flex justify-center">
-                                          {editingItem === item.id ? <Input type="number" step="0.01" value={editingData.cost || ''} onChange={e => setEditingData(prev => ({
-                                  ...prev,
-                                  cost: Number(e.target.value)
-                                }))} className="text-sm w-16 text-center" /> : <span className="text-sm">${item.cost.toFixed(2)}</span>}
-                                        </div>
-                                      </td>
-                                     <td className="p-2 text-center w-16">
-                                       <div className="flex justify-center">
-                                         <Checkbox id={`request-${item.id}`} checked={item.restockRequested} onCheckedChange={checked => {
-                                  setInventoryItems(prev => prev.map(prevItem => prevItem.id === item.id ? {
-                                    ...prevItem,
-                                    restockRequested: !!checked,
-                                    requestDate: checked ? new Date().toISOString().split('T')[0] : undefined
-                                  } : prevItem));
-                                }} />
-                                       </div>
-                                     </td>
-                                      <td className="p-2 text-center w-20">
-                                        <div className="flex justify-center">
-                                          <span className="text-xs">{formatDateShort(item.lastUpdated)}</span>
-                                        </div>
-                                      </td>
-                                      <td className="p-2 text-center w-24">
-                                        <div className="flex gap-1 justify-center">
-                                          {editingItem === item.id ? <>
-                                              <Button size="sm" variant="ghost" onClick={saveEdit} className="h-8 w-8 p-0">
-                                                <Save className="h-4 w-4" />
-                                              </Button>
-                                              <Button size="sm" variant="ghost" onClick={cancelEdit} className="h-8 w-8 p-0">
-                                                <X className="h-4 w-4" />
-                                              </Button>
-                                            </> : <>
-                                               <Button size="sm" variant="ghost" onClick={() => startEditing(item)} className="h-8 w-8 p-0">
-                                                 <Edit className="h-4 w-4" />
-                                               </Button>
-                                               {/* Only show delete button for owners */}
-                        {profile?.role === 'owner' && (
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive hover:text-destructive">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Inventory Item</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to delete "{item.name}"? This action cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => deleteItem(item.id)}>Delete</AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        )}
-                                            </>}
-                                        </div>
-                                      </td>
+                  {getUniqueCategories().map(category => {
+                    const isExpanded = expandedCategories[category] !== false; // Default to expanded
+                    const categoryItems = sortedInventoryItems.filter(item => item.category === category);
+                    
+                    return (
+                      <div key={category} className="space-y-2">
+                        <div 
+                          className="flex items-center justify-between cursor-pointer hover:bg-muted/50 p-2 rounded"
+                          onClick={() => toggleCategory(category)}
+                        >
+                          <h3 className="text-lg font-semibold text-primary border-b border-border pb-2 flex-1">
+                            {category} ({categoryItems.length} items)
+                          </h3>
+                          <Button variant="ghost" size="sm">
+                            {isExpanded ? '−' : '+'}
+                          </Button>
+                        </div>
+                        
+                        {isExpanded && (
+                          <div className="overflow-x-auto">
+                            <table className="w-full border-collapse">
+                              <thead>
+                                <tr className="border-b bg-muted/30">
+                                  <th className="text-left p-2 text-xs sticky left-0 bg-muted/30 z-10 min-w-[120px]">Item</th>
+                                  <th className="text-center p-2 text-xs w-20">Status</th>
+                                  <th className="text-center p-2 text-xs w-20">Stock</th>
+                                  <th className="text-center p-2 text-xs w-24">Restock Level</th>
+                                  <th className="text-center p-2 text-xs w-16">Unit</th>
+                                  <th className="text-center p-2 text-xs w-24">Supplier</th>
+                                  <th className="text-center p-2 text-xs w-20">Cost</th>
+                                  <th className="text-center p-2 text-xs w-16">Request</th>
+                                  <th className="text-center p-2 text-xs w-20">Date</th>
+                                  <th className="text-center p-2 text-xs w-24">Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {categoryItems.map(item => {
+                                  const stockStatus = getStockStatus(item);
+                                  const StatusIcon = stockStatus.icon;
+                                  return <tr key={item.id} className="border-b hover:bg-muted/50">
+                                    <td className="p-2 sticky left-0 bg-background z-10 min-w-[120px]">
+                                      {editingItem === item.id ? <Input value={editingData.name || ''} onChange={e => setEditingData(prev => ({
+                                        ...prev,
+                                        name: e.target.value
+                                      }))} className="text-sm" /> : <div>
+                                        <div className="font-medium text-sm">{item.name}</div>
+                                        {item.notes && <div className="text-xs text-muted-foreground">{item.notes}</div>}
+                                      </div>}
+                                    </td>
+                                    <td className="p-2 text-center w-20">
+                                      <div className="flex justify-center">
+                                        <Badge variant={stockStatus.color as any} className={cn("flex items-center gap-1 w-fit text-xs", stockStatus.status === 'low' && "bg-destructive hover:bg-destructive/90 text-destructive-foreground", stockStatus.status === 'good' && "bg-success hover:bg-success/90 text-success-foreground")}>
+                                          <StatusIcon className="h-3 w-3" />
+                                          {stockStatus.status}
+                                        </Badge>
+                                      </div>
+                                    </td>
+                                    <td className="p-2 text-center w-20">
+                                      <div className="flex justify-center">
+                                        {updateMode ? <Input type="number" value={item.currentStock} onChange={e => {
+                                          const newStock = Number(e.target.value);
+                                          setInventoryItems(prev => prev.map(prevItem => prevItem.id === item.id ? {
+                                            ...prevItem,
+                                            currentStock: newStock,
+                                            lastUpdated: new Date().toISOString(),
+                                            restockRequested: newStock <= prevItem.restockLevel,
+                                            requestDate: newStock <= prevItem.restockLevel ? new Date().toISOString().split('T')[0] : undefined
+                                          } : prevItem));
+                                        }} className="text-sm w-16 text-center" onFocus={e => e.target.select()} style={{
+                                          MozAppearance: 'textfield'
+                                        }} /> : <span className="text-sm">{item.currentStock}</span>}
+                                      </div>
+                                    </td>
+                                    <td className="p-2 text-center w-24">
+                                      <div className="flex justify-center">
+                                        {editingItem === item.id ? <Input type="number" value={editingData.restockLevel || ''} onChange={e => setEditingData(prev => ({
+                                          ...prev,
+                                          restockLevel: Number(e.target.value)
+                                        }))} className="text-sm w-16 text-center" /> : <span className="text-sm">{item.restockLevel}</span>}
+                                      </div>
+                                    </td>
+                                    <td className="p-2 text-center w-16">
+                                      <div className="flex justify-center">
+                                        {editingItem === item.id ? <Input value={editingData.unit || ''} onChange={e => setEditingData(prev => ({
+                                          ...prev,
+                                          unit: e.target.value
+                                        }))} className="text-sm w-12 text-center" /> : <span className="text-sm">{item.unit}</span>}
+                                      </div>
+                                    </td>
+                                    <td className="p-2 text-center w-24">
+                                      <div className="flex justify-center">
+                                        {editingItem === item.id ? <Input value={editingData.supplier || ''} onChange={e => setEditingData(prev => ({
+                                          ...prev,
+                                          supplier: e.target.value
+                                        }))} className="text-sm w-20 text-center" /> : <div className="text-sm text-center">
+                                          <div>{item.supplier}</div>
+                                          {item.supplierUrl && <a href={item.supplierUrl.startsWith('http') ? item.supplierUrl : `https://${item.supplierUrl}`} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:text-blue-800 underline">
+                                            Visit supplier page
+                                          </a>}
+                                        </div>}
+                                      </div>
+                                    </td>
+                                    <td className="p-2 text-center w-20">
+                                      <div className="flex justify-center">
+                                        {editingItem === item.id ? <Input type="number" step="0.01" value={editingData.cost || ''} onChange={e => setEditingData(prev => ({
+                                          ...prev,
+                                          cost: Number(e.target.value)
+                                        }))} className="text-sm w-16 text-center" /> : <span className="text-sm">${item.cost.toFixed(2)}</span>}
+                                      </div>
+                                    </td>
+                                    <td className="p-2 text-center w-16">
+                                      <div className="flex justify-center">
+                                        <Checkbox id={`request-${item.id}`} checked={item.restockRequested} onCheckedChange={checked => {
+                                          setInventoryItems(prev => prev.map(prevItem => prevItem.id === item.id ? {
+                                            ...prevItem,
+                                            restockRequested: !!checked,
+                                            requestDate: checked ? new Date().toISOString().split('T')[0] : undefined
+                                          } : prevItem));
+                                        }} />
+                                      </div>
+                                    </td>
+                                    <td className="p-2 text-center w-20">
+                                      <div className="flex justify-center">
+                                        <span className="text-xs">{formatDateShort(item.lastUpdated)}</span>
+                                      </div>
+                                    </td>
+                                    <td className="p-2 text-center w-24">
+                                      <div className="flex gap-1 justify-center">
+                                        {editingItem === item.id ? <>
+                                          <Button size="sm" variant="ghost" onClick={saveEdit} className="h-8 w-8 p-0">
+                                            <Save className="h-4 w-4" />
+                                          </Button>
+                                          <Button size="sm" variant="ghost" onClick={cancelEdit} className="h-8 w-8 p-0">
+                                            <X className="h-4 w-4" />
+                                          </Button>
+                                        </> : <>
+                                          <Button size="sm" variant="ghost" onClick={() => startEditing(item)} className="h-8 w-8 p-0">
+                                            <Edit className="h-4 w-4" />
+                                          </Button>
+                                          {/* Only show delete button for owners */}
+                                          {profile?.role === 'owner' && (
+                                            <AlertDialog>
+                                              <AlertDialogTrigger asChild>
+                                                <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive hover:text-destructive">
+                                                  <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                              </AlertDialogTrigger>
+                                              <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                  <AlertDialogTitle>Delete Inventory Item</AlertDialogTitle>
+                                                  <AlertDialogDescription>
+                                                    Are you sure you want to delete "{item.name}"? This action cannot be undone.
+                                                  </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                  <AlertDialogAction onClick={() => deleteItem(item.id)}>Delete</AlertDialogAction>
+                                                </AlertDialogFooter>
+                                              </AlertDialogContent>
+                                            </AlertDialog>
+                                          )}
+                                        </>}
+                                      </div>
+                                    </td>
                                   </tr>;
-                        })}
-                          </tbody>
-                        </table>
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
                       </div>
-                    </div>)}
+                    )
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -988,7 +1044,7 @@ Inventory Management Team`;
                     <thead>
                       <tr className="border-b">
                         <th className="text-left p-2">Item</th>
-                        <th className="text-left p-2">Quantity</th>
+                        <th className="text-center p-2">Quantity</th>
                         <th className="text-left p-2">Request Date</th>
                         <th className="text-left p-2">Reason</th>
                         <th className="text-left p-2">Status</th>
