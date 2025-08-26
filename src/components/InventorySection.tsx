@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Plus, Edit, Save, X, Trash2, Package2, AlertTriangle, CheckCircle, CalendarIcon, Send, Home, ClipboardList } from 'lucide-react';
+import { Plus, Edit, Save, X, Trash2, Package2, AlertTriangle, CheckCircle, CalendarIcon, Send, Home, ClipboardList, ChevronDown, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
@@ -646,20 +646,14 @@ Inventory Management Team`;
   return <div className="w-full">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => navigate('/')}>
-            <Home className="h-4 w-4 mr-2" />
-            Dashboard
+          <Button variant="ghost" onClick={() => navigate('/inspections')} className="flex items-center gap-2">
+            <ClipboardList className="h-4 w-4" />
+            Inspections
           </Button>
-          <div className="flex gap-2">
-            <Button variant="ghost" onClick={() => navigate('/inspections')} className="flex items-center gap-2">
-              <ClipboardList className="h-4 w-4" />
-              Inspections
-            </Button>
-            <Button variant="ghost" onClick={() => navigate('/damage')} className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4" />
-              Damage Reports
-            </Button>
-          </div>
+          <Button variant="ghost" onClick={() => navigate('/damage')} className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4" />
+            Damage Reports
+          </Button>
         </div>
         <h2 className="text-2xl font-bold">Inventory Management</h2>
         {!showAddForm && !editingItem && <Button onClick={() => setShowAddForm(true)} className="flex items-center gap-2">
@@ -683,34 +677,37 @@ Inventory Management Team`;
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {/* Add New Category Button */}
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => setShowNewCategoryInput(!showNewCategoryInput)} className="flex items-center gap-2">
-                  <Plus className="h-4 w-4" />
-                  Add New Category
-                </Button>
-              </div>
               
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {/* Category - First field */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-blue-600">Category</label>
-                  <Select value={newItem.category} onValueChange={value => {
-                    setShowNewCategoryInput(false);
-                    setNewItem(prev => ({
-                      ...prev,
-                      category: value
-                    }));
-                  }}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select product category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getUniqueCategories().map(category => <SelectItem key={category} value={category}>
-                          {category}
-                        </SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                   <Select value={newItem.category} onValueChange={value => {
+                     if (value === 'add-new-category') {
+                       setShowNewCategoryInput(true);
+                     } else {
+                       setShowNewCategoryInput(false);
+                       setNewItem(prev => ({
+                         ...prev,
+                         category: value
+                       }));
+                     }
+                   }}>
+                     <SelectTrigger>
+                       <SelectValue placeholder="Select product category" />
+                     </SelectTrigger>
+                     <SelectContent>
+                       {getUniqueCategories().map(category => <SelectItem key={category} value={category}>
+                           {category}
+                         </SelectItem>)}
+                       <SelectItem value="add-new-category">
+                         <div className="flex items-center gap-2">
+                           <Plus className="h-3 w-3" />
+                           Add New Category
+                         </div>
+                       </SelectItem>
+                     </SelectContent>
+                   </Select>
                 </div>
                       
                         {/* Item - Second field */}
@@ -863,12 +860,16 @@ Inventory Management Team`;
                           className="flex items-center justify-between cursor-pointer hover:bg-muted/50 p-2 rounded"
                           onClick={() => toggleCategory(category)}
                         >
-                          <h3 className="text-lg font-semibold text-primary border-b border-border pb-2 flex-1">
-                            {category} ({categoryItems.length} items)
-                          </h3>
-                          <Button variant="ghost" size="sm">
-                            {isExpanded ? '−' : '+'}
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            {isExpanded ? (
+                              <ChevronDown className="h-4 w-4" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4" />
+                            )}
+                            <h3 className="text-lg font-semibold text-primary border-b border-border pb-2">
+                              {category} ({categoryItems.length} items)
+                            </h3>
+                          </div>
                         </div>
                         
                         {isExpanded && (
@@ -897,8 +898,21 @@ Inventory Management Team`;
                                       {editingItem === item.id ? <Input value={editingData.name || ''} onChange={e => setEditingData(prev => ({
                                         ...prev,
                                         name: e.target.value
-                                      }))} className="text-sm" /> : <div>
-                                        <div className="font-medium text-sm">{item.name}</div>
+                                       }))} className="text-sm" /> : <div>
+                                         <div className="font-medium text-sm">
+                                           {item.supplierUrl ? (
+                                             <a 
+                                               href={item.supplierUrl.startsWith('http') ? item.supplierUrl : `https://${item.supplierUrl}`} 
+                                               target="_blank" 
+                                               rel="noopener noreferrer" 
+                                               className="text-blue-600 hover:text-blue-800 underline"
+                                             >
+                                               {item.name}
+                                             </a>
+                                           ) : (
+                                             item.name
+                                           )}
+                                         </div>
                                         {item.notes && <div className="text-xs text-muted-foreground">{item.notes}</div>}
                                       </div>}
                                     </td>
