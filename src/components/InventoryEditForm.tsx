@@ -67,13 +67,13 @@ export const InventoryEditForm = ({ item, onSave, onCancel, categories }: Invent
   return (
     <Card className="w-full max-w-4xl mx-auto">
       <CardHeader>
-        <CardTitle>Edit Inventory Item</CardTitle>
+        <CardTitle className="text-cyan">Edit Inventory Item</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {/* Category - First field */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-blue-600">Category</label>
+            <label className="text-sm font-medium text-cyan">Category</label>
             <Select 
               value={editingData.category} 
               onValueChange={(value) => {
@@ -161,7 +161,7 @@ export const InventoryEditForm = ({ item, onSave, onCancel, categories }: Invent
           
           {/* Item - Second field */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-blue-600">Item Name</label>
+            <label className="text-sm font-medium text-cyan">Item Name</label>
             <Input
               placeholder="Enter the name of the inventory item"
               value={editingData.name}
@@ -171,7 +171,7 @@ export const InventoryEditForm = ({ item, onSave, onCancel, categories }: Invent
           
           {/* Units - Third field */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-blue-600">Unit</label>
+            <label className="text-sm font-medium text-cyan">Unit</label>
             <Input
               placeholder="How items are counted (bottles, rolls, boxes, etc.)"
               value={editingData.unit}
@@ -181,7 +181,7 @@ export const InventoryEditForm = ({ item, onSave, onCancel, categories }: Invent
           
           {/* Supplier - Fourth field */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-blue-600">Supplier</label>
+            <label className="text-sm font-medium text-cyan">Supplier</label>
             <Input
               placeholder="Name of supplier or vendor"
               value={editingData.supplier}
@@ -191,7 +191,7 @@ export const InventoryEditForm = ({ item, onSave, onCancel, categories }: Invent
           
           {/* URL - Fifth field */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-blue-600">Supplier URL</label>
+            <label className="text-sm font-medium text-cyan">Supplier URL</label>
             <Input
               placeholder="Website URL for ordering this item"
               value={editingData.supplierUrl || ''}
@@ -201,7 +201,7 @@ export const InventoryEditForm = ({ item, onSave, onCancel, categories }: Invent
           
           {/* Cost per unit - Sixth field */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-blue-600">Cost per Unit</label>
+            <label className="text-sm font-medium text-cyan">Cost per Unit</label>
             <Input
               type="number"
               step="0.01"
@@ -213,7 +213,7 @@ export const InventoryEditForm = ({ item, onSave, onCancel, categories }: Invent
           
           {/* Restock level - Seventh field */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-blue-600">Restock Level</label>
+            <label className="text-sm font-medium text-cyan">Restock Level</label>
             <Input
               type="number"
               placeholder="Minimum quantity before reordering"
@@ -224,7 +224,7 @@ export const InventoryEditForm = ({ item, onSave, onCancel, categories }: Invent
           
           {/* Current stock */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-blue-600">Current Stock</label>
+            <label className="text-sm font-medium text-cyan">Current Stock</label>
             <Input
               type="number"
               placeholder="How many you have right now"
@@ -250,7 +250,7 @@ export const InventoryEditForm = ({ item, onSave, onCancel, categories }: Invent
         
         {/* Notes - Last field */}
         <div className="mt-4">
-          <label className="text-sm font-medium text-blue-600">Additional Notes</label>
+          <label className="text-sm font-medium text-cyan">Additional Notes</label>
           <Textarea
             placeholder="Additional notes, special instructions, or details about this item"
             value={editingData.notes}

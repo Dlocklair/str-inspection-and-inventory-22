@@ -866,14 +866,14 @@ Inventory Management Team`;
                             <table className="w-full border-collapse">
                                <thead>
                                  <tr className="border-b bg-muted/30">
-                                   <th className="text-left p-1 text-xs sticky left-0 bg-muted/30 z-10 min-w-[120px]">Item</th>
-                                   <th className="text-center p-1 text-xs w-16">Status</th>
-                                   <th className="text-center p-1 text-xs w-16">Stock</th>
-                                   <th className="text-center p-1 text-xs w-20">Restock Level</th>
-                                   <th className="text-center p-1 text-xs w-12">Unit</th>
-                                   <th className="text-center p-1 text-xs w-20">Supplier</th>
-                                   <th className="text-center p-1 text-xs w-20">Product Link</th>
-                                   <th className="text-center p-1 text-xs w-16">Cost</th>
+                                   <th className="text-left p-1 text-xs sticky left-0 bg-muted/30 z-10 min-w-[90px]">Item</th>
+                                    <th className="text-center p-1 text-xs w-16">Status</th>
+                                    <th className="text-center p-1 text-xs w-24">Stock</th>
+                                    <th className="text-center p-1 text-xs w-20">Restock Level</th>
+                                    <th className="text-center p-1 text-xs w-12">Unit</th>
+                                    <th className="text-center p-1 text-xs w-20">Supplier</th>
+                                    <th className="text-center p-1 text-xs w-20">Product Link</th>
+                                    <th className="text-center p-1 text-xs w-18">Cost</th>
                                    <th className="text-center p-1 text-xs w-12">Request</th>
                                    <th className="text-center p-1 text-xs w-16">Date</th>
                                    <th className="text-center p-1 text-xs w-20">Actions</th>
@@ -884,7 +884,7 @@ Inventory Management Team`;
                             const stockStatus = getStockStatus(item);
                             const StatusIcon = stockStatus.icon;
                             return <tr key={item.id} className="border-b hover:bg-muted/50">
-                                     <td className="p-1 sticky left-0 bg-background z-10 min-w-[120px]">
+                                     <td className="p-1 sticky left-0 bg-background z-10 min-w-[90px]">
                                        {editingItem === item.id ? <Input value={editingData.name || ''} onChange={e => setEditingData(prev => ({
                                   ...prev,
                                   name: e.target.value
@@ -903,22 +903,22 @@ Inventory Management Team`;
                                          </Badge>
                                        </div>
                                      </td>
-                                     <td className="p-1 text-center w-16">
-                                       <div className="flex justify-center">
-                                         {updateMode ? <Input type="number" value={item.currentStock} onChange={e => {
-                                    const newStock = Number(e.target.value);
-                                    setInventoryItems(prev => prev.map(prevItem => prevItem.id === item.id ? {
-                                      ...prevItem,
-                                      currentStock: newStock,
-                                      lastUpdated: new Date().toISOString(),
-                                      restockRequested: newStock <= prevItem.restockLevel,
-                                      requestDate: newStock <= prevItem.restockLevel ? new Date().toISOString().split('T')[0] : undefined
-                                    } : prevItem));
-                                  }} className="text-sm w-12 text-center" onFocus={e => e.target.select()} style={{
-                                    MozAppearance: 'textfield'
-                                  }} /> : <span className="text-sm">{item.currentStock}</span>}
-                                       </div>
-                                     </td>
+                                     <td className="p-1 text-center w-24">
+                                        <div className="flex justify-center">
+                                          {updateMode ? <Input type="number" value={item.currentStock} onChange={e => {
+                                     const newStock = Number(e.target.value);
+                                     setInventoryItems(prev => prev.map(prevItem => prevItem.id === item.id ? {
+                                       ...prevItem,
+                                       currentStock: newStock,
+                                       lastUpdated: new Date().toISOString(),
+                                       restockRequested: newStock <= prevItem.restockLevel,
+                                       requestDate: newStock <= prevItem.restockLevel ? new Date().toISOString().split('T')[0] : undefined
+                                     } : prevItem));
+                                   }} className="text-sm w-24 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" onFocus={e => e.target.select()} style={{
+                                     MozAppearance: 'textfield'
+                                   }} /> : <span className="text-sm">{item.currentStock}</span>}
+                                        </div>
+                                      </td>
                                      <td className="p-1 text-center w-20">
                                        <div className="flex justify-center">
                                          {editingItem === item.id ? <Input type="number" value={editingData.restockLevel || ''} onChange={e => setEditingData(prev => ({
@@ -948,14 +948,14 @@ Inventory Management Team`;
                                          {item.supplierUrl ? <a href={item.supplierUrl.startsWith('http') ? item.supplierUrl : `https://${item.supplierUrl}`} target="_blank" rel="noopener noreferrer" className="text-xs text-cyan hover:text-cyan/80 underline">Link</a> : <span className="text-xs text-muted-foreground">-</span>}
                                        </div>
                                      </td>
-                                     <td className="p-1 text-center w-16">
-                                       <div className="flex justify-center">
-                                         {editingItem === item.id ? <Input type="number" step="0.01" value={editingData.cost || ''} onChange={e => setEditingData(prev => ({
-                                    ...prev,
-                                    cost: Number(e.target.value)
-                                  }))} className="text-sm w-14 text-center" /> : <span className="text-sm">${item.cost.toFixed(2)}</span>}
-                                       </div>
-                                     </td>
+                                     <td className="p-1 text-center w-18">
+                                        <div className="flex justify-center">
+                                          {editingItem === item.id ? <Input type="number" step="0.01" value={editingData.cost || ''} onChange={e => setEditingData(prev => ({
+                                     ...prev,
+                                     cost: Number(e.target.value)
+                                   }))} className="text-sm w-16 text-center" /> : <span className="text-sm">${item.cost.toFixed(2)}</span>}
+                                        </div>
+                                      </td>
                                      <td className="p-1 text-center w-12">
                                        <div className="flex justify-center">
                                          <Checkbox id={`request-${item.id}`} checked={item.restockRequested} onCheckedChange={checked => {
