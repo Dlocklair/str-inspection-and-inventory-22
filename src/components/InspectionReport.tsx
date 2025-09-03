@@ -26,7 +26,7 @@ export const InspectionReport = () => {
             </Button>
             <div className="flex gap-2">
               <Button 
-                variant="ghost" 
+                variant="outline" 
                 onClick={() => navigate('/inventory')}
                 className="flex items-center gap-2"
               >
@@ -34,7 +34,7 @@ export const InspectionReport = () => {
                 Inventory
               </Button>
               <Button 
-                variant="ghost" 
+                variant="outline" 
                 onClick={() => navigate('/damage')}
                 className="flex items-center gap-2"
               >

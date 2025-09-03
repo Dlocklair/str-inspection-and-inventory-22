@@ -266,7 +266,7 @@ export const DamageReport = () => {
             <div className="flex gap-2">
               {hasAccess('inspections') && (
                 <Button 
-                  variant="ghost" 
+                  variant="outline" 
                   onClick={() => navigate('/inspections')}
                   className="flex items-center gap-2"
                 >
@@ -276,7 +276,7 @@ export const DamageReport = () => {
               )}
               {hasAccess('inventory') && (
                 <Button 
-                  variant="ghost" 
+                  variant="outline" 
                   onClick={() => navigate('/inventory')}
                   className="flex items-center gap-2"
                 >

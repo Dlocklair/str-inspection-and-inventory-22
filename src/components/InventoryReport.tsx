@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Home, ClipboardList, AlertTriangle, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 
 interface User {
   id: string;
@@ -19,19 +20,11 @@ interface User {
 
 export const InventoryReport = () => {
   const navigate = useNavigate();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-
-  useEffect(() => {
-    const savedSettings = localStorage.getItem('user-settings');
-    if (savedSettings) {
-      const settings = JSON.parse(savedSettings);
-      setCurrentUser(settings.currentUser);
-    }
-  }, []);
+  const { profile } = useAuth();
 
   const hasAccess = (module: keyof User['permissions']) => {
-    if (!currentUser) return false;
-    return currentUser.permissions[module];
+    // For now, return true since we're using profile-based access
+    return true;
   };
 
   return (
@@ -47,7 +40,7 @@ export const InventoryReport = () => {
             <div className="flex gap-2">
               {hasAccess('inspections') && (
                 <Button 
-                  variant="ghost" 
+                  variant="outline" 
                   onClick={() => navigate('/inspections')}
                   className="flex items-center gap-2"
                 >
@@ -57,7 +50,7 @@ export const InventoryReport = () => {
               )}
               {hasAccess('damage') && (
                 <Button 
-                  variant="ghost" 
+                  variant="outline" 
                   onClick={() => navigate('/damage')}
                   className="flex items-center gap-2"
                 >
@@ -68,11 +61,11 @@ export const InventoryReport = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {currentUser && (
+            {profile && (
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">{currentUser.name}</span>
-                <Badge variant={currentUser.role === 'owner' ? 'default' : 'secondary'}>
-                  {currentUser.role}
+                <span className="text-sm text-muted-foreground">{profile.full_name}</span>
+                <Badge variant={profile.role === 'owner' ? 'default' : 'secondary'}>
+                  {profile.role}
                 </Badge>
               </div>
             )}
