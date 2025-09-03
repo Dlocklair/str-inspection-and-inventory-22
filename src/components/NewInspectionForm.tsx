@@ -112,6 +112,14 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
 
   // Handle date selection
   const handleDateChange = (date: Date | undefined) => {
+    if (date && date > new Date()) {
+      toast({
+        title: "Invalid date",
+        description: "Future dates cannot be selected for inspections.",
+        variant: "destructive"
+      });
+      return;
+    }
     setSelectedDate(date);
   };
 

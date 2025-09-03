@@ -643,19 +643,28 @@ Inventory Management Team`;
 
   // Sort inventory items by category
   const sortedInventoryItems = [...inventoryItems].sort((a, b) => (a.category || '').localeCompare(b.category || ''));
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // Filter inventory items based on search term
+  const filteredInventoryItems = inventoryItems.filter(item =>
+    item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.supplier.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return <div className="w-full">
+      {/* Search Box */}
+      <div className="mb-4 max-w-md">
+        <Input
+          placeholder="Search Inventory"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full"
+        />
+      </div>
+
       <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" onClick={() => navigate('/inspections')} className="flex items-center gap-2">
-            <ClipboardList className="h-4 w-4" />
-            Inspections
-          </Button>
-          <Button variant="ghost" onClick={() => navigate('/damage')} className="flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4" />
-            Damage Reports
-          </Button>
-        </div>
-        <h2 className="text-2xl font-bold">Inventory Management</h2>
+        <div></div>
         {!showAddForm && !editingItem && <Button onClick={() => setShowAddForm(true)} className="flex items-center gap-2">
             <Plus className="h-4 w-4" />
             Add Inventory Item
@@ -837,10 +846,10 @@ Inventory Management Team`;
                   <div className="flex items-center justify-between">
                     <CardTitle>Current Inventory</CardTitle>
                   <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => setUpdateMode(!updateMode)} className="flex items-center gap-2">
-                      <Edit className="h-4 w-4" />
-                      {updateMode ? 'Exit Update Mode' : 'Update Inventory'}
-                    </Button>
+                     <Button variant="outline" onClick={() => setUpdateMode(!updateMode)} className="flex items-center gap-2">
+                       <Edit className="h-4 w-4" />
+                       {updateMode ? 'Exit Update Mode' : 'Update Inventory Levels'}
+                     </Button>
                     <Button onClick={sendRestockRequests} className="bg-cyan hover:bg-cyan/90 text-cyan-foreground flex items-center gap-2">
                       <Send className="h-4 w-4" />
                       Email Restock Requests
@@ -850,9 +859,9 @@ Inventory Management Team`;
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  {getUniqueCategories().map(category => {
-                    const isExpanded = expandedCategories[category] !== false; // Default to expanded
-                    const categoryItems = sortedInventoryItems.filter(item => item.category === category);
+                   {getUniqueCategories().map(category => {
+                     const categoryItems = filteredInventoryItems.filter(item => item.category === category);
+                     const isExpanded = expandedCategories[category] !== false; // Default to expanded
                     
                     return (
                       <div key={category} className="space-y-2">

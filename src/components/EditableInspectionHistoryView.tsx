@@ -4,9 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Search, ChevronDown, ChevronRight, Calendar, FileText, CheckCircle, X, Edit, Save, Trash2 } from 'lucide-react';
+import { Search, ChevronDown, ChevronRight, Calendar as CalendarIcon, FileText, CheckCircle, X, Edit, Save, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -35,6 +37,7 @@ export const EditableInspectionHistoryView = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedGroups, setExpandedGroups] = useState<{[key: string]: boolean}>({});
   const [editingRecord, setEditingRecord] = useState<string | null>(null);
+  const [editingDate, setEditingDate] = useState<Date | undefined>();
 
   // Load inspection records on mount
   useEffect(() => {
@@ -97,31 +100,46 @@ export const EditableInspectionHistoryView = () => {
   };
 
   const startEditingRecord = (recordId: string) => {
-    setEditingRecord(recordId);
+    const record = inspectionRecords.find(r => r.id === recordId);
+    if (record) {
+      setEditingRecord(recordId);
+      setEditingDate(new Date(record.date + 'T00:00:00'));
+    }
+  };
+
+  const cancelEditing = () => {
+    setEditingRecord(null);
+    setEditingDate(undefined);
+  };
+
+  const handleDateChange = (recordId: string, date: Date | undefined) => {
+    if (date && date > new Date()) {
+      toast({
+        title: "Invalid date",
+        description: "Future dates cannot be selected for inspections.",
+        variant: "destructive"
+      });
+      return;
+    }
+    setEditingDate(date);
   };
 
   const saveEditedRecord = (recordId: string) => {
     const updatedRecords = inspectionRecords.map(record => 
       record.id === recordId 
-        ? { ...record, updatedAt: new Date().toISOString() }
+        ? { 
+            ...record, 
+            date: editingDate ? format(editingDate, 'yyyy-MM-dd') : record.date 
+          } 
         : record
     );
     saveRecords(updatedRecords);
     setEditingRecord(null);
-    
+    setEditingDate(undefined);
     toast({
       title: "Inspection updated",
-      description: "Your changes have been saved successfully.",
+      description: "The inspection record has been successfully updated."
     });
-  };
-
-  const cancelEditing = () => {
-    setEditingRecord(null);
-    // Reload records to revert any changes
-    const savedRecords = localStorage.getItem('inspection-records');
-    if (savedRecords) {
-      setInspectionRecords(JSON.parse(savedRecords));
-    }
   };
 
   const updateInspectionItem = (recordId: string, itemId: string, updates: Partial<InspectionItem>) => {
@@ -214,9 +232,35 @@ export const EditableInspectionHistoryView = () => {
                         <Card key={record.id} className="border-l-4 border-l-primary">
                           <CardHeader className="pb-3">
                             <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <Calendar className="h-4 w-4 text-muted-foreground" />
-                                <span className="font-medium">{format(new Date(record.date + 'T00:00:00'), 'PPP')}</span>
+                               <div className="flex items-center gap-3">
+                                 <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                                 {isEditing ? (
+                                   <Popover>
+                                     <PopoverTrigger asChild>
+                                       <Button
+                                         variant="outline"
+                                         className={cn(
+                                           "justify-start text-left font-normal",
+                                           !editingDate && "text-muted-foreground"
+                                         )}
+                                       >
+                                         <CalendarIcon className="mr-2 h-4 w-4" />
+                                         {editingDate ? format(editingDate, "PPP") : <span>Pick a date</span>}
+                                       </Button>
+                                     </PopoverTrigger>
+                                     <PopoverContent className="w-auto p-0" align="start">
+                                       <Calendar
+                                         mode="single"
+                                         selected={editingDate}
+                                         onSelect={(date) => handleDateChange(record.id, date)}
+                                         initialFocus
+                                         className="p-3 pointer-events-auto"
+                                       />
+                                     </PopoverContent>
+                                   </Popover>
+                                 ) : (
+                                   <span className="font-medium">{format(new Date(record.date + 'T00:00:00'), 'PPP')}</span>
+                                 )}
                                 <Badge 
                                   variant={getCompletionPercentage(record.items) === 100 ? 'default' : 'secondary'}
                                 >
