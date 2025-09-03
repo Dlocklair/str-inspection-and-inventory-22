@@ -78,119 +78,42 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   useEffect(() => {
-    let isMounted = true;
-    let initTimeout: NodeJS.Timeout | null = null;
-
-    // Safety timeout to prevent infinite loading
-    const safetyTimeout = setTimeout(() => {
-      if (isMounted && loading) {
-        console.warn('Auth initialization taking too long, forcing loading to false');
-        setLoading(false);
-      }
-    }, 10000); // 10 second safety net
-
-    // Simple initialization
-    const initAuth = async () => {
-      try {
-        console.log('Initializing auth...');
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (!isMounted) return;
-        
-        // If there's an auth error, clear everything and sign out
-        if (error) {
-          console.error('Auth session error:', error);
-          await supabase.auth.signOut();
-          setSession(null);
-          setUser(null);
-          setProfile(null);
-          setLoading(false);
-          return;
-        }
-        
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          console.log('Fetching profile for user:', session.user.email);
-          try {
-            const profileData = await fetchProfile(session.user.id);
-            if (isMounted) {
-              setProfile(profileData);
-            }
-          } catch (profileError) {
-            console.error('Profile fetch failed:', profileError);
-            if (isMounted) {
-              setProfile(null);
-            }
-          }
-        } else {
-          console.log('No active session found');
-        }
-        
-        if (isMounted) {
-          setLoading(false);
-          console.log('Auth initialization complete');
-        }
-      } catch (error) {
-        console.error('Auth init error:', error);
-        if (isMounted) {
-          // Clear auth state on error
-          setSession(null);
-          setUser(null);
-          setProfile(null);
-          setLoading(false);
-        }
-      }
+    // TEMPORARY BYPASS: Auto-login as owner
+    console.log('BYPASSING AUTH - Auto-login as owner');
+    
+    const mockUser = {
+      id: 'mock-user-id',
+      email: 'owner@example.com',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      aud: 'authenticated',
+      role: 'authenticated'
+    } as User;
+    
+    const mockProfile: Profile = {
+      id: 'mock-profile-id',
+      user_id: 'mock-user-id',
+      full_name: 'System Owner',
+      role: 'owner',
+      phone_numbers: [],
+      email_addresses: ['owner@example.com'],
+      preferred_contact_method: 'email',
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     };
-
-    // Auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state change:', event, session?.user?.email);
-      
-      if (!isMounted) return;
-      
-      // Handle auth errors by clearing state
-      if (event === 'TOKEN_REFRESHED' && !session) {
-        setSession(null);
-        setUser(null);
-        setProfile(null);
-        return;
-      }
-      
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user && event !== 'SIGNED_OUT') {
-        try {
-          const profileData = await fetchProfile(session.user.id);
-          if (isMounted) {
-            setProfile(profileData);
-          }
-        } catch (profileError) {
-          console.error('Profile fetch failed in auth change:', profileError);
-          if (isMounted) {
-            setProfile(null);
-          }
-        }
-      } else {
-        setProfile(null);
-      }
-      
-      // Ensure loading is set to false after any auth state change
-      if (isMounted && loading) {
-        setLoading(false);
-      }
-    });
-
-    initAuth();
-
-    return () => {
-      isMounted = false;
-      clearTimeout(safetyTimeout);
-      if (initTimeout) clearTimeout(initTimeout);
-      subscription.unsubscribe();
-    };
+    
+    setUser(mockUser);
+    setProfile(mockProfile);
+    setSession({ 
+      access_token: 'mock-token',
+      refresh_token: 'mock-refresh', 
+      expires_in: 3600,
+      expires_at: Date.now() + 3600000,
+      token_type: 'bearer',
+      user: mockUser
+    } as Session);
+    setLoading(false);
   }, []);
 
   const signUp = async (email: string, password: string, fullName: string, role: 'owner' | 'agent' = 'agent') => {
