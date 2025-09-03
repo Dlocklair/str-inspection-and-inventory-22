@@ -653,18 +653,16 @@ Inventory Management Team`;
   );
 
   return <div className="w-full">
-      {/* Search Box */}
-      <div className="mb-4 max-w-md">
-        <Input
-          placeholder="Search Inventory"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full"
-        />
-      </div>
-
-      <div className="flex items-center justify-between mb-6">
-        <div></div>
+      {/* Search Box and Add Button - Top Right */}
+      <div className="flex items-center justify-end gap-4 mb-6">
+        <div className="max-w-md">
+          <Input
+            placeholder="Search Inventory"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full"
+          />
+        </div>
         {!showAddForm && !editingItem && <Button onClick={() => setShowAddForm(true)} className="flex items-center gap-2">
             <Plus className="h-4 w-4" />
             Add Inventory Item
@@ -846,10 +844,10 @@ Inventory Management Team`;
                   <div className="flex items-center justify-between">
                     <CardTitle>Current Inventory</CardTitle>
                   <div className="flex gap-2">
-                     <Button variant="outline" onClick={() => setUpdateMode(!updateMode)} className="flex items-center gap-2">
-                       <Edit className="h-4 w-4" />
-                       {updateMode ? 'Exit Update Mode' : 'Update Inventory Levels'}
-                     </Button>
+                      <Button variant="outline" onClick={() => setUpdateMode(!updateMode)} className="flex items-center gap-2">
+                        <Edit className="h-4 w-4" />
+                        {updateMode ? 'Exit Update Mode' : 'Update Inventory Levels'}
+                      </Button>
                     <Button onClick={sendRestockRequests} className="bg-cyan hover:bg-cyan/90 text-cyan-foreground flex items-center gap-2">
                       <Send className="h-4 w-4" />
                       Email Restock Requests
@@ -875,171 +873,172 @@ Inventory Management Team`;
                             ) : (
                               <ChevronRight className="h-4 w-4" />
                             )}
-                            <h3 className="text-lg font-semibold text-primary border-b border-border pb-2">
-                              {category} ({categoryItems.length} items)
-                            </h3>
+                             <h3 className="text-lg font-semibold text-cyan border-b border-border pb-2">
+                               {category} ({categoryItems.length} items)
+                             </h3>
                           </div>
                         </div>
                         
                         {isExpanded && (
                           <div className="overflow-x-auto">
                             <table className="w-full border-collapse">
-                              <thead>
-                                <tr className="border-b bg-muted/30">
-                                  <th className="text-left p-2 text-xs sticky left-0 bg-muted/30 z-10 min-w-[120px]">Item</th>
-                                  <th className="text-center p-2 text-xs w-20">Status</th>
-                                  <th className="text-center p-2 text-xs w-20">Stock</th>
-                                  <th className="text-center p-2 text-xs w-24">Restock Level</th>
-                                  <th className="text-center p-2 text-xs w-16">Unit</th>
-                                  <th className="text-center p-2 text-xs w-24">Supplier</th>
-                                  <th className="text-center p-2 text-xs w-20">Cost</th>
-                                  <th className="text-center p-2 text-xs w-16">Request</th>
-                                  <th className="text-center p-2 text-xs w-20">Date</th>
-                                  <th className="text-center p-2 text-xs w-24">Actions</th>
-                                </tr>
-                              </thead>
+                               <thead>
+                                 <tr className="border-b bg-muted/30">
+                                   <th className="text-left p-1 text-xs sticky left-0 bg-muted/30 z-10 min-w-[120px]">Item</th>
+                                   <th className="text-center p-1 text-xs w-16">Status</th>
+                                   <th className="text-center p-1 text-xs w-16">Stock</th>
+                                   <th className="text-center p-1 text-xs w-20">Restock Level</th>
+                                   <th className="text-center p-1 text-xs w-12">Unit</th>
+                                   <th className="text-center p-1 text-xs w-20">Supplier</th>
+                                   <th className="text-center p-1 text-xs w-20">Product Link</th>
+                                   <th className="text-center p-1 text-xs w-16">Cost</th>
+                                   <th className="text-center p-1 text-xs w-12">Request</th>
+                                   <th className="text-center p-1 text-xs w-16">Date</th>
+                                   <th className="text-center p-1 text-xs w-20">Actions</th>
+                                 </tr>
+                               </thead>
                               <tbody>
                                 {categoryItems.map(item => {
                                   const stockStatus = getStockStatus(item);
                                   const StatusIcon = stockStatus.icon;
-                                  return <tr key={item.id} className="border-b hover:bg-muted/50">
-                                    <td className="p-2 sticky left-0 bg-background z-10 min-w-[120px]">
-                                      {editingItem === item.id ? <Input value={editingData.name || ''} onChange={e => setEditingData(prev => ({
-                                        ...prev,
-                                        name: e.target.value
-                                       }))} className="text-sm" /> : <div>
-                                         <div className="font-medium text-sm">
-                                           {item.supplierUrl ? (
-                                             <a 
-                                               href={item.supplierUrl.startsWith('http') ? item.supplierUrl : `https://${item.supplierUrl}`} 
-                                               target="_blank" 
-                                               rel="noopener noreferrer" 
-                                               className="text-blue-600 hover:text-blue-800 underline"
-                                             >
-                                               {item.name}
-                                             </a>
-                                           ) : (
-                                             item.name
+                                   return <tr key={item.id} className="border-b hover:bg-muted/50">
+                                     <td className="p-1 sticky left-0 bg-background z-10 min-w-[120px]">
+                                       {editingItem === item.id ? <Input value={editingData.name || ''} onChange={e => setEditingData(prev => ({
+                                         ...prev,
+                                         name: e.target.value
+                                        }))} className="text-sm" /> : <div>
+                                          <div className="font-medium text-sm text-white">
+                                            {item.name}
+                                          </div>
+                                         {item.notes && <div className="text-xs text-muted-foreground line-clamp-1">{item.notes}</div>}
+                                       </div>}
+                                     </td>
+                                     <td className="p-1 text-center w-16">
+                                       <div className="flex justify-center">
+                                         <Badge variant={stockStatus.color as any} className={cn("flex items-center gap-1 w-fit text-xs", stockStatus.status === 'low' && "bg-destructive hover:bg-destructive/90 text-destructive-foreground", stockStatus.status === 'good' && "bg-success hover:bg-success/90 text-success-foreground")}>
+                                           <StatusIcon className="h-3 w-3" />
+                                           {stockStatus.status}
+                                         </Badge>
+                                       </div>
+                                     </td>
+                                     <td className="p-1 text-center w-16">
+                                       <div className="flex justify-center">
+                                         {updateMode ? <Input type="number" value={item.currentStock} onChange={e => {
+                                           const newStock = Number(e.target.value);
+                                           setInventoryItems(prev => prev.map(prevItem => prevItem.id === item.id ? {
+                                             ...prevItem,
+                                             currentStock: newStock,
+                                             lastUpdated: new Date().toISOString(),
+                                             restockRequested: newStock <= prevItem.restockLevel,
+                                             requestDate: newStock <= prevItem.restockLevel ? new Date().toISOString().split('T')[0] : undefined
+                                           } : prevItem));
+                                         }} className="text-sm w-12 text-center" onFocus={e => e.target.select()} style={{
+                                           MozAppearance: 'textfield'
+                                         }} /> : <span className="text-sm">{item.currentStock}</span>}
+                                       </div>
+                                     </td>
+                                     <td className="p-1 text-center w-20">
+                                       <div className="flex justify-center">
+                                         {editingItem === item.id ? <Input type="number" value={editingData.restockLevel || ''} onChange={e => setEditingData(prev => ({
+                                           ...prev,
+                                           restockLevel: Number(e.target.value)
+                                         }))} className="text-sm w-16 text-center" /> : <span className="text-sm">{item.restockLevel}</span>}
+                                       </div>
+                                     </td>
+                                     <td className="p-1 text-center w-12">
+                                       <div className="flex justify-center">
+                                         {editingItem === item.id ? <Input value={editingData.unit || ''} onChange={e => setEditingData(prev => ({
+                                           ...prev,
+                                           unit: e.target.value
+                                         }))} className="text-sm w-10 text-center" /> : <span className="text-sm">{item.unit}</span>}
+                                       </div>
+                                     </td>
+                                     <td className="p-1 text-center w-20">
+                                       <div className="flex justify-center">
+                                         {editingItem === item.id ? <Input value={editingData.supplier || ''} onChange={e => setEditingData(prev => ({
+                                           ...prev,
+                                           supplier: e.target.value
+                                         }))} className="text-sm w-16 text-center" /> : <span className="text-sm">{item.supplier}</span>}
+                                       </div>
+                                     </td>
+                                     <td className="p-1 text-center w-20">
+                                       <div className="flex justify-center">
+                                         {item.supplierUrl ? (
+                                           <a 
+                                             href={item.supplierUrl.startsWith('http') ? item.supplierUrl : `https://${item.supplierUrl}`} 
+                                             target="_blank" 
+                                             rel="noopener noreferrer" 
+                                             className="text-xs text-cyan hover:text-cyan/80 underline"
+                                           >
+                                             Product link
+                                           </a>
+                                         ) : (
+                                           <span className="text-xs text-muted-foreground">-</span>
+                                         )}
+                                       </div>
+                                     </td>
+                                     <td className="p-1 text-center w-16">
+                                       <div className="flex justify-center">
+                                         {editingItem === item.id ? <Input type="number" step="0.01" value={editingData.cost || ''} onChange={e => setEditingData(prev => ({
+                                           ...prev,
+                                           cost: Number(e.target.value)
+                                         }))} className="text-sm w-14 text-center" /> : <span className="text-sm">${item.cost.toFixed(2)}</span>}
+                                       </div>
+                                     </td>
+                                     <td className="p-1 text-center w-12">
+                                       <div className="flex justify-center">
+                                         <Checkbox id={`request-${item.id}`} checked={item.restockRequested} onCheckedChange={checked => {
+                                           setInventoryItems(prev => prev.map(prevItem => prevItem.id === item.id ? {
+                                             ...prevItem,
+                                             restockRequested: !!checked,
+                                             requestDate: checked ? new Date().toISOString().split('T')[0] : undefined
+                                           } : prevItem));
+                                         }} />
+                                       </div>
+                                     </td>
+                                     <td className="p-1 text-center w-16">
+                                       <div className="flex justify-center">
+                                         <span className="text-xs">{formatDateShort(item.lastUpdated)}</span>
+                                       </div>
+                                     </td>
+                                     <td className="p-1 text-center w-20">
+                                       <div className="flex gap-1 justify-center">
+                                         {editingItem === item.id ? <>
+                                           <Button size="sm" variant="ghost" onClick={saveEdit} className="h-6 w-6 p-0">
+                                             <Save className="h-3 w-3" />
+                                           </Button>
+                                           <Button size="sm" variant="ghost" onClick={cancelEdit} className="h-6 w-6 p-0">
+                                             <X className="h-3 w-3" />
+                                           </Button>
+                                         </> : <>
+                                           <Button size="sm" variant="ghost" onClick={() => startEditing(item)} className="h-6 w-6 p-0">
+                                             <Edit className="h-3 w-3" />
+                                           </Button>
+                                           {/* Only show delete button for owners */}
+                                           {profile?.role === 'owner' && (
+                                             <AlertDialog>
+                                               <AlertDialogTrigger asChild>
+                                                 <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive hover:text-destructive">
+                                                   <Trash2 className="h-3 w-3" />
+                                                 </Button>
+                                               </AlertDialogTrigger>
+                                               <AlertDialogContent>
+                                                 <AlertDialogHeader>
+                                                   <AlertDialogTitle>Delete Inventory Item</AlertDialogTitle>
+                                                   <AlertDialogDescription>
+                                                     Are you sure you want to delete "{item.name}"? This action cannot be undone.
+                                                   </AlertDialogDescription>
+                                                 </AlertDialogHeader>
+                                                 <AlertDialogFooter>
+                                                   <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                   <AlertDialogAction onClick={() => deleteItem(item.id)}>Delete</AlertDialogAction>
+                                                 </AlertDialogFooter>
+                                               </AlertDialogContent>
+                                             </AlertDialog>
                                            )}
-                                         </div>
-                                        {item.notes && <div className="text-xs text-muted-foreground">{item.notes}</div>}
-                                      </div>}
-                                    </td>
-                                    <td className="p-2 text-center w-20">
-                                      <div className="flex justify-center">
-                                        <Badge variant={stockStatus.color as any} className={cn("flex items-center gap-1 w-fit text-xs", stockStatus.status === 'low' && "bg-destructive hover:bg-destructive/90 text-destructive-foreground", stockStatus.status === 'good' && "bg-success hover:bg-success/90 text-success-foreground")}>
-                                          <StatusIcon className="h-3 w-3" />
-                                          {stockStatus.status}
-                                        </Badge>
-                                      </div>
-                                    </td>
-                                    <td className="p-2 text-center w-20">
-                                      <div className="flex justify-center">
-                                        {updateMode ? <Input type="number" value={item.currentStock} onChange={e => {
-                                          const newStock = Number(e.target.value);
-                                          setInventoryItems(prev => prev.map(prevItem => prevItem.id === item.id ? {
-                                            ...prevItem,
-                                            currentStock: newStock,
-                                            lastUpdated: new Date().toISOString(),
-                                            restockRequested: newStock <= prevItem.restockLevel,
-                                            requestDate: newStock <= prevItem.restockLevel ? new Date().toISOString().split('T')[0] : undefined
-                                          } : prevItem));
-                                        }} className="text-sm w-16 text-center" onFocus={e => e.target.select()} style={{
-                                          MozAppearance: 'textfield'
-                                        }} /> : <span className="text-sm">{item.currentStock}</span>}
-                                      </div>
-                                    </td>
-                                    <td className="p-2 text-center w-24">
-                                      <div className="flex justify-center">
-                                        {editingItem === item.id ? <Input type="number" value={editingData.restockLevel || ''} onChange={e => setEditingData(prev => ({
-                                          ...prev,
-                                          restockLevel: Number(e.target.value)
-                                        }))} className="text-sm w-16 text-center" /> : <span className="text-sm">{item.restockLevel}</span>}
-                                      </div>
-                                    </td>
-                                    <td className="p-2 text-center w-16">
-                                      <div className="flex justify-center">
-                                        {editingItem === item.id ? <Input value={editingData.unit || ''} onChange={e => setEditingData(prev => ({
-                                          ...prev,
-                                          unit: e.target.value
-                                        }))} className="text-sm w-12 text-center" /> : <span className="text-sm">{item.unit}</span>}
-                                      </div>
-                                    </td>
-                                    <td className="p-2 text-center w-24">
-                                      <div className="flex justify-center">
-                                        {editingItem === item.id ? <Input value={editingData.supplier || ''} onChange={e => setEditingData(prev => ({
-                                          ...prev,
-                                          supplier: e.target.value
-                                        }))} className="text-sm w-20 text-center" /> : <div className="text-sm text-center">
-                                          <div>{item.supplier}</div>
-                                          {item.supplierUrl && <a href={item.supplierUrl.startsWith('http') ? item.supplierUrl : `https://${item.supplierUrl}`} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:text-blue-800 underline">
-                                            Visit supplier page
-                                          </a>}
-                                        </div>}
-                                      </div>
-                                    </td>
-                                    <td className="p-2 text-center w-20">
-                                      <div className="flex justify-center">
-                                        {editingItem === item.id ? <Input type="number" step="0.01" value={editingData.cost || ''} onChange={e => setEditingData(prev => ({
-                                          ...prev,
-                                          cost: Number(e.target.value)
-                                        }))} className="text-sm w-16 text-center" /> : <span className="text-sm">${item.cost.toFixed(2)}</span>}
-                                      </div>
-                                    </td>
-                                    <td className="p-2 text-center w-16">
-                                      <div className="flex justify-center">
-                                        <Checkbox id={`request-${item.id}`} checked={item.restockRequested} onCheckedChange={checked => {
-                                          setInventoryItems(prev => prev.map(prevItem => prevItem.id === item.id ? {
-                                            ...prevItem,
-                                            restockRequested: !!checked,
-                                            requestDate: checked ? new Date().toISOString().split('T')[0] : undefined
-                                          } : prevItem));
-                                        }} />
-                                      </div>
-                                    </td>
-                                    <td className="p-2 text-center w-20">
-                                      <div className="flex justify-center">
-                                        <span className="text-xs">{formatDateShort(item.lastUpdated)}</span>
-                                      </div>
-                                    </td>
-                                    <td className="p-2 text-center w-24">
-                                      <div className="flex gap-1 justify-center">
-                                        {editingItem === item.id ? <>
-                                          <Button size="sm" variant="ghost" onClick={saveEdit} className="h-8 w-8 p-0">
-                                            <Save className="h-4 w-4" />
-                                          </Button>
-                                          <Button size="sm" variant="ghost" onClick={cancelEdit} className="h-8 w-8 p-0">
-                                            <X className="h-4 w-4" />
-                                          </Button>
-                                        </> : <>
-                                          <Button size="sm" variant="ghost" onClick={() => startEditing(item)} className="h-8 w-8 p-0">
-                                            <Edit className="h-4 w-4" />
-                                          </Button>
-                                          {/* Only show delete button for owners */}
-                                          {profile?.role === 'owner' && (
-                                            <AlertDialog>
-                                              <AlertDialogTrigger asChild>
-                                                <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive hover:text-destructive">
-                                                  <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                              </AlertDialogTrigger>
-                                              <AlertDialogContent>
-                                                <AlertDialogHeader>
-                                                  <AlertDialogTitle>Delete Inventory Item</AlertDialogTitle>
-                                                  <AlertDialogDescription>
-                                                    Are you sure you want to delete "{item.name}"? This action cannot be undone.
-                                                  </AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                  <AlertDialogAction onClick={() => deleteItem(item.id)}>Delete</AlertDialogAction>
-                                                </AlertDialogFooter>
-                                              </AlertDialogContent>
-                                            </AlertDialog>
-                                          )}
-                                        </>}
-                                      </div>
-                                    </td>
+                                         </>}
+                                       </div>
+                                     </td>
                                   </tr>;
                                 })}
                               </tbody>
