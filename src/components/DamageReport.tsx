@@ -229,6 +229,10 @@ export const DamageReport = () => {
     });
   };
 
+  const markAsComplete = (id: string) => {
+    updateStatus(id, 'completed');
+  };
+
   const getUniqueCategories = () => {
     // Category field has been removed
     return [];
@@ -397,7 +401,7 @@ export const DamageReport = () => {
               {/* Top Action Bar */}
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-4">
-                  <h2 className="text-xl font-semibold text-sky-600">Current Reports</h2>
+                  <h2 className="text-xl font-semibold text-sky-600">Active Reports</h2>
                   <div className="flex gap-2">
                     <Button 
                       variant="outline" 
@@ -431,86 +435,102 @@ export const DamageReport = () => {
                         <div className="space-y-4">
                           <h4 className="font-medium text-lg">Basic Information</h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <Input
-                              placeholder="Damage title"
-                              value={newReport.title}
-                              onChange={(e) => setNewReport(prev => ({ ...prev, title: e.target.value }))}
-                            />
-                            
-                            <Select value={newReport.location} onValueChange={handleLocationSelect}>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select location" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {[...locations].sort().map(location => (
-                                  <SelectItem key={location} value={location}>{location}</SelectItem>
-                                ))}
-                                <SelectItem value="manage-locations">
-                                  <div className="flex items-center gap-2">
-                                    <MapPin className="h-4 w-4" />
-                                    Manage locations
-                                  </div>
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
-                            
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  className={cn(
-                                    "justify-start text-left font-normal",
-                                    !newReport.reportDate && "text-muted-foreground"
-                                  )}
-                                >
-                                  <CalendarIcon className="mr-2 h-4 w-4" />
-                                  {newReport.reportDate ? format(new Date(newReport.reportDate), 'PPP') : <span>Pick a date</span>}
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar
-                                  mode="single"
-                                  selected={newReport.reportDate ? new Date(newReport.reportDate) : undefined}
-                                  onSelect={(date) => {
-                                    if (date) {
-                                      setNewReport(prev => ({ ...prev, reportDate: format(date, 'yyyy-MM-dd') }));
-                                    }
-                                  }}
-                                  initialFocus
-                                  className="p-3 pointer-events-auto"
-                                />
-                              </PopoverContent>
-                            </Popover>
-                            
-                            <Select 
-                              value={newReport.severity} 
-                              onValueChange={(value: any) => setNewReport(prev => ({ ...prev, severity: value }))}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Severity" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="minor">Minor</SelectItem>
-                                <SelectItem value="moderate">Moderate</SelectItem>
-                                <SelectItem value="severe">Severe</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            
-                            
-                            <div className="relative">
-                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-cyan-600">Damage Title</label>
                               <Input
-                                type="number"
-                                step="0.01"
-                                placeholder="Estimated repair cost"
-                                value={newReport.estimatedCost || ''}
-                                onChange={(e) => setNewReport(prev => ({ ...prev, estimatedCost: Number(e.target.value) }))}
-                                className="pl-8"
+                                placeholder="Damage title"
+                                value={newReport.title}
+                                onChange={(e) => setNewReport(prev => ({ ...prev, title: e.target.value }))}
                               />
                             </div>
                             
                             <div className="space-y-2">
-                              <label className="text-sm font-medium">Responsible Party</label>
+                              <label className="text-sm font-medium text-cyan-600">Location</label>
+                              <Select value={newReport.location} onValueChange={handleLocationSelect}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select location" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {[...locations].sort().map(location => (
+                                    <SelectItem key={location} value={location}>{location}</SelectItem>
+                                  ))}
+                                  <SelectItem value="manage-locations">
+                                    <div className="flex items-center gap-2">
+                                      <MapPin className="h-4 w-4" />
+                                      Manage locations
+                                    </div>
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-cyan-600">Report Date</label>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    className={cn(
+                                      "justify-start text-left font-normal",
+                                      !newReport.reportDate && "text-muted-foreground"
+                                    )}
+                                  >
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {newReport.reportDate ? format(new Date(newReport.reportDate), 'PPP') : <span>Pick a date</span>}
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                  <Calendar
+                                    mode="single"
+                                    selected={newReport.reportDate ? new Date(newReport.reportDate + 'T12:00:00') : undefined}
+                                    onSelect={(date) => {
+                                      if (date) {
+                                        // Use local date to avoid timezone issues
+                                        const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                                        setNewReport(prev => ({ ...prev, reportDate: format(localDate, 'yyyy-MM-dd') }));
+                                      }
+                                    }}
+                                    initialFocus
+                                    className="p-3 pointer-events-auto"
+                                  />
+                                </PopoverContent>
+                              </Popover>
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-cyan-600">Severity</label>
+                              <Select 
+                                value={newReport.severity} 
+                                onValueChange={(value: any) => setNewReport(prev => ({ ...prev, severity: value }))}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Severity" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="minor">Minor</SelectItem>
+                                  <SelectItem value="moderate">Moderate</SelectItem>
+                                  <SelectItem value="severe">Severe</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-cyan-600">Estimated Cost</label>
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="Estimated repair cost"
+                                  value={newReport.estimatedCost || ''}
+                                  onChange={(e) => setNewReport(prev => ({ ...prev, estimatedCost: Number(e.target.value) }))}
+                                  className="pl-8"
+                                />
+                              </div>
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-cyan-600">Responsible Party</label>
                               <Select 
                                 value={newReport.responsibleParty} 
                                 onValueChange={(value: any) => setNewReport(prev => ({ ...prev, responsibleParty: value }))}
@@ -531,7 +551,7 @@ export const DamageReport = () => {
 
                         {/* Description Section */}
                         <div className="space-y-3">
-                          <h4 className="font-medium text-lg">Detailed Description</h4>
+                          <h4 className="font-medium text-lg text-cyan-600">Detailed Description</h4>
                           <Textarea
                             placeholder="Detailed description of the damage..."
                             value={newReport.description}
@@ -542,7 +562,7 @@ export const DamageReport = () => {
 
                         {/* Photo Upload Section */}
                         <div className="space-y-3">
-                          <h4 className="font-medium text-lg">Photos</h4>
+                          <h4 className="font-medium text-lg text-cyan-600">Photos</h4>
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                             {[0, 1, 2, 3].map((index) => (
                               <div 
@@ -594,7 +614,7 @@ export const DamageReport = () => {
 
                         {/* Notes Section */}
                         <div className="space-y-3">
-                          <h4 className="font-medium text-lg">Additional Notes</h4>
+                          <h4 className="font-medium text-lg text-cyan-600">Additional Notes</h4>
                           <Textarea
                             placeholder="Additional notes (optional)"
                             value={newReport.notes}
@@ -605,6 +625,7 @@ export const DamageReport = () => {
 
                         <div className="flex gap-2">
                           <Button onClick={addNewReport}>Create Report</Button>
+                          <Button variant="outline" onClick={() => setShowAddForm(false)}>Active Reports</Button>
                           <Button variant="outline" onClick={() => setShowAddForm(false)}>Cancel</Button>
                         </div>
                       </CardContent>
@@ -678,35 +699,40 @@ export const DamageReport = () => {
                                          </Badge>
                                         </div>
                                      </div>
-                                     {/* Only show edit/delete buttons for owners */}
-                                     {profile?.role === 'owner' && (
-                                       <div className="flex gap-2">
-                                         <Button variant="outline" size="sm" onClick={() => startEditing(report)}>
-                                           <Edit className="h-4 w-4" />
-                                         </Button>
-                                          <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                              <Button variant="outline" size="sm">
-                                                <Trash2 className="h-4 w-4" />
-                                              </Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                              <AlertDialogHeader>
-                                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                <AlertDialogDescription>
-                                                  This action cannot be undone. This will permanently delete the damage report "{report.title}".
-                                                </AlertDialogDescription>
-                                              </AlertDialogHeader>
-                                              <AlertDialogFooter>
-                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                <AlertDialogAction onClick={() => deleteReport(report.id)}>
-                                                  Delete
-                                                </AlertDialogAction>
-                                              </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                          </AlertDialog>
-                                       </div>
-                                     )}
+                                      {/* Action buttons */}
+                                      <div className="flex gap-2">
+                                        <Button variant="outline" size="sm" onClick={() => markAsComplete(report.id)}>
+                                          Mark Complete
+                                        </Button>
+                                        {profile?.role === 'owner' && (
+                                          <>
+                                            <Button variant="outline" size="sm" onClick={() => startEditing(report)}>
+                                              <Edit className="h-4 w-4" />
+                                            </Button>
+                                             <AlertDialog>
+                                               <AlertDialogTrigger asChild>
+                                                 <Button variant="outline" size="sm">
+                                                   <Trash2 className="h-4 w-4" />
+                                                 </Button>
+                                               </AlertDialogTrigger>
+                                               <AlertDialogContent>
+                                                 <AlertDialogHeader>
+                                                   <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                   <AlertDialogDescription>
+                                                     This action cannot be undone. This will permanently delete the damage report "{report.title}".
+                                                   </AlertDialogDescription>
+                                                 </AlertDialogHeader>
+                                                 <AlertDialogFooter>
+                                                   <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                   <AlertDialogAction onClick={() => deleteReport(report.id)}>
+                                                     Delete
+                                                   </AlertDialogAction>
+                                                 </AlertDialogFooter>
+                                               </AlertDialogContent>
+                                             </AlertDialog>
+                                          </>
+                                        )}
+                                      </div>
                                    </div>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                                   <div>
