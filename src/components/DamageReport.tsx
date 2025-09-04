@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Plus, Edit, Save, X, Trash2, AlertTriangle, Camera, FileText, CalendarIcon, DollarSign, Home, ClipboardList, Package, Settings, History, Upload, MapPin } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -23,14 +24,13 @@ interface DamageItem {
   description: string;
   location: string;
   severity: 'minor' | 'moderate' | 'severe';
-  category: string;
   reportedDate: string;
   reportDate: string;
   estimatedCost: number;
   status: 'reported' | 'assessed' | 'approved' | 'in-repair' | 'completed';
   photos: File[];
   notes: string;
-  responsibleParty: 'guest' | 'owner' | 'other';
+  responsibleParty: 'guest' | 'owner' | 'other' | 'no-fault';
   repairDate?: string;
 }
 
@@ -58,7 +58,6 @@ export const DamageReport = () => {
       description: 'Large crack in bathroom floor tile near shower',
       location: 'Main bathroom',
       severity: 'moderate',
-      category: 'Flooring',
       reportedDate: new Date().toISOString(),
       reportDate: new Date().toISOString().split('T')[0],
       estimatedCost: 150,
@@ -72,14 +71,13 @@ export const DamageReport = () => {
   const [locations, setLocations] = useState<string[]>([
     'Living Room', 'Kitchen', 'Main Bathroom', 'Guest Bathroom', 
     'Master Bedroom', 'Guest Bedroom', 'Exterior', 'Hallway', 'Dining Room'
-  ]);
+  ].sort());
 
   const [newReport, setNewReport] = useState({
     title: '',
     description: '',
     location: '',
     severity: 'minor' as const,
-    category: '',
     estimatedCost: 0,
     notes: '',
     responsibleParty: 'guest' as const,
@@ -157,7 +155,6 @@ export const DamageReport = () => {
       description: '',
       location: '',
       severity: 'minor',
-      category: '',
       estimatedCost: 0,
       notes: '',
       responsibleParty: 'guest',
@@ -233,8 +230,8 @@ export const DamageReport = () => {
   };
 
   const getUniqueCategories = () => {
-    const categories = damageReports.map(report => report.category).filter(Boolean);
-    return Array.from(new Set(categories));
+    // Category field has been removed
+    return [];
   };
 
   const getHistoryData = () => {
@@ -364,18 +361,31 @@ export const DamageReport = () => {
                     <div><strong>Location:</strong> {selectedHistoryReport.location}</div>
                     <div><strong>Severity:</strong> {selectedHistoryReport.severity}</div>
                     <div><strong>Status:</strong> {selectedHistoryReport.status}</div>
-                    <div><strong>Responsible Party:</strong> {selectedHistoryReport.responsibleParty}</div>
+                                     <div><strong>Responsible Party:</strong> {selectedHistoryReport.responsibleParty === 'no-fault' ? 'No Fault' :
+                                       selectedHistoryReport.responsibleParty.charAt(0).toUpperCase() + selectedHistoryReport.responsibleParty.slice(1)}
+                                     </div>
                     <div><strong>Report Date:</strong> {format(new Date(selectedHistoryReport.reportDate), 'PPP')}</div>
                     <div><strong>Est. Cost:</strong> ${selectedHistoryReport.estimatedCost}</div>
                   </div>
                   {selectedHistoryReport.notes && (
                     <div><strong>Notes:</strong> {selectedHistoryReport.notes}</div>
                   )}
-                  {selectedHistoryReport.photos.length > 0 && (
-                    <div>
-                      <strong>Photos:</strong> {selectedHistoryReport.photos.length} photo(s) attached
-                    </div>
-                  )}
+                                   {selectedHistoryReport.photos.length > 0 && (
+                                     <div className="space-y-2">
+                                       <strong>Photos ({selectedHistoryReport.photos.length}):</strong>
+                                       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                         {selectedHistoryReport.photos.map((photo, index) => (
+                                           <div key={index} className="aspect-[4/3] border rounded-lg overflow-hidden">
+                                             <img 
+                                               src={URL.createObjectURL(photo)} 
+                                               alt={`Damage photo ${index + 1}`}
+                                               className="w-full h-full object-cover" 
+                                             />
+                                           </div>
+                                         ))}
+                                       </div>
+                                     </div>
+                                   )}
                 </CardContent>
               </Card>
             </div>
@@ -396,14 +406,6 @@ export const DamageReport = () => {
                     >
                       <History className="h-4 w-4" />
                       Damage Report History
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      onClick={() => {/* Analytics logic */}}
-                      className="flex items-center gap-2"
-                    >
-                      <DollarSign className="h-4 w-4" />
-                      $ Cost Analytics
                     </Button>
                   </div>
                 </div>
@@ -440,7 +442,7 @@ export const DamageReport = () => {
                                 <SelectValue placeholder="Select location" />
                               </SelectTrigger>
                               <SelectContent>
-                                {locations.map(location => (
+                                {[...locations].sort().map(location => (
                                   <SelectItem key={location} value={location}>{location}</SelectItem>
                                 ))}
                                 <SelectItem value="manage-locations">
@@ -452,11 +454,33 @@ export const DamageReport = () => {
                               </SelectContent>
                             </Select>
                             
-                            <Input
-                              type="date"
-                              value={newReport.reportDate}
-                              onChange={(e) => setNewReport(prev => ({ ...prev, reportDate: e.target.value }))}
-                            />
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  className={cn(
+                                    "justify-start text-left font-normal",
+                                    !newReport.reportDate && "text-muted-foreground"
+                                  )}
+                                >
+                                  <CalendarIcon className="mr-2 h-4 w-4" />
+                                  {newReport.reportDate ? format(new Date(newReport.reportDate), 'PPP') : <span>Pick a date</span>}
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                  mode="single"
+                                  selected={newReport.reportDate ? new Date(newReport.reportDate) : undefined}
+                                  onSelect={(date) => {
+                                    if (date) {
+                                      setNewReport(prev => ({ ...prev, reportDate: format(date, 'yyyy-MM-dd') }));
+                                    }
+                                  }}
+                                  initialFocus
+                                  className="p-3 pointer-events-auto"
+                                />
+                              </PopoverContent>
+                            </Popover>
                             
                             <Select 
                               value={newReport.severity} 
@@ -472,11 +496,6 @@ export const DamageReport = () => {
                               </SelectContent>
                             </Select>
                             
-                            <Input
-                              placeholder="Category (e.g., Plumbing, Electrical)"
-                              value={newReport.category}
-                              onChange={(e) => setNewReport(prev => ({ ...prev, category: e.target.value }))}
-                            />
                             
                             <div className="relative">
                               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
@@ -490,19 +509,23 @@ export const DamageReport = () => {
                               />
                             </div>
                             
-                            <Select 
-                              value={newReport.responsibleParty} 
-                              onValueChange={(value: any) => setNewReport(prev => ({ ...prev, responsibleParty: value }))}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Responsible party" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="guest">Guest</SelectItem>
-                                <SelectItem value="owner">Owner</SelectItem>
-                                <SelectItem value="other">Other</SelectItem>
-                              </SelectContent>
-                            </Select>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Responsible Party</label>
+                              <Select 
+                                value={newReport.responsibleParty} 
+                                onValueChange={(value: any) => setNewReport(prev => ({ ...prev, responsibleParty: value }))}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select responsible party" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="guest">Guest</SelectItem>
+                                  <SelectItem value="owner">Owner</SelectItem>
+                                  <SelectItem value="other">Other</SelectItem>
+                                  <SelectItem value="no-fault">No Fault</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
                           </div>
                         </div>
 
@@ -653,8 +676,7 @@ export const DamageReport = () => {
                                          <Badge variant={statusColors[report.status] as any}>
                                            {report.status}
                                          </Badge>
-                                         {report.category && <Badge variant="secondary">{report.category}</Badge>}
-                                       </div>
+                                        </div>
                                      </div>
                                      {/* Only show edit/delete buttons for owners */}
                                      {profile?.role === 'owner' && (
@@ -662,9 +684,27 @@ export const DamageReport = () => {
                                          <Button variant="outline" size="sm" onClick={() => startEditing(report)}>
                                            <Edit className="h-4 w-4" />
                                          </Button>
-                                         <Button variant="outline" size="sm" onClick={() => deleteReport(report.id)}>
-                                           <Trash2 className="h-4 w-4" />
-                                         </Button>
+                                          <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                              <Button variant="outline" size="sm">
+                                                <Trash2 className="h-4 w-4" />
+                                              </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                              <AlertDialogHeader>
+                                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                  This action cannot be undone. This will permanently delete the damage report "{report.title}".
+                                                </AlertDialogDescription>
+                                              </AlertDialogHeader>
+                                              <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => deleteReport(report.id)}>
+                                                  Delete
+                                                </AlertDialogAction>
+                                              </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                          </AlertDialog>
                                        </div>
                                      )}
                                    </div>
@@ -675,9 +715,10 @@ export const DamageReport = () => {
                                   <div>
                                     <span className="font-medium">Est. Cost:</span> ${report.estimatedCost.toFixed(2)}
                                   </div>
-                                  <div>
-                                    <span className="font-medium">Responsible Party:</span> {report.responsibleParty}
-                                  </div>
+                                   <div>
+                                     <span className="font-medium">Responsible Party:</span> {report.responsibleParty === 'no-fault' ? 'No Fault' : 
+                                       report.responsibleParty.charAt(0).toUpperCase() + report.responsibleParty.slice(1)}
+                                   </div>
                                   <div>
                                     <span className="font-medium">Report Date:</span> {format(new Date(report.reportDate), 'PPP')}
                                   </div>
