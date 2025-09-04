@@ -326,16 +326,18 @@ export const DamageReport = () => {
                   Back to Reports
                 </Button>
               </div>
-              <DamageReportHistory
-                reports={getHistoryData()}
-                onViewReport={(report) => {
-                  const originalReport = damageReports.find(r => r.id === report.id);
-                  if (originalReport) {
-                    setSelectedHistoryReport(originalReport);
-                    setShowHistory(false);
-                  }
-                }}
-              />
+               <DamageReportHistory
+                 reports={getHistoryData()}
+                 onViewReport={(report) => {
+                   const originalReport = damageReports.find(r => r.id === report.id);
+                   if (originalReport) {
+                     // Set up editing mode with the selected report
+                     setEditingReport(originalReport.id);
+                     setEditingData({ ...originalReport });
+                     setShowHistory(false);
+                   }
+                 }}
+               />
             </div>
           )}
 
@@ -368,7 +370,7 @@ export const DamageReport = () => {
                                      <div><strong>Responsible Party:</strong> {selectedHistoryReport.responsibleParty === 'no-fault' ? 'No Fault' :
                                        selectedHistoryReport.responsibleParty.charAt(0).toUpperCase() + selectedHistoryReport.responsibleParty.slice(1)}
                                      </div>
-                    <div><strong>Report Date:</strong> {format(new Date(selectedHistoryReport.reportDate), 'PPP')}</div>
+                    <div><strong>Report Date:</strong> {format(new Date(selectedHistoryReport.reportDate + 'T12:00:00'), 'PPP')}</div>
                     <div><strong>Est. Cost:</strong> ${selectedHistoryReport.estimatedCost}</div>
                   </div>
                   {selectedHistoryReport.notes && (
@@ -467,18 +469,18 @@ export const DamageReport = () => {
                             <div className="space-y-2">
                               <label className="text-sm font-medium text-cyan-600">Report Date</label>
                               <Popover>
-                                <PopoverTrigger asChild>
-                                  <Button
-                                    variant="outline"
-                                    className={cn(
-                                      "justify-start text-left font-normal",
-                                      !newReport.reportDate && "text-muted-foreground"
-                                    )}
-                                  >
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {newReport.reportDate ? format(new Date(newReport.reportDate), 'PPP') : <span>Pick a date</span>}
-                                  </Button>
-                                </PopoverTrigger>
+                                 <PopoverTrigger asChild>
+                                   <Button
+                                     variant="outline"
+                                     className={cn(
+                                       "justify-start text-left font-normal",
+                                       !newReport.reportDate && "text-muted-foreground"
+                                     )}
+                                   >
+                                     <CalendarIcon className="mr-2 h-4 w-4" />
+                                     {newReport.reportDate ? format(new Date(newReport.reportDate + 'T12:00:00'), 'PPP') : <span>Pick a date</span>}
+                                   </Button>
+                                 </PopoverTrigger>
                                 <PopoverContent className="w-auto p-0" align="start">
                                   <Calendar
                                     mode="single"
@@ -735,19 +737,19 @@ export const DamageReport = () => {
                                       </div>
                                    </div>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                                  <div>
-                                    <span className="font-medium">Reported:</span> {format(new Date(report.reportedDate), 'PPP')}
-                                  </div>
-                                  <div>
-                                    <span className="font-medium">Est. Cost:</span> ${report.estimatedCost.toFixed(2)}
-                                  </div>
                                    <div>
-                                     <span className="font-medium">Responsible Party:</span> {report.responsibleParty === 'no-fault' ? 'No Fault' : 
-                                       report.responsibleParty.charAt(0).toUpperCase() + report.responsibleParty.slice(1)}
+                                     <span className="font-medium">Reported:</span> {format(new Date(report.reportedDate), 'PPP')}
                                    </div>
-                                  <div>
-                                    <span className="font-medium">Report Date:</span> {format(new Date(report.reportDate), 'PPP')}
-                                  </div>
+                                   <div>
+                                     <span className="font-medium">Est. Cost:</span> ${report.estimatedCost.toFixed(2)}
+                                   </div>
+                                    <div>
+                                      <span className="font-medium">Responsible Party:</span> {report.responsibleParty === 'no-fault' ? 'No Fault' : 
+                                        report.responsibleParty.charAt(0).toUpperCase() + report.responsibleParty.slice(1)}
+                                    </div>
+                                   <div>
+                                     <span className="font-medium">Report Date:</span> {format(new Date(report.reportDate + 'T12:00:00'), 'PPP')}
+                                   </div>
                                 </div>
                                 {report.notes && (
                                   <div className="pt-2 border-t">
