@@ -18,6 +18,7 @@ import { EmailNotificationSettings } from './EmailNotificationSettings';
 import { InventoryEditForm } from './InventoryEditForm';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 interface InventoryItem {
   id: string;
   name: string;
@@ -562,7 +563,7 @@ export const InventorySection = () => {
     // The EmailNotificationSettings component already handles localStorage saving
     // This callback can be used for additional logic if needed in the future
   };
-  const sendRestockRequests = () => {
+  const sendRestockRequests = async () => {
     const itemsNeedingRestock = inventoryItems.filter(item => item.restockRequested);
     if (itemsNeedingRestock.length === 0) {
       toast({
@@ -577,27 +578,14 @@ export const InventorySection = () => {
     const savedEmails = localStorage.getItem('inventory-email-notifications');
     const emailList = savedEmails ? JSON.parse(savedEmails).emails : [];
 
-    // Create email content
-    const emailSubject = `Inventory Restock Request - ${itemsNeedingRestock.length} Item${itemsNeedingRestock.length > 1 ? 's' : ''} Need Restocking`;
-    const emailBody = `Dear Supplier,
-
-We need to restock the following inventory items:
-
-${itemsNeedingRestock.map(item => `• ${item.name} (${item.category})
-  Current Stock: ${item.currentStock} ${item.unit}
-  Restock Level: ${item.restockLevel} ${item.unit}
-  Supplier: ${item.supplier}
-  Cost per Unit: $${item.cost.toFixed(2)}${item.supplierUrl ? `
-  Product URL: ${item.supplierUrl.startsWith('http') ? item.supplierUrl : `https://${item.supplierUrl}`}` : ''}`).join('\n\n')}
-
-Please process these restock orders at your earliest convenience.
-
-Thank you,
-Inventory Management Team`;
-
-    // Create mailto URL
-    const emailRecipients = emailList.join(',');
-    const mailtoUrl = `mailto:${emailRecipients}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+    if (emailList.length === 0) {
+      toast({
+        title: "No email addresses configured",
+        description: "Please configure email addresses in Email Notifications tab before sending requests.",
+        variant: "destructive"
+      });
+      return;
+    }
 
     // Create restock requests for items that need them, but check for duplicates first
     const today = formatDateShort(new Date().toISOString());
@@ -614,21 +602,44 @@ Inventory Management Team`;
       reason: `Stock level (${item.currentStock}) below restock level (${item.restockLevel})`,
       status: 'pending' as const
     }));
+
     if (newRequests.length > 0) {
       setRestockRequests(prev => [...prev, ...newRequests]);
     }
 
-    // Open email client
-    if (emailList.length > 0) {
-      window.open(mailtoUrl, '_blank');
+    try {
+      // Show loading toast
       toast({
-        title: "Email prepared",
-        description: `Email with ${itemsNeedingRestock.length} restock request(s) prepared. ${newRequests.length} new requests added to table.`
+        title: "Sending email...",
+        description: "Preparing and sending restock request email.",
       });
-    } else {
+
+      // Call the edge function to send email
+      const { data, error } = await supabase.functions.invoke('send-inventory-emails', {
+        body: {
+          items: itemsNeedingRestock,
+          recipients: emailList
+        }
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to send email');
+      }
+
+      if (data && data.success) {
+        toast({
+          title: "✅ Email sent successfully!",
+          description: `Professional restock request sent to ${data.recipients} recipient${data.recipients > 1 ? 's' : ''} for ${data.itemCount} item${data.itemCount > 1 ? 's' : ''}. ${newRequests.length} new requests added to table.`,
+        });
+      } else {
+        throw new Error(data?.error || data?.details || 'Failed to send email');
+      }
+
+    } catch (error: any) {
+      console.error('Error sending restock email:', error);
       toast({
-        title: "No email addresses configured",
-        description: `${newRequests.length} new restock request(s) added to table. Please configure email addresses in Email Notifications tab.`,
+        title: "❌ Email sending failed",
+        description: `Failed to send restock request: ${error.message}. ${newRequests.length} requests were still added to the table.`,
         variant: "destructive"
       });
     }
