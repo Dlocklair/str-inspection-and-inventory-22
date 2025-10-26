@@ -211,16 +211,27 @@ export const InventoryEditForm = ({
           {/* Cost per Package - Seventh field */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-cyan">Cost per Package</label>
-            <Input type="text" placeholder="Price per package ($)" value={editingData.costPerPackage ? editingData.costPerPackage.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''} className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" onFocus={e => e.target.select()} onChange={e => {
-            const numericValue = e.target.value.replace(/[^0-9.]/g, '');
-            const costPerPkg = Number(numericValue);
-            const costPerUnit = costPerPkg / (editingData.unitsPerPackage || 1);
-            setEditingData(prev => ({
-              ...prev,
-              costPerPackage: costPerPkg,
-              cost: costPerUnit
-            }));
-          }} />
+            <Input 
+              type="text" 
+              placeholder="Price per package ($)" 
+              value={editingData.costPerPackage ? editingData.costPerPackage.toLocaleString('en-US', { 
+                minimumFractionDigits: 2, 
+                maximumFractionDigits: 2,
+                useGrouping: true 
+              }) : ''} 
+              className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+              onFocus={e => e.target.select()} 
+              onChange={e => {
+                const numericValue = e.target.value.replace(/[^0-9.]/g, '');
+                const costPerPkg = parseFloat(numericValue) || 0;
+                const costPerUnit = costPerPkg / (editingData.unitsPerPackage || 1);
+                setEditingData(prev => ({
+                  ...prev,
+                  costPerPackage: costPerPkg,
+                  cost: costPerUnit
+                }));
+              }} 
+            />
           </div>
           
           {/* Cost per unit - CALCULATED - Eighth field */}
