@@ -801,16 +801,15 @@ export const InventorySection = () => {
                            value={newItem.costPerPackage ? newItem.costPerPackage.toLocaleString('en-US', { 
                              minimumFractionDigits: 2, 
                              maximumFractionDigits: 2,
-                             minimumIntegerDigits: 1,
                              useGrouping: true 
                            }) : ''} 
-                           maxLength={8}
-                           className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                           maxLength={9}
+                           className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none min-w-[120px]" 
                            onFocus={e => e.target.select()} 
                            onChange={e => {
                              const numericValue = e.target.value.replace(/[^0-9.]/g, '');
                              const costPerPkg = parseFloat(numericValue) || 0;
-                             // Limit to 9999.99
+                             // Limit to 9999.99 (4 digits + 2 decimals)
                              if (costPerPkg > 9999.99) return;
                              const costPerUnit = costPerPkg / (newItem.unitsPerPackage || 1);
                              setNewItem(prev => ({
