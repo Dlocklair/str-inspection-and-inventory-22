@@ -213,17 +213,21 @@ export const InventoryEditForm = ({
             <label className="text-sm font-medium text-cyan">Cost per Package</label>
             <Input 
               type="text" 
-              placeholder="Price per package ($)" 
+              placeholder="e.g., 1,234.56" 
               value={editingData.costPerPackage ? editingData.costPerPackage.toLocaleString('en-US', { 
                 minimumFractionDigits: 2, 
                 maximumFractionDigits: 2,
+                minimumIntegerDigits: 1,
                 useGrouping: true 
               }) : ''} 
+              maxLength={8}
               className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
               onFocus={e => e.target.select()} 
               onChange={e => {
                 const numericValue = e.target.value.replace(/[^0-9.]/g, '');
                 const costPerPkg = parseFloat(numericValue) || 0;
+                // Limit to 9999.99
+                if (costPerPkg > 9999.99) return;
                 const costPerUnit = costPerPkg / (editingData.unitsPerPackage || 1);
                 setEditingData(prev => ({
                   ...prev,
