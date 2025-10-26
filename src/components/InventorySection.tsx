@@ -327,11 +327,13 @@ export const InventorySection = () => {
     unit: '',
     supplier: '',
     supplierUrl: '',
+    unitsPerPackage: 1,
+    costPerPackage: 0,
     cost: 0,
     notes: '',
     asin: '',
     amazon_image_url: '',
-    amazon_title: ''
+    image_url: ''
   });
   const [editingItem, setEditingItem] = useState<string | null>(null);
   const [editingData, setEditingData] = useState<Partial<InventoryItem>>({});
@@ -400,20 +402,22 @@ export const InventorySection = () => {
       requestDate: newItem.currentStock <= newItem.restockLevel ? new Date().toISOString().split('T')[0] : undefined
     };
     setInventoryItems(prev => [...prev, item]);
-    setNewItem({
-      name: '',
-      category: '',
-      currentStock: 0,
-      restockLevel: 0,
-      unit: '',
-      supplier: '',
-      supplierUrl: '',
-      cost: 0,
-      notes: '',
-      asin: '',
-      amazon_image_url: '',
-      amazon_title: ''
-    });
+      setNewItem({
+        name: '',
+        category: '',
+        currentStock: 0,
+        restockLevel: 0,
+        unit: '',
+        supplier: '',
+        supplierUrl: '',
+        unitsPerPackage: 1,
+        costPerPackage: 0,
+        cost: 0,
+        notes: '',
+        asin: '',
+        amazon_image_url: '',
+        image_url: ''
+      });
     setShowNewCategoryInput(false);
     setNewCategory('');
     if (closeForm) {
@@ -856,46 +860,25 @@ export const InventorySection = () => {
                 Paste image URL or copy/paste an image directly
               </p>
             </div>
+          </div>
 
-                        {/* Amazon Title */}
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-blue-600">Amazon Title</label>
-                          <Input
-                            placeholder="Product title from Amazon"
-                            value={newItem.amazon_title ?? ''}
-                            onChange={(e) => setNewItem(prev => ({
-                              ...prev,
-                              amazon_title: e.target.value
-                            }))}
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            Copy product title from Amazon for reference
-                          </p>
-                        </div>
-                      </div>
-
-          {/* Image Preview - 100x100px */}
+          {/* Amazon Image Preview - 100x100px */}
           {newItem.amazon_image_url && (
             <div className="mt-4">
-              <label className="text-sm font-medium text-blue-600 block mb-2">Image Preview</label>
-              <div className="flex items-start gap-4">
-                <img
-                  src={newItem.amazon_image_url}
-                  alt={newItem.amazon_title || newItem.name || 'Product image'}
-                  className="w-[100px] h-[100px] rounded-md border object-contain"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                    toast({
-                      title: "Image load failed",
-                      description: "The image URL may be invalid or inaccessible.",
-                      variant: "destructive"
-                    });
-                  }}
-                />
-                {newItem.amazon_title && (
-                  <p className="text-sm text-muted-foreground flex-1">{newItem.amazon_title}</p>
-                )}
-              </div>
+              <label className="text-sm font-medium text-blue-600 block mb-2">Amazon Image Preview</label>
+              <img
+                src={newItem.amazon_image_url}
+                alt={newItem.name || 'Product image'}
+                className="w-[100px] h-[100px] rounded-md border object-contain"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  toast({
+                    title: "Image load failed",
+                    description: "The image URL may be invalid or inaccessible.",
+                    variant: "destructive"
+                  });
+                }}
+              />
             </div>
           )}
                     </div>

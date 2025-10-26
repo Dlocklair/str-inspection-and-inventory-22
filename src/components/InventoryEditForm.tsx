@@ -17,6 +17,8 @@ interface InventoryItem {
   unit: string;
   supplier: string;
   supplierUrl?: string;
+  unitsPerPackage?: number;
+  costPerPackage?: number;
   cost: number;
   notes: string;
   lastUpdated: string;
@@ -24,7 +26,7 @@ interface InventoryItem {
   requestDate?: string;
   asin?: string | null;
   amazon_image_url?: string | null;
-  amazon_title?: string | null;
+  image_url?: string | null;
 }
 interface InventoryEditFormProps {
   item: InventoryItem;
@@ -192,18 +194,43 @@ export const InventoryEditForm = ({
           }} />
           </div>
           
-          {/* Cost per unit - Sixth field */}
+          {/* Units per Package - Sixth field */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-cyan">Cost per Unit</label>
-            <Input type="number" step="0.01" placeholder="Price per individual unit ($)" value={editingData.cost ? editingData.cost.toFixed(2) : ''} onChange={e => setEditingData(prev => ({
-            ...prev,
-            cost: Number(e.target.value)
-          }))} />
+            <label className="text-sm font-medium text-cyan">Units per Package</label>
+            <Input type="number" min="1" placeholder="Number of units in each package" value={editingData.unitsPerPackage || ''} onChange={e => {
+            const unitsPerPkg = Number(e.target.value) || 1;
+            const costPerUnit = (editingData.costPerPackage || 0) / unitsPerPkg;
+            setEditingData(prev => ({
+              ...prev,
+              unitsPerPackage: unitsPerPkg,
+              cost: costPerUnit
+            }));
+          }} />
+          </div>
+
+          {/* Cost per Package - Seventh field */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-cyan">Cost per Package</label>
+            <Input type="number" step="0.01" placeholder="Price per package ($)" value={editingData.costPerPackage ? editingData.costPerPackage.toFixed(2) : ''} onChange={e => {
+            const costPerPkg = Number(e.target.value);
+            const costPerUnit = costPerPkg / (editingData.unitsPerPackage || 1);
+            setEditingData(prev => ({
+              ...prev,
+              costPerPackage: costPerPkg,
+              cost: costPerUnit
+            }));
+          }} />
           </div>
           
-          {/* Restock level - Seventh field */}
+          {/* Cost per unit - CALCULATED - Eighth field */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-cyan">Restock Level</label>
+            <label className="text-sm font-medium text-cyan">Cost per Unit (Calculated)</label>
+            <Input type="text" readOnly value={editingData.cost ? `$${editingData.cost.toFixed(2)}` : '$0.00'} className="bg-muted" />
+          </div>
+          
+          {/* Restock level - Ninth field */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-cyan">Restock Level (Units)</label>
             <Input type="number" placeholder="Minimum quantity before reordering" value={editingData.restockLevel || ''} onChange={e => setEditingData(prev => ({
             ...prev,
             restockLevel: Number(e.target.value)
@@ -231,6 +258,52 @@ export const InventoryEditForm = ({
         }} />
           </div>}
         
+        {/* Product Image Section */}
+        <div className="mt-6">
+          <h4 className="text-sm font-semibold text-cyan mb-3">Product Image (Optional)</h4>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-cyan">Image URL</label>
+            <Input placeholder="Paste image URL or copy/paste an image directly" value={editingData.image_url ?? ''} onChange={e => setEditingData(prev => ({
+            ...prev,
+            image_url: e.target.value
+          }))} onPaste={e => {
+            const items = e.clipboardData.items;
+            for (let i = 0; i < items.length; i++) {
+              if (items[i].type.indexOf('image') !== -1) {
+                const blob = items[i].getAsFile();
+                if (blob) {
+                  const reader = new FileReader();
+                  reader.onload = event => {
+                    setEditingData(prev => ({
+                      ...prev,
+                      image_url: event.target?.result as string
+                    }));
+                  };
+                  reader.readAsDataURL(blob);
+                  e.preventDefault();
+                }
+              }
+            }
+          }} />
+            <p className="text-xs text-muted-foreground">
+              Paste image URL or copy/paste an image directly
+            </p>
+          </div>
+
+          {/* Image Preview - 120x120px */}
+          {editingData.image_url && <div className="mt-4">
+              <label className="text-sm font-medium text-cyan block mb-2">Image Preview</label>
+              <img src={editingData.image_url} alt={editingData.name || 'Product image'} className="w-[120px] h-[120px] rounded-md border object-contain" onError={e => {
+            e.currentTarget.style.display = 'none';
+            toast({
+              title: "Image load failed",
+              description: "The image URL may be invalid or inaccessible.",
+              variant: "destructive"
+            });
+          }} />
+            </div>}
+        </div>
+
         {/* Amazon Section */}
         <div className="grid gap-4 md:grid-cols-2 mt-6">
           <div className="space-y-2">
@@ -272,24 +345,13 @@ export const InventoryEditForm = ({
               Paste image URL or copy/paste an image directly
             </p>
           </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-cyan">Amazon Title (optional)</label>
-            <Input placeholder="Product title from Amazon" value={editingData.amazon_title ?? ''} onChange={e => setEditingData(prev => ({
-            ...prev,
-            amazon_title: e.target.value
-          }))} />
-            <p className="text-xs text-muted-foreground">
-              Copy product title from Amazon for reference
-            </p>
-          </div>
         </div>
 
-        {/* Image Preview */}
+        {/* Amazon Image Preview */}
         {editingData.amazon_image_url && <div className="mt-4">
-            <label className="text-sm font-medium text-cyan">Image Preview</label>
-            <div className="mt-2 flex items-start gap-4">
-              <img src={editingData.amazon_image_url} alt={editingData.amazon_title || editingData.name || 'Product image'} className="w-[100px] h-[100px] rounded-md border object-contain" onError={e => {
+            <label className="text-sm font-medium text-cyan">Amazon Image Preview</label>
+            <div className="mt-2">
+              <img src={editingData.amazon_image_url} alt={editingData.name || 'Product image'} className="w-[100px] h-[100px] rounded-md border object-contain" onError={e => {
             e.currentTarget.style.display = 'none';
             toast({
               title: "Image load failed",
@@ -297,7 +359,6 @@ export const InventoryEditForm = ({
               variant: "destructive"
             });
           }} />
-              {editingData.amazon_title && <p className="text-sm text-muted-foreground flex-1">{editingData.amazon_title}</p>}
             </div>
           </div>}
 
