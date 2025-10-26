@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Save, X, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { extractAsin } from '@/lib/amazon';
 
 interface InventoryItem {
   id: string;
@@ -22,6 +23,9 @@ interface InventoryItem {
   lastUpdated: string;
   restockRequested: boolean;
   requestDate?: string;
+  asin?: string | null;
+  amazon_image_url?: string | null;
+  amazon_title?: string | null;
 }
 
 interface InventoryEditFormProps {
@@ -248,6 +252,87 @@ export const InventoryEditForm = ({ item, onSave, onCancel, categories }: Invent
           </div>
         )}
         
+        {/* Amazon Section */}
+        <div className="grid gap-4 md:grid-cols-2 mt-6">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-cyan">Amazon Link (optional)</label>
+            <Input
+              placeholder="https://www.amazon.com/dp/XXXXXXXXXX"
+              value={editingData.supplierUrl ?? ''}
+              onChange={(e) => {
+                const link = e.target.value;
+                const asin = extractAsin(link) || editingData.asin || '';
+                setEditingData(prev => ({ ...prev, supplierUrl: link, asin: asin || undefined }));
+              }}
+            />
+            <p className="text-xs text-muted-foreground">
+              Paste Amazon product URL - ASIN will be auto-extracted
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-cyan">ASIN</label>
+            <Input
+              placeholder="XXXXXXXXXX"
+              value={editingData.asin ?? ''}
+              onChange={(e) => setEditingData(prev => ({ ...prev, asin: e.target.value.toUpperCase() }))}
+              maxLength={10}
+            />
+            <p className="text-xs text-muted-foreground">
+              10-character Amazon product code
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-cyan">Amazon Image URL (optional)</label>
+            <Input
+              placeholder="https://m.media-amazon.com/images/..."
+              value={editingData.amazon_image_url ?? ''}
+              onChange={(e) => setEditingData(prev => ({ ...prev, amazon_image_url: e.target.value }))}
+            />
+            <p className="text-xs text-muted-foreground">
+              Paste the image URL from Amazon product page
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-cyan">Amazon Title (optional)</label>
+            <Input
+              placeholder="Product title from Amazon"
+              value={editingData.amazon_title ?? ''}
+              onChange={(e) => setEditingData(prev => ({ ...prev, amazon_title: e.target.value }))}
+            />
+            <p className="text-xs text-muted-foreground">
+              Copy product title from Amazon for reference
+            </p>
+          </div>
+        </div>
+
+        {/* Image Preview */}
+        {editingData.amazon_image_url && (
+          <div className="mt-4">
+            <label className="text-sm font-medium text-cyan">Image Preview</label>
+            <div className="mt-2 flex items-start gap-4">
+              <img
+                src={editingData.amazon_image_url}
+                alt={editingData.amazon_title || editingData.name || 'Product image'}
+                className="max-h-48 rounded-md border object-contain"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  toast({
+                    title: "Image load failed",
+                    description: "The image URL may be invalid or inaccessible.",
+                    variant: "destructive"
+                  });
+                }}
+              />
+              {editingData.amazon_title && (
+                <p className="text-sm text-muted-foreground flex-1">{editingData.amazon_title}</p>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Notes - Last field */}
         <div className="mt-4">
           <label className="text-sm font-medium text-cyan">Additional Notes</label>

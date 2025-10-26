@@ -33,6 +33,9 @@ interface InventoryItem {
   lastUpdated: string;
   restockRequested: boolean;
   requestDate?: string;
+  asin?: string | null;
+  amazon_image_url?: string | null;
+  amazon_title?: string | null;
 }
 interface RestockRequest {
   id: string;
@@ -877,7 +880,8 @@ export const InventorySection = () => {
                             <table className="w-full border-collapse">
                                <thead>
                                  <tr className="border-b bg-muted/30">
-                                   <th className="text-left p-1 text-xs sticky left-0 bg-muted/30 z-10 min-w-[90px]">Item</th>
+                                   <th className="text-left p-1 text-xs w-12">Image</th>
+                                   <th className="text-left p-1 text-xs sticky left-12 bg-muted/30 z-10 min-w-[90px]">Item</th>
                                     <th className="text-center p-1 text-xs w-16">Status</th>
                                     <th className="text-center p-1 text-xs w-24">Stock</th>
                                     <th className="text-center p-1 text-xs w-20">Restock Level</th>
@@ -895,7 +899,21 @@ export const InventorySection = () => {
                             const stockStatus = getStockStatus(item);
                             const StatusIcon = stockStatus.icon;
                             return <tr key={item.id} className="border-b hover:bg-muted/50">
-                                     <td className="p-1 sticky left-0 bg-background z-10 min-w-[90px]">
+                                     <td className="p-1 w-12">
+                                       {item.amazon_image_url ? (
+                                         <img
+                                           src={item.amazon_image_url}
+                                           alt={item.amazon_title || item.name}
+                                           className="h-10 w-10 object-cover rounded border"
+                                           loading="lazy"
+                                         />
+                                       ) : (
+                                         <div className="h-10 w-10 rounded border bg-muted flex items-center justify-center">
+                                           <Package2 className="h-5 w-5 text-muted-foreground" />
+                                         </div>
+                                       )}
+                                     </td>
+                                     <td className="p-1 sticky left-12 bg-background z-10 min-w-[90px]">
                                        {editingItem === item.id ? <Input value={editingData.name || ''} onChange={e => setEditingData(prev => ({
                                   ...prev,
                                   name: e.target.value
