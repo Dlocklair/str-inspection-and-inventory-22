@@ -742,7 +742,7 @@ export const InventorySection = () => {
                        
                         {/* Units - Third field */}
                         <div className="space-y-2">
-                          <label className="text-sm font-medium text-blue-600">Unit</label>
+                          <label className="text-sm font-medium text-blue-600">Units</label>
                          <Input placeholder="How items are counted (bottles, rolls, boxes, etc.)" value={newItem.unit} onChange={e => setNewItem(prev => ({
                 ...prev,
                 unit: e.target.value
@@ -761,16 +761,21 @@ export const InventorySection = () => {
                         {/* URL - Fifth field */}
                         <div className="space-y-2">
                           <label className="text-sm font-medium text-blue-600">Supplier URL</label>
-                         <Input placeholder="Website URL for ordering this item" value={newItem.supplierUrl || ''} onChange={e => setNewItem(prev => ({
-                ...prev,
-                supplierUrl: e.target.value
-              }))} />
+                         <Input placeholder="Website URL for ordering this item (Amazon links auto-extract ASIN)" value={newItem.supplierUrl || ''} onChange={e => {
+                const link = e.target.value;
+                const asin = extractAsin(link) || newItem.asin || '';
+                setNewItem(prev => ({
+                  ...prev,
+                  supplierUrl: link,
+                  asin: asin
+                }));
+              }} />
                        </div>
                        
                         {/* Cost per unit - Sixth field */}
                         <div className="space-y-2">
                           <label className="text-sm font-medium text-blue-600">Cost per Unit</label>
-                         <Input type="number" step="0.01" placeholder="Price per individual unit ($)" value={newItem.cost || ''} onChange={e => setNewItem(prev => ({
+                         <Input type="number" step="0.01" placeholder="Price per individual unit ($)" value={newItem.cost ? newItem.cost.toFixed(2) : ''} onChange={e => setNewItem(prev => ({
                 ...prev,
                 cost: Number(e.target.value)
               }))} />
@@ -795,33 +800,12 @@ export const InventorySection = () => {
                        </div>
                     </div>
 
-                    {/* Amazon Integration Section */}
-                    <div className="col-span-full mt-4 border-t pt-4">
-                      <h4 className="text-sm font-semibold text-blue-600 mb-3">Amazon Product Information (Optional)</h4>
-                      
-                      <div className="grid gap-4 md:grid-cols-2">
-                        {/* Amazon Link */}
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-blue-600">Amazon Link</label>
-                          <Input
-                            placeholder="https://www.amazon.com/dp/XXXXXXXXXX"
-                            value={newItem.supplierUrl || ''}
-                            onChange={(e) => {
-                              const link = e.target.value;
-                              const asin = extractAsin(link) || newItem.asin || '';
-                              setNewItem(prev => ({
-                                ...prev,
-                                supplierUrl: link,
-                                asin: asin
-                              }));
-                            }}
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            Paste Amazon product URL - ASIN will be auto-extracted
-                          </p>
-                        </div>
-
-                        {/* ASIN */}
+        {/* Amazon Integration Section */}
+        <div className="col-span-full mt-4 border-t pt-4">
+          <h4 className="text-sm font-semibold text-blue-600 mb-3">Amazon Product Information (Optional)</h4>
+          
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* ASIN */}
                         <div className="space-y-2">
                           <label className="text-sm font-medium text-blue-600">ASIN</label>
                           <Input
@@ -838,21 +822,40 @@ export const InventorySection = () => {
                           </p>
                         </div>
 
-                        {/* Amazon Image URL */}
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-blue-600">Amazon Image URL</label>
-                          <Input
-                            placeholder="https://m.media-amazon.com/images/..."
-                            value={newItem.amazon_image_url ?? ''}
-                            onChange={(e) => setNewItem(prev => ({
-                              ...prev,
-                              amazon_image_url: e.target.value
-                            }))}
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            Paste the image URL from Amazon product page
-                          </p>
-                        </div>
+            {/* Amazon Image URL */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-blue-600">Amazon Image URL</label>
+              <Input
+                placeholder="https://m.media-amazon.com/images/... (or paste image)"
+                value={newItem.amazon_image_url ?? ''}
+                onChange={(e) => setNewItem(prev => ({
+                  ...prev,
+                  amazon_image_url: e.target.value
+                }))}
+                onPaste={(e) => {
+                  const items = e.clipboardData.items;
+                  for (let i = 0; i < items.length; i++) {
+                    if (items[i].type.indexOf('image') !== -1) {
+                      const blob = items[i].getAsFile();
+                      if (blob) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                          setNewItem(prev => ({
+                            ...prev,
+                            amazon_image_url: event.target?.result as string
+                          }));
+                        };
+                        reader.readAsDataURL(blob);
+                        e.preventDefault();
+                      }
+                    }
+                  }
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                Paste image URL or copy/paste an image directly
+              </p>
+            </div>
 
                         {/* Amazon Title */}
                         <div className="space-y-2">
@@ -871,30 +874,30 @@ export const InventorySection = () => {
                         </div>
                       </div>
 
-                      {/* Image Preview - 140x140px */}
-                      {newItem.amazon_image_url && (
-                        <div className="mt-4">
-                          <label className="text-sm font-medium text-blue-600 block mb-2">Image Preview</label>
-                          <div className="flex items-start gap-4">
-                            <img
-                              src={newItem.amazon_image_url}
-                              alt={newItem.amazon_title || newItem.name || 'Product image'}
-                              className="w-[140px] h-[140px] rounded-md border object-contain"
-                              onError={(e) => {
-                                e.currentTarget.style.display = 'none';
-                                toast({
-                                  title: "Image load failed",
-                                  description: "The image URL may be invalid or inaccessible.",
-                                  variant: "destructive"
-                                });
-                              }}
-                            />
-                            {newItem.amazon_title && (
-                              <p className="text-sm text-muted-foreground flex-1">{newItem.amazon_title}</p>
-                            )}
-                          </div>
-                        </div>
-                      )}
+          {/* Image Preview - 100x100px */}
+          {newItem.amazon_image_url && (
+            <div className="mt-4">
+              <label className="text-sm font-medium text-blue-600 block mb-2">Image Preview</label>
+              <div className="flex items-start gap-4">
+                <img
+                  src={newItem.amazon_image_url}
+                  alt={newItem.amazon_title || newItem.name || 'Product image'}
+                  className="w-[100px] h-[100px] rounded-md border object-contain"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    toast({
+                      title: "Image load failed",
+                      description: "The image URL may be invalid or inaccessible.",
+                      variant: "destructive"
+                    });
+                  }}
+                />
+                {newItem.amazon_title && (
+                  <p className="text-sm text-muted-foreground flex-1">{newItem.amazon_title}</p>
+                )}
+              </div>
+            </div>
+          )}
                     </div>
                    
                     {/* New category input if needed */}
@@ -1013,14 +1016,14 @@ export const InventorySection = () => {
                                          <img
                                            src={item.amazon_image_url}
                                            alt={item.amazon_title || item.name}
-                                           className="w-[140px] h-[140px] object-contain rounded border"
+                                           className="w-[100px] h-[100px] object-contain rounded border"
                                            loading="lazy"
                                          />
-                                       ) : (
-                                         <div className="w-[140px] h-[140px] rounded border bg-muted flex items-center justify-center">
+                                        ) : (
+                                         <div className="w-[100px] h-[100px] rounded border bg-muted flex items-center justify-center">
                                            <Package2 className="h-5 w-5 text-muted-foreground" />
                                          </div>
-                                       )}
+                                        )}
                                      </td>
                                      <td className="p-1 sticky left-12 bg-background z-10 min-w-[90px]">
                                        {editingItem === item.id ? <Input value={editingData.name || ''} onChange={e => setEditingData(prev => ({

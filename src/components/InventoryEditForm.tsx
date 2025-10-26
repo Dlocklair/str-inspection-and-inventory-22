@@ -162,7 +162,7 @@ export const InventoryEditForm = ({
           
           {/* Units - Third field */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-cyan">Unit</label>
+            <label className="text-sm font-medium text-cyan">Units</label>
             <Input placeholder="How items are counted (bottles, rolls, boxes, etc.)" value={editingData.unit} onChange={e => setEditingData(prev => ({
             ...prev,
             unit: e.target.value
@@ -181,16 +181,21 @@ export const InventoryEditForm = ({
           {/* URL - Fifth field */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-cyan">Supplier URL</label>
-            <Input placeholder="Website URL for ordering this item" value={editingData.supplierUrl || ''} onChange={e => setEditingData(prev => ({
-            ...prev,
-            supplierUrl: e.target.value
-          }))} />
+            <Input placeholder="Website URL for ordering this item (Amazon links auto-extract ASIN)" value={editingData.supplierUrl || ''} onChange={e => {
+            const link = e.target.value;
+            const asin = extractAsin(link) || editingData.asin || '';
+            setEditingData(prev => ({
+              ...prev,
+              supplierUrl: link,
+              asin: asin
+            }));
+          }} />
           </div>
           
           {/* Cost per unit - Sixth field */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-cyan">Cost per Unit</label>
-            <Input type="number" step="0.01" placeholder="Price per individual unit ($)" value={editingData.cost || ''} onChange={e => setEditingData(prev => ({
+            <Input type="number" step="0.01" placeholder="Price per individual unit ($)" value={editingData.cost ? editingData.cost.toFixed(2) : ''} onChange={e => setEditingData(prev => ({
             ...prev,
             cost: Number(e.target.value)
           }))} />
@@ -229,22 +234,6 @@ export const InventoryEditForm = ({
         {/* Amazon Section */}
         <div className="grid gap-4 md:grid-cols-2 mt-6">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-cyan">Amazon Link (optional)</label>
-            <Input placeholder="https://www.amazon.com/dp/XXXXXXXXXX" value={editingData.supplierUrl ?? ''} onChange={e => {
-            const link = e.target.value;
-            const asin = extractAsin(link) || editingData.asin || '';
-            setEditingData(prev => ({
-              ...prev,
-              supplierUrl: link,
-              asin: asin || undefined
-            }));
-          }} />
-            <p className="text-xs text-muted-foreground">
-              Paste Amazon product URL - ASIN will be auto-extracted
-            </p>
-          </div>
-
-          <div className="space-y-2">
             <label className="text-sm font-medium text-cyan">ASIN (Amazon Standard Identification Number)</label>
             <Input placeholder="XXXXXXXXXX" value={editingData.asin ?? ''} onChange={e => setEditingData(prev => ({
             ...prev,
@@ -257,12 +246,30 @@ export const InventoryEditForm = ({
 
           <div className="space-y-2">
             <label className="text-sm font-medium text-cyan">Amazon Image URL (optional)</label>
-            <Input placeholder="https://m.media-amazon.com/images/..." value={editingData.amazon_image_url ?? ''} onChange={e => setEditingData(prev => ({
+            <Input placeholder="https://m.media-amazon.com/images/... (or paste image)" value={editingData.amazon_image_url ?? ''} onChange={e => setEditingData(prev => ({
             ...prev,
             amazon_image_url: e.target.value
-          }))} />
+          }))} onPaste={e => {
+            const items = e.clipboardData.items;
+            for (let i = 0; i < items.length; i++) {
+              if (items[i].type.indexOf('image') !== -1) {
+                const blob = items[i].getAsFile();
+                if (blob) {
+                  const reader = new FileReader();
+                  reader.onload = event => {
+                    setEditingData(prev => ({
+                      ...prev,
+                      amazon_image_url: event.target?.result as string
+                    }));
+                  };
+                  reader.readAsDataURL(blob);
+                  e.preventDefault();
+                }
+              }
+            }
+          }} />
             <p className="text-xs text-muted-foreground">
-              Paste the image URL from Amazon product page
+              Paste image URL or copy/paste an image directly
             </p>
           </div>
 
@@ -282,7 +289,7 @@ export const InventoryEditForm = ({
         {editingData.amazon_image_url && <div className="mt-4">
             <label className="text-sm font-medium text-cyan">Image Preview</label>
             <div className="mt-2 flex items-start gap-4">
-              <img src={editingData.amazon_image_url} alt={editingData.amazon_title || editingData.name || 'Product image'} className="w-[140px] h-[140px] rounded-md border object-contain" onError={e => {
+              <img src={editingData.amazon_image_url} alt={editingData.amazon_title || editingData.name || 'Product image'} className="w-[100px] h-[100px] rounded-md border object-contain" onError={e => {
             e.currentTarget.style.display = 'none';
             toast({
               title: "Image load failed",
