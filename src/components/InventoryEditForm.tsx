@@ -282,7 +282,7 @@ export const InventoryEditForm = ({
         {editingData.amazon_image_url && <div className="mt-4">
             <label className="text-sm font-medium text-cyan">Image Preview</label>
             <div className="mt-2 flex items-start gap-4">
-              <img src={editingData.amazon_image_url} alt={editingData.amazon_title || editingData.name || 'Product image'} className="max-h-48 rounded-md border object-contain" onError={e => {
+              <img src={editingData.amazon_image_url} alt={editingData.amazon_title || editingData.name || 'Product image'} className="w-[140px] h-[140px] rounded-md border object-contain" onError={e => {
             e.currentTarget.style.display = 'none';
             toast({
               title: "Image load failed",

@@ -19,6 +19,7 @@ import { InventoryEditForm } from './InventoryEditForm';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
+import { extractAsin } from '@/lib/amazon';
 interface InventoryItem {
   id: string;
   name: string;
@@ -327,7 +328,10 @@ export const InventorySection = () => {
     supplier: '',
     supplierUrl: '',
     cost: 0,
-    notes: ''
+    notes: '',
+    asin: '',
+    amazon_image_url: '',
+    amazon_title: ''
   });
   const [editingItem, setEditingItem] = useState<string | null>(null);
   const [editingData, setEditingData] = useState<Partial<InventoryItem>>({});
@@ -405,7 +409,10 @@ export const InventorySection = () => {
       supplier: '',
       supplierUrl: '',
       cost: 0,
-      notes: ''
+      notes: '',
+      asin: '',
+      amazon_image_url: '',
+      amazon_title: ''
     });
     setShowNewCategoryInput(false);
     setNewCategory('');
@@ -787,7 +794,109 @@ export const InventorySection = () => {
               }))} />
                        </div>
                     </div>
-                  
+
+                    {/* Amazon Integration Section */}
+                    <div className="col-span-full mt-4 border-t pt-4">
+                      <h4 className="text-sm font-semibold text-blue-600 mb-3">Amazon Product Information (Optional)</h4>
+                      
+                      <div className="grid gap-4 md:grid-cols-2">
+                        {/* Amazon Link */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-blue-600">Amazon Link</label>
+                          <Input
+                            placeholder="https://www.amazon.com/dp/XXXXXXXXXX"
+                            value={newItem.supplierUrl || ''}
+                            onChange={(e) => {
+                              const link = e.target.value;
+                              const asin = extractAsin(link) || newItem.asin || '';
+                              setNewItem(prev => ({
+                                ...prev,
+                                supplierUrl: link,
+                                asin: asin
+                              }));
+                            }}
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Paste Amazon product URL - ASIN will be auto-extracted
+                          </p>
+                        </div>
+
+                        {/* ASIN */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-blue-600">ASIN</label>
+                          <Input
+                            placeholder="XXXXXXXXXX"
+                            value={newItem.asin ?? ''}
+                            onChange={(e) => setNewItem(prev => ({
+                              ...prev,
+                              asin: e.target.value.toUpperCase()
+                            }))}
+                            maxLength={10}
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            10-character Amazon product code
+                          </p>
+                        </div>
+
+                        {/* Amazon Image URL */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-blue-600">Amazon Image URL</label>
+                          <Input
+                            placeholder="https://m.media-amazon.com/images/..."
+                            value={newItem.amazon_image_url ?? ''}
+                            onChange={(e) => setNewItem(prev => ({
+                              ...prev,
+                              amazon_image_url: e.target.value
+                            }))}
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Paste the image URL from Amazon product page
+                          </p>
+                        </div>
+
+                        {/* Amazon Title */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-blue-600">Amazon Title</label>
+                          <Input
+                            placeholder="Product title from Amazon"
+                            value={newItem.amazon_title ?? ''}
+                            onChange={(e) => setNewItem(prev => ({
+                              ...prev,
+                              amazon_title: e.target.value
+                            }))}
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Copy product title from Amazon for reference
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Image Preview - 140x140px */}
+                      {newItem.amazon_image_url && (
+                        <div className="mt-4">
+                          <label className="text-sm font-medium text-blue-600 block mb-2">Image Preview</label>
+                          <div className="flex items-start gap-4">
+                            <img
+                              src={newItem.amazon_image_url}
+                              alt={newItem.amazon_title || newItem.name || 'Product image'}
+                              className="w-[140px] h-[140px] rounded-md border object-contain"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                                toast({
+                                  title: "Image load failed",
+                                  description: "The image URL may be invalid or inaccessible.",
+                                  variant: "destructive"
+                                });
+                              }}
+                            />
+                            {newItem.amazon_title && (
+                              <p className="text-sm text-muted-foreground flex-1">{newItem.amazon_title}</p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                   
                     {/* New category input if needed */}
                     {showNewCategoryInput && <div className="mt-4">
                         <label className="text-sm font-medium block mb-2">New Category Name</label>
@@ -904,11 +1013,11 @@ export const InventorySection = () => {
                                          <img
                                            src={item.amazon_image_url}
                                            alt={item.amazon_title || item.name}
-                                           className="h-10 w-10 object-cover rounded border"
+                                           className="w-[140px] h-[140px] object-contain rounded border"
                                            loading="lazy"
                                          />
                                        ) : (
-                                         <div className="h-10 w-10 rounded border bg-muted flex items-center justify-center">
+                                         <div className="w-[140px] h-[140px] rounded border bg-muted flex items-center justify-center">
                                            <Package2 className="h-5 w-5 text-muted-foreground" />
                                          </div>
                                        )}
