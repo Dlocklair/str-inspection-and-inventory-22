@@ -29,6 +29,8 @@ interface InventoryItem {
   unit: string;
   supplier: string;
   supplierUrl?: string;
+  unitsPerPackage?: number;
+  costPerPackage?: number;
   cost: number;
   notes: string;
   lastUpdated: string;
@@ -36,7 +38,7 @@ interface InventoryItem {
   requestDate?: string;
   asin?: string | null;
   amazon_image_url?: string | null;
-  amazon_title?: string | null;
+  image_url?: string | null;
 }
 interface RestockRequest {
   id: string;
@@ -738,7 +740,7 @@ export const InventorySection = () => {
                         {/* Item - Second field */}
                         <div className="space-y-2">
                           <label className="text-sm font-medium text-blue-600">Item Name</label>
-                         <Input placeholder="Enter the name of the inventory item" value={newItem.name} onChange={e => setNewItem(prev => ({
+                         <Input placeholder="Enter the name of the inventory item" value={newItem.name} onFocus={e => e.target.select()} onChange={e => setNewItem(prev => ({
                 ...prev,
                 name: e.target.value
               }))} />
@@ -747,7 +749,7 @@ export const InventorySection = () => {
                         {/* Units - Third field */}
                         <div className="space-y-2">
                           <label className="text-sm font-medium text-blue-600">Units</label>
-                         <Input placeholder="How items are counted (bottles, rolls, boxes, etc.)" value={newItem.unit} onChange={e => setNewItem(prev => ({
+                         <Input placeholder="How items are counted (bottles, rolls, boxes, etc.)" value={newItem.unit} onFocus={e => e.target.select()} onChange={e => setNewItem(prev => ({
                 ...prev,
                 unit: e.target.value
               }))} />
@@ -756,7 +758,7 @@ export const InventorySection = () => {
                         {/* Supplier - Fourth field */}
                         <div className="space-y-2">
                           <label className="text-sm font-medium text-blue-600">Supplier</label>
-                         <Input placeholder="Name of supplier or vendor" value={newItem.supplier} onChange={e => setNewItem(prev => ({
+                         <Input placeholder="Name of supplier or vendor" value={newItem.supplier} onFocus={e => e.target.select()} onChange={e => setNewItem(prev => ({
                 ...prev,
                 supplier: e.target.value
               }))} />
@@ -765,7 +767,7 @@ export const InventorySection = () => {
                         {/* URL - Fifth field */}
                         <div className="space-y-2">
                           <label className="text-sm font-medium text-blue-600">Supplier URL</label>
-                         <Input placeholder="Website URL for ordering this item (Amazon links auto-extract ASIN)" value={newItem.supplierUrl || ''} onChange={e => {
+                         <Input placeholder="Website URL for ordering this item (Amazon links auto-extract ASIN)" value={newItem.supplierUrl || ''} onFocus={e => e.target.select()} onChange={e => {
                 const link = e.target.value;
                 const asin = extractAsin(link) || newItem.asin || '';
                 setNewItem(prev => ({
@@ -776,33 +778,118 @@ export const InventorySection = () => {
               }} />
                        </div>
                        
-                        {/* Cost per unit - Sixth field */}
+                         {/* Units per Package */}
                         <div className="space-y-2">
-                          <label className="text-sm font-medium text-blue-600">Cost per Unit</label>
-                         <Input type="number" step="0.01" placeholder="Price per individual unit ($)" value={newItem.cost ? newItem.cost.toFixed(2) : ''} onChange={e => setNewItem(prev => ({
-                ...prev,
-                cost: Number(e.target.value)
-              }))} />
+                          <label className="text-sm font-medium text-blue-600">Units per Package</label>
+                         <Input type="number" min="1" placeholder="Number of units in each package" value={newItem.unitsPerPackage || ''} className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" onFocus={e => e.target.select()} onChange={e => {
+                const unitsPerPkg = Number(e.target.value) || 1;
+                const costPerUnit = (newItem.costPerPackage || 0) / unitsPerPkg;
+                setNewItem(prev => ({
+                  ...prev,
+                  unitsPerPackage: unitsPerPkg,
+                  cost: costPerUnit
+                }));
+              }} />
                        </div>
                        
-                        {/* Restock level - Seventh field */}
+                       {/* Cost per Package */}
                         <div className="space-y-2">
-                          <label className="text-sm font-medium text-blue-600">Restock Level</label>
-                         <Input type="number" placeholder="Minimum quantity before reordering" value={newItem.restockLevel || ''} onChange={e => setNewItem(prev => ({
+                          <label className="text-sm font-medium text-blue-600">Cost per Package</label>
+                         <Input type="text" placeholder="Price per package ($)" value={newItem.costPerPackage ? newItem.costPerPackage.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''} className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" onFocus={e => e.target.select()} onChange={e => {
+                const numericValue = e.target.value.replace(/[^0-9.]/g, '');
+                const costPerPkg = Number(numericValue);
+                const costPerUnit = costPerPkg / (newItem.unitsPerPackage || 1);
+                setNewItem(prev => ({
+                  ...prev,
+                  costPerPackage: costPerPkg,
+                  cost: costPerUnit
+                }));
+              }} />
+                       </div>
+                       
+                       {/* Cost per Unit - Calculated */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-blue-600">Cost per Unit (Calculated)</label>
+                         <Input type="text" readOnly value={newItem.cost ? `$${newItem.cost.toFixed(2)}` : '$0.00'} className="bg-muted" />
+                       </div>
+                       
+                         {/* Restock level */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-blue-600">Restock Level (Units)</label>
+                         <Input type="number" placeholder="Minimum quantity before reordering" value={newItem.restockLevel || ''} className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" onFocus={e => e.target.select()} onChange={e => setNewItem(prev => ({
                 ...prev,
                 restockLevel: Number(e.target.value)
               }))} />
                        </div>
                        
-                        {/* Current stock */}
+                         {/* Current stock */}
                         <div className="space-y-2">
                           <label className="text-sm font-medium text-blue-600">Current Stock</label>
-                         <Input type="number" placeholder="How many you have right now" value={newItem.currentStock || ''} onChange={e => setNewItem(prev => ({
+                         <Input type="number" placeholder="How many you have right now" value={newItem.currentStock || ''} className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" onFocus={e => e.target.select()} onChange={e => setNewItem(prev => ({
                 ...prev,
                 currentStock: Number(e.target.value)
               }))} />
                        </div>
-                    </div>
+                     </div>
+
+        {/* Product Image Section */}
+        <div className="col-span-full mt-4 border-t pt-4">
+          <h4 className="text-sm font-semibold text-blue-600 mb-3">Product Image (Optional)</h4>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-blue-600">Image URL</label>
+            <Input
+              placeholder="Paste image URL or copy/paste an image directly"
+              value={newItem.image_url ?? ''}
+              onFocus={e => e.target.select()}
+              onChange={(e) => setNewItem(prev => ({
+                ...prev,
+                image_url: e.target.value
+              }))}
+              onPaste={(e) => {
+                const items = e.clipboardData.items;
+                for (let i = 0; i < items.length; i++) {
+                  if (items[i].type.indexOf('image') !== -1) {
+                    const blob = items[i].getAsFile();
+                    if (blob) {
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        setNewItem(prev => ({
+                          ...prev,
+                          image_url: event.target?.result as string
+                        }));
+                      };
+                      reader.readAsDataURL(blob);
+                      e.preventDefault();
+                    }
+                  }
+                }
+              }}
+            />
+            <p className="text-xs text-muted-foreground">
+              Paste image URL or copy/paste an image directly
+            </p>
+          </div>
+
+          {/* Image Preview - 140x140px */}
+          {newItem.image_url && (
+            <div className="mt-4">
+              <label className="text-sm font-medium text-blue-600 block mb-2">Image Preview</label>
+              <img
+                src={newItem.image_url}
+                alt={newItem.name || 'Product image'}
+                className="w-[140px] h-[140px] rounded-md border object-contain"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  toast({
+                    title: "Image load failed",
+                    description: "The image URL may be invalid or inaccessible.",
+                    variant: "destructive"
+                  });
+                }}
+              />
+            </div>
+          )}
+        </div>
 
         {/* Amazon Integration Section */}
         <div className="col-span-full mt-4 border-t pt-4">
@@ -812,9 +899,10 @@ export const InventorySection = () => {
             {/* ASIN */}
                         <div className="space-y-2">
                           <label className="text-sm font-medium text-blue-600">ASIN</label>
-                          <Input
+                           <Input
                             placeholder="XXXXXXXXXX"
                             value={newItem.asin ?? ''}
+                            onFocus={e => e.target.select()}
                             onChange={(e) => setNewItem(prev => ({
                               ...prev,
                               asin: e.target.value.toUpperCase()
@@ -832,6 +920,7 @@ export const InventorySection = () => {
               <Input
                 placeholder="https://m.media-amazon.com/images/... (or paste image)"
                 value={newItem.amazon_image_url ?? ''}
+                onFocus={e => e.target.select()}
                 onChange={(e) => setNewItem(prev => ({
                   ...prev,
                   amazon_image_url: e.target.value
@@ -995,10 +1084,10 @@ export const InventorySection = () => {
                             const StatusIcon = stockStatus.icon;
                             return <tr key={item.id} className="border-b hover:bg-muted/50">
                                      <td className="p-1 w-12">
-                                       {item.amazon_image_url ? (
+                                       {(item.image_url || item.amazon_image_url) ? (
                                          <img
-                                           src={item.amazon_image_url}
-                                           alt={item.amazon_title || item.name}
+                                           src={item.image_url || item.amazon_image_url}
+                                           alt={item.name}
                                            className="w-[100px] h-[100px] object-contain rounded border"
                                            loading="lazy"
                                          />

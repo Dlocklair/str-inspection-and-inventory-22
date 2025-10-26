@@ -156,7 +156,7 @@ export const InventoryEditForm = ({
           {/* Item - Second field */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-cyan">Item Name</label>
-            <Input placeholder="Enter the name of the inventory item" value={editingData.name} onChange={e => setEditingData(prev => ({
+            <Input placeholder="Enter the name of the inventory item" value={editingData.name} onFocus={e => e.target.select()} onChange={e => setEditingData(prev => ({
             ...prev,
             name: e.target.value
           }))} />
@@ -165,7 +165,7 @@ export const InventoryEditForm = ({
           {/* Units - Third field */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-cyan">Units</label>
-            <Input placeholder="How items are counted (bottles, rolls, boxes, etc.)" value={editingData.unit} onChange={e => setEditingData(prev => ({
+            <Input placeholder="How items are counted (bottles, rolls, boxes, etc.)" value={editingData.unit} onFocus={e => e.target.select()} onChange={e => setEditingData(prev => ({
             ...prev,
             unit: e.target.value
           }))} />
@@ -174,7 +174,7 @@ export const InventoryEditForm = ({
           {/* Supplier - Fourth field */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-cyan">Supplier</label>
-            <Input placeholder="Name of supplier or vendor" value={editingData.supplier} onChange={e => setEditingData(prev => ({
+            <Input placeholder="Name of supplier or vendor" value={editingData.supplier} onFocus={e => e.target.select()} onChange={e => setEditingData(prev => ({
             ...prev,
             supplier: e.target.value
           }))} />
@@ -183,7 +183,7 @@ export const InventoryEditForm = ({
           {/* URL - Fifth field */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-cyan">Supplier URL</label>
-            <Input placeholder="Website URL for ordering this item (Amazon links auto-extract ASIN)" value={editingData.supplierUrl || ''} onChange={e => {
+            <Input placeholder="Website URL for ordering this item (Amazon links auto-extract ASIN)" value={editingData.supplierUrl || ''} onFocus={e => e.target.select()} onChange={e => {
             const link = e.target.value;
             const asin = extractAsin(link) || editingData.asin || '';
             setEditingData(prev => ({
@@ -197,7 +197,7 @@ export const InventoryEditForm = ({
           {/* Units per Package - Sixth field */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-cyan">Units per Package</label>
-            <Input type="number" min="1" placeholder="Number of units in each package" value={editingData.unitsPerPackage || ''} onChange={e => {
+            <Input type="number" min="1" placeholder="Number of units in each package" value={editingData.unitsPerPackage || ''} className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" onFocus={e => e.target.select()} onChange={e => {
             const unitsPerPkg = Number(e.target.value) || 1;
             const costPerUnit = (editingData.costPerPackage || 0) / unitsPerPkg;
             setEditingData(prev => ({
@@ -211,8 +211,9 @@ export const InventoryEditForm = ({
           {/* Cost per Package - Seventh field */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-cyan">Cost per Package</label>
-            <Input type="number" step="0.01" placeholder="Price per package ($)" value={editingData.costPerPackage ? editingData.costPerPackage.toFixed(2) : ''} onChange={e => {
-            const costPerPkg = Number(e.target.value);
+            <Input type="text" placeholder="Price per package ($)" value={editingData.costPerPackage ? editingData.costPerPackage.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''} className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" onFocus={e => e.target.select()} onChange={e => {
+            const numericValue = e.target.value.replace(/[^0-9.]/g, '');
+            const costPerPkg = Number(numericValue);
             const costPerUnit = costPerPkg / (editingData.unitsPerPackage || 1);
             setEditingData(prev => ({
               ...prev,
@@ -231,7 +232,7 @@ export const InventoryEditForm = ({
           {/* Restock level - Ninth field */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-cyan">Restock Level (Units)</label>
-            <Input type="number" placeholder="Minimum quantity before reordering" value={editingData.restockLevel || ''} onChange={e => setEditingData(prev => ({
+            <Input type="number" placeholder="Minimum quantity before reordering" value={editingData.restockLevel || ''} className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" onFocus={e => e.target.select()} onChange={e => setEditingData(prev => ({
             ...prev,
             restockLevel: Number(e.target.value)
           }))} />
@@ -240,7 +241,7 @@ export const InventoryEditForm = ({
           {/* Current stock */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-cyan">Current Stock</label>
-            <Input type="number" placeholder="How many you have right now" value={editingData.currentStock || ''} onChange={e => setEditingData(prev => ({
+            <Input type="number" placeholder="How many you have right now" value={editingData.currentStock || ''} className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" onFocus={e => e.target.select()} onChange={e => setEditingData(prev => ({
             ...prev,
             currentStock: Number(e.target.value)
           }))} />
@@ -263,7 +264,7 @@ export const InventoryEditForm = ({
           <h4 className="text-sm font-semibold text-cyan mb-3">Product Image (Optional)</h4>
           <div className="space-y-2">
             <label className="text-sm font-medium text-cyan">Image URL</label>
-            <Input placeholder="Paste image URL or copy/paste an image directly" value={editingData.image_url ?? ''} onChange={e => setEditingData(prev => ({
+            <Input placeholder="Paste image URL or copy/paste an image directly" value={editingData.image_url ?? ''} onFocus={e => e.target.select()} onChange={e => setEditingData(prev => ({
             ...prev,
             image_url: e.target.value
           }))} onPaste={e => {
@@ -308,7 +309,7 @@ export const InventoryEditForm = ({
         <div className="grid gap-4 md:grid-cols-2 mt-6">
           <div className="space-y-2">
             <label className="text-sm font-medium text-cyan">ASIN (Amazon Standard Identification Number)</label>
-            <Input placeholder="XXXXXXXXXX" value={editingData.asin ?? ''} onChange={e => setEditingData(prev => ({
+            <Input placeholder="XXXXXXXXXX" value={editingData.asin ?? ''} onFocus={e => e.target.select()} onChange={e => setEditingData(prev => ({
             ...prev,
             asin: e.target.value.toUpperCase()
           }))} maxLength={10} />
@@ -319,7 +320,7 @@ export const InventoryEditForm = ({
 
           <div className="space-y-2">
             <label className="text-sm font-medium text-cyan">Amazon Image URL (optional)</label>
-            <Input placeholder="https://m.media-amazon.com/images/... (or paste image)" value={editingData.amazon_image_url ?? ''} onChange={e => setEditingData(prev => ({
+            <Input placeholder="https://m.media-amazon.com/images/... (or paste image)" value={editingData.amazon_image_url ?? ''} onFocus={e => e.target.select()} onChange={e => setEditingData(prev => ({
             ...prev,
             amazon_image_url: e.target.value
           }))} onPaste={e => {
