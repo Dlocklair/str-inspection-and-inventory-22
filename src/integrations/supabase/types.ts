@@ -355,7 +355,11 @@ export type Database = {
       }
       inventory_items: {
         Row: {
+          amazon_image_url: string | null
+          amazon_last_refreshed: string | null
           amazon_link: string | null
+          amazon_title: string | null
+          asin: string | null
           category_id: string
           created_at: string
           created_by: string | null
@@ -371,7 +375,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          amazon_image_url?: string | null
+          amazon_last_refreshed?: string | null
           amazon_link?: string | null
+          amazon_title?: string | null
+          asin?: string | null
           category_id: string
           created_at?: string
           created_by?: string | null
@@ -387,7 +395,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          amazon_image_url?: string | null
+          amazon_last_refreshed?: string | null
           amazon_link?: string | null
+          amazon_title?: string | null
+          asin?: string | null
           category_id?: string
           created_at?: string
           created_by?: string | null
@@ -666,7 +678,7 @@ export type Database = {
     }
     Functions: {
       get_current_user_profile: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           profile_id: string
           user_role: string
