@@ -797,28 +797,36 @@ export const InventorySection = () => {
                           <label className="text-sm font-medium text-blue-600">Cost per Package</label>
                          <Input 
                            type="text" 
-                           placeholder="e.g., 1,234.56" 
-                           value={newItem.costPerPackage ? newItem.costPerPackage.toLocaleString('en-US', { 
-                             minimumFractionDigits: 2, 
-                             maximumFractionDigits: 2,
-                             useGrouping: true 
-                           }) : ''} 
-                           maxLength={9}
+                           placeholder="e.g., 1234.56" 
+                           value={newItem.costPerPackage || ''} 
                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none min-w-[120px]" 
                            onFocus={e => e.target.select()} 
                            onChange={e => {
-                             const numericValue = e.target.value.replace(/[^0-9.]/g, '');
-                             const costPerPkg = parseFloat(numericValue) || 0;
+                             const value = e.target.value;
+                             // Allow only numbers and one decimal point
+                             if (value && !/^\d*\.?\d{0,2}$/.test(value)) return;
+                             const costPerPkg = parseFloat(value) || 0;
                              // Limit to 9999.99 (4 digits + 2 decimals)
                              if (costPerPkg > 9999.99) return;
                              const costPerUnit = costPerPkg / (newItem.unitsPerPackage || 1);
                              setNewItem(prev => ({
                                ...prev,
-                               costPerPackage: costPerPkg,
+                               costPerPackage: parseFloat(value) || 0,
                                cost: costPerUnit
                              }));
-                           }} 
+                           }}
+                           onBlur={e => {
+                             // Format on blur
+                             const value = parseFloat(e.target.value) || 0;
+                             setNewItem(prev => ({
+                               ...prev,
+                               costPerPackage: value
+                             }));
+                           }}
                          />
+                         <p className="text-xs text-muted-foreground">
+                           Max: 9,999.99 (displays as: {newItem.costPerPackage ? newItem.costPerPackage.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '$0.00'})
+                         </p>
                        </div>
                        
                        {/* Cost per Unit - Calculated */}
