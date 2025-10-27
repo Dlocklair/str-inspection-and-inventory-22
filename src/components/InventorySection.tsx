@@ -669,9 +669,12 @@ export const InventorySection = () => {
       });
     }
   };
+  const [customCategories, setCustomCategories] = useState<string[]>([]);
+  
   const getUniqueCategories = () => {
     const categories = inventoryItems.map(item => item.category).filter(Boolean);
-    return Array.from(new Set(categories)).sort();
+    const allCategories = [...categories, ...customCategories];
+    return Array.from(new Set(allCategories)).sort();
   };
   const formatDateShort = (dateString: string) => {
     if (!dateString) return '-';
@@ -1096,17 +1099,23 @@ export const InventorySection = () => {
                             >
                               Cancel
                             </Button>
-                            <Button 
+                            <Button
                               onClick={() => {
                                 if (newCategory.trim()) {
+                                  const trimmedCategory = newCategory.trim();
+                                  // Add to custom categories if not already in the list
+                                  if (!getUniqueCategories().includes(trimmedCategory)) {
+                                    setCustomCategories(prev => [...prev, trimmedCategory]);
+                                  }
+                                  // Set as selected category
                                   setNewItem(prev => ({
                                     ...prev,
-                                    category: newCategory.trim()
+                                    category: trimmedCategory
                                   }));
                                   setShowNewCategoryInput(false);
                                   toast({
                                     title: "✅ Category added",
-                                    description: `"${newCategory.trim()}" has been added and selected.`
+                                    description: `"${trimmedCategory}" has been added and selected.`
                                   });
                                   setNewCategory('');
                                 }

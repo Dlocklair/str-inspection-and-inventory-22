@@ -4,15 +4,51 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./hooks/useAuth";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/AppSidebar";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Settings from "./pages/Settings";
+import InventorySetup from "./pages/InventorySetup";
 import { InspectionReport } from "./components/InspectionReport";
 import { InventoryReport } from "./components/InventoryReport";
 import { DamageReport } from "./components/DamageReport";
 import NotFound from "./pages/NotFound";
+import { useLocation } from "react-router-dom";
 
 const queryClient = new QueryClient();
+
+const LayoutWrapper = () => {
+  const location = useLocation();
+  const hideMenuPaths = ['/auth'];
+  const showMenu = !hideMenuPaths.includes(location.pathname);
+
+  return (
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full">
+        {showMenu && <AppSidebar />}
+        <main className="flex-1 relative">
+          {showMenu && (
+            <header className="sticky top-0 z-10 h-12 flex items-center border-b bg-background px-4">
+              <SidebarTrigger />
+            </header>
+          )}
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/inventory-setup" element={<InventorySetup />} />
+            <Route path="/inspections" element={<InspectionReport />} />
+            <Route path="/inventory" element={<InventoryReport />} />
+            <Route path="/damage" element={<DamageReport />} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </main>
+      </div>
+    </SidebarProvider>
+  );
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -21,16 +57,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/inspections" element={<InspectionReport />} />
-            <Route path="/inventory" element={<InventoryReport />} />
-            <Route path="/damage" element={<DamageReport />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <LayoutWrapper />
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>
