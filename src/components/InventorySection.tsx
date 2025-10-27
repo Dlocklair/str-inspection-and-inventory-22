@@ -1173,16 +1173,16 @@ export const InventorySection = () => {
                             const stockStatus = getStockStatus(item);
                             const StatusIcon = stockStatus.icon;
                             return <tr key={item.id} className="border-b hover:bg-muted/50">
-                                     <td className="p-1 w-12">
+                                     <td className="p-1 w-32">
                                        {(item.image_url || item.amazon_image_url) ? (
                                          <img
                                            src={item.image_url || item.amazon_image_url}
                                            alt={item.name}
-                                           className="w-[100px] h-[100px] object-contain rounded border"
+                                           className="w-[120px] h-[80px] object-cover rounded border"
                                            loading="lazy"
                                          />
                                         ) : (
-                                         <div className="w-[100px] h-[100px] rounded border bg-muted flex items-center justify-center">
+                                         <div className="w-[120px] h-[80px] rounded border bg-muted flex items-center justify-center">
                                            <Package2 className="h-5 w-5 text-muted-foreground" />
                                          </div>
                                         )}

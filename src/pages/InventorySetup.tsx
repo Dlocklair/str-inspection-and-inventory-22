@@ -62,7 +62,7 @@ const InventorySetup = () => {
 
   const fetchInventoryItems = () => {
     try {
-      const stored = localStorage.getItem('inventoryItems');
+      const stored = localStorage.getItem('inventory-items');
       if (stored) {
         const items = JSON.parse(stored) as InventoryItem[];
         setInventoryItems(items);
@@ -102,7 +102,7 @@ const InventorySetup = () => {
       const updatedItems = inventoryItems.map(item =>
         item.id === editingItem.id ? editingItem : item
       );
-      localStorage.setItem('inventoryItems', JSON.stringify(updatedItems));
+      localStorage.setItem('inventory-items', JSON.stringify(updatedItems));
       setInventoryItems(updatedItems);
 
       toast({
@@ -168,7 +168,7 @@ const InventorySetup = () => {
     const updatedItems = inventoryItems.filter(
       (item) => item.category.toLowerCase() !== categoryToDelete.toLowerCase()
     );
-    localStorage.setItem('inventoryItems', JSON.stringify(updatedItems));
+    localStorage.setItem('inventory-items', JSON.stringify(updatedItems));
     setInventoryItems(updatedItems);
     
     toast({
