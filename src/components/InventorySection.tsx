@@ -396,6 +396,14 @@ export const InventorySection = () => {
       });
       return;
     }
+    if (!newItem.category.trim()) {
+      toast({
+        title: "Category required",
+        description: "Please select or enter a category.",
+        variant: "destructive"
+      });
+      return;
+    }
     const item: InventoryItem = {
       id: Date.now().toString(),
       ...newItem,
@@ -679,7 +687,11 @@ export const InventorySection = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   // Filter inventory items based on search term
-  const filteredInventoryItems = inventoryItems.filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()) || item.category.toLowerCase().includes(searchTerm.toLowerCase()) || item.supplier.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredInventoryItems = sortedInventoryItems.filter(item => 
+    item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    item.category.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    item.supplier.toLowerCase().includes(searchTerm.toLowerCase())
+  );
   return <div className="w-full">
       {/* Search Box and Add Button - Top Right */}
       <div className="flex items-center justify-end gap-4 mb-6">
@@ -699,8 +711,17 @@ export const InventorySection = () => {
       
       {/* Show add form only when adding */}
       {showAddForm && !editingItem && <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-blue-600">Add New Inventory Item</CardTitle>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setShowAddForm(false)}
+              className="flex items-center gap-2"
+            >
+              <X className="h-4 w-4" />
+              Back to Current Inventory
+            </Button>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -764,16 +785,37 @@ export const InventorySection = () => {
               }))} />
                        </div>
                        
-                        {/* URL - Fifth field */}
+                         {/* URL - Fifth field */}
                         <div className="space-y-2">
                           <label className="text-sm font-medium text-blue-600">Supplier URL</label>
                          <Input placeholder="Website URL for ordering this item (Amazon links auto-extract ASIN)" value={newItem.supplierUrl || ''} onFocus={e => e.target.select()} onChange={e => {
                 const link = e.target.value;
                 const asin = extractAsin(link) || newItem.asin || '';
+                
+                // Extract supplier name from URL if not already set
+                let supplierName = newItem.supplier;
+                if (link && !supplierName) {
+                  try {
+                    const url = new URL(link);
+                    const hostname = url.hostname.replace('www.', '');
+                    // Check if it's Amazon
+                    if (hostname.includes('amazon')) {
+                      supplierName = 'Amazon';
+                    } else {
+                      // Extract domain name (e.g., "example.com" -> "Example")
+                      const domainParts = hostname.split('.');
+                      supplierName = domainParts[0].charAt(0).toUpperCase() + domainParts[0].slice(1);
+                    }
+                  } catch (error) {
+                    // Invalid URL, do nothing
+                  }
+                }
+                
                 setNewItem(prev => ({
                   ...prev,
                   supplierUrl: link,
-                  asin: asin
+                  asin: asin,
+                  supplier: supplierName || prev.supplier
                 }));
               }} />
                        </div>
@@ -915,98 +957,143 @@ export const InventorySection = () => {
           )}
         </div>
 
-        {/* Amazon Integration Section */}
-        <div className="col-span-full mt-4 border-t pt-4">
-          <h4 className="text-sm font-semibold text-blue-600 mb-3">Amazon Product Information (Optional)</h4>
-          
-          <div className="grid gap-4 md:grid-cols-2">
-            {/* ASIN */}
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-blue-600">ASIN</label>
-                           <Input
-                            placeholder="XXXXXXXXXX"
-                            value={newItem.asin ?? ''}
-                            onFocus={e => e.target.select()}
-                            onChange={(e) => setNewItem(prev => ({
-                              ...prev,
-                              asin: e.target.value.toUpperCase()
-                            }))}
-                            maxLength={10}
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            10-character Amazon product code
-                          </p>
-                        </div>
+        {/* Amazon Integration Section - Only show if supplier is Amazon */}
+        {newItem.supplier.toLowerCase().includes('amazon') && (
+          <div className="col-span-full mt-4 border-t pt-4">
+            <h4 className="text-sm font-semibold text-blue-600 mb-3">Amazon Product Information</h4>
+            
+            <div className="grid gap-4 md:grid-cols-2">
+              {/* ASIN */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-blue-600">ASIN (Required for Amazon)</label>
+                <Input
+                  placeholder="XXXXXXXXXX"
+                  value={newItem.asin ?? ''}
+                  onFocus={e => e.target.select()}
+                  onChange={(e) => setNewItem(prev => ({
+                    ...prev,
+                    asin: e.target.value.toUpperCase()
+                  }))}
+                  maxLength={10}
+                />
+                <p className="text-xs text-muted-foreground">
+                  10-character Amazon product code
+                </p>
+              </div>
 
-            {/* Amazon Image URL */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-blue-600">Amazon Image URL</label>
-              <Input
-                placeholder="https://m.media-amazon.com/images/... (or paste image)"
-                value={newItem.amazon_image_url ?? ''}
-                onFocus={e => e.target.select()}
-                onChange={(e) => setNewItem(prev => ({
-                  ...prev,
-                  amazon_image_url: e.target.value
-                }))}
-                onPaste={(e) => {
-                  const items = e.clipboardData.items;
-                  for (let i = 0; i < items.length; i++) {
-                    if (items[i].type.indexOf('image') !== -1) {
-                      const blob = items[i].getAsFile();
-                      if (blob) {
-                        const reader = new FileReader();
-                        reader.onload = (event) => {
-                          setNewItem(prev => ({
-                            ...prev,
-                            amazon_image_url: event.target?.result as string
-                          }));
-                        };
-                        reader.readAsDataURL(blob);
-                        e.preventDefault();
+              {/* Amazon Image URL */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-blue-600">Amazon Image URL</label>
+                <Input
+                  placeholder="https://m.media-amazon.com/images/... (or paste image)"
+                  value={newItem.amazon_image_url ?? ''}
+                  onFocus={e => e.target.select()}
+                  onChange={(e) => setNewItem(prev => ({
+                    ...prev,
+                    amazon_image_url: e.target.value
+                  }))}
+                  onPaste={(e) => {
+                    const items = e.clipboardData.items;
+                    for (let i = 0; i < items.length; i++) {
+                      if (items[i].type.indexOf('image') !== -1) {
+                        const blob = items[i].getAsFile();
+                        if (blob) {
+                          const reader = new FileReader();
+                          reader.onload = (event) => {
+                            setNewItem(prev => ({
+                              ...prev,
+                              amazon_image_url: event.target?.result as string
+                            }));
+                          };
+                          reader.readAsDataURL(blob);
+                          e.preventDefault();
+                        }
                       }
                     }
-                  }
-                }}
-              />
-              <p className="text-xs text-muted-foreground">
-                Paste image URL or copy/paste an image directly
-              </p>
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Paste image URL or copy/paste an image directly
+                </p>
+              </div>
             </div>
-          </div>
 
-          {/* Amazon Image Preview - 100x100px */}
-          {newItem.amazon_image_url && (
-            <div className="mt-4">
-              <label className="text-sm font-medium text-blue-600 block mb-2">Amazon Image Preview</label>
-              <img
-                src={newItem.amazon_image_url}
-                alt={newItem.name || 'Product image'}
-                className="w-[100px] h-[100px] rounded-md border object-contain"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                  toast({
-                    title: "Image load failed",
-                    description: "The image URL may be invalid or inaccessible.",
-                    variant: "destructive"
-                  });
-                }}
-              />
-            </div>
-          )}
-                    </div>
+            {/* Amazon Image Preview - 100x100px */}
+            {newItem.amazon_image_url && (
+              <div className="mt-4">
+                <label className="text-sm font-medium text-blue-600 block mb-2">Amazon Image Preview</label>
+                <img
+                  src={newItem.amazon_image_url}
+                  alt={newItem.name || 'Product image'}
+                  className="w-[100px] h-[100px] rounded-md border object-contain"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    toast({
+                      title: "Image load failed",
+                      description: "The image URL may be invalid or inaccessible.",
+                      variant: "destructive"
+                    });
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        )}
                    
                     {/* New category input if needed */}
-                    {showNewCategoryInput && <div className="mt-4">
+                    {showNewCategoryInput && (
+                      <div className="mt-4 p-4 border rounded-md bg-muted/30">
                         <label className="text-sm font-medium block mb-2">New Category Name</label>
-                        <Input placeholder="Enter new category name" value={newCategory} onChange={e => {
-              setNewCategory(e.target.value);
-              setNewItem(prev => ({
-                ...prev,
-                category: e.target.value
-              }));
-            }} autoFocus />
-                      </div>}
+                        <div className="flex gap-2">
+                          <Input 
+                            placeholder="Enter new category name" 
+                            value={newCategory} 
+                            onChange={e => setNewCategory(e.target.value)}
+                            onKeyPress={e => {
+                              if (e.key === 'Enter' && newCategory.trim()) {
+                                setNewItem(prev => ({
+                                  ...prev,
+                                  category: newCategory.trim()
+                                }));
+                                setShowNewCategoryInput(false);
+                                toast({
+                                  title: "Category added",
+                                  description: `Category "${newCategory.trim()}" has been added.`
+                                });
+                              }
+                            }}
+                            autoFocus 
+                          />
+                          <Button 
+                            onClick={() => {
+                              if (newCategory.trim()) {
+                                setNewItem(prev => ({
+                                  ...prev,
+                                  category: newCategory.trim()
+                                }));
+                                setShowNewCategoryInput(false);
+                                toast({
+                                  title: "Category added",
+                                  description: `Category "${newCategory.trim()}" has been added.`
+                                });
+                              }
+                            }}
+                            disabled={!newCategory.trim()}
+                          >
+                            Add
+                          </Button>
+                          <Button 
+                            variant="outline"
+                            onClick={() => {
+                              setShowNewCategoryInput(false);
+                              setNewCategory('');
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                    
                     {/* Notes - Last field */}
                     <div className="mt-4">
