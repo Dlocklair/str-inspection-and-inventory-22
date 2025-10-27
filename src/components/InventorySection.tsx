@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Plus, Edit, Save, X, Trash2, Package2, AlertTriangle, CheckCircle, CalendarIcon, Send, Home, ClipboardList, ChevronDown, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -729,10 +730,11 @@ export const InventorySection = () => {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {/* Category - First field */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-blue-600">Category</label>
+                  <label className="text-sm font-medium text-blue-600">Category *</label>
                    <Select value={newItem.category} onValueChange={value => {
                 if (value === 'add-new-category') {
                   setShowNewCategoryInput(true);
+                  setNewCategory('');
                 } else {
                   setShowNewCategoryInput(false);
                   setNewItem(prev => ({
@@ -837,41 +839,52 @@ export const InventorySection = () => {
                        {/* Cost per Package */}
                         <div className="space-y-2">
                           <label className="text-sm font-medium text-blue-600">Cost per Package</label>
-                         <Input 
-                           type="text" 
-                           placeholder="e.g., 1234.56" 
-                           value={newItem.costPerPackage === 0 ? '' : newItem.costPerPackage} 
-                           className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none min-w-[120px]" 
-                           onFocus={e => e.target.select()} 
-                           onChange={e => {
-                             const value = e.target.value;
-                             // Allow empty, numbers, and one decimal point with up to 2 decimals
-                             if (value && !/^\d{0,4}\.?\d{0,2}$/.test(value)) return;
-                             
-                             // Check if value exceeds max when it's a complete number
-                             const numValue = parseFloat(value);
-                             if (!isNaN(numValue) && numValue > 9999.99) return;
-                             
-                             const costPerUnit = (parseFloat(value) || 0) / (newItem.unitsPerPackage || 1);
-                             setNewItem(prev => ({
-                               ...prev,
-                               costPerPackage: value as any,
-                               cost: costPerUnit
-                             }));
-                           }}
-                           onBlur={e => {
-                             // Format to number on blur
-                             const numValue = parseFloat(e.target.value) || 0;
-                             setNewItem(prev => ({
-                               ...prev,
-                               costPerPackage: numValue
-                             }));
-                           }}
-                         />
-                         <p className="text-xs text-muted-foreground">
-                           Max: 9,999.99 | Display: {typeof newItem.costPerPackage === 'number' ? newItem.costPerPackage.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : newItem.costPerPackage || '0.00'}
-                         </p>
-                       </div>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                            <Input 
+                              type="text" 
+                              placeholder="1234.56" 
+                              value={typeof newItem.costPerPackage === 'number' ? newItem.costPerPackage.toFixed(2) : newItem.costPerPackage || ''} 
+                              className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none min-w-[120px] pl-7" 
+                              onFocus={e => {
+                                // Show raw value for editing
+                                const numValue = parseFloat(e.target.value) || 0;
+                                setNewItem(prev => ({
+                                  ...prev,
+                                  costPerPackage: numValue.toString() as any
+                                }));
+                                setTimeout(() => e.target.select(), 0);
+                              }}
+                              onChange={e => {
+                                const value = e.target.value;
+                                // Allow empty, numbers, and one decimal point with up to 2 decimals
+                                if (value && !/^\d{0,4}\.?\d{0,2}$/.test(value)) return;
+                                
+                                // Check if value exceeds max when it's a complete number
+                                const numValue = parseFloat(value);
+                                if (!isNaN(numValue) && numValue > 9999.99) return;
+                                
+                                const costPerUnit = (parseFloat(value) || 0) / (newItem.unitsPerPackage || 1);
+                                setNewItem(prev => ({
+                                  ...prev,
+                                  costPerPackage: value as any,
+                                  cost: costPerUnit
+                                }));
+                              }}
+                              onBlur={e => {
+                                // Format to always show 2 decimal places
+                                const numValue = parseFloat(e.target.value) || 0;
+                                setNewItem(prev => ({
+                                  ...prev,
+                                  costPerPackage: numValue
+                                }));
+                              }}
+                            />
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Max: $9,999.99 | Will display as: ${typeof newItem.costPerPackage === 'number' ? newItem.costPerPackage.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
+                          </p>
+                        </div>
                        
                        {/* Cost per Unit - Calculated */}
                         <div className="space-y-2">
@@ -1040,60 +1053,72 @@ export const InventorySection = () => {
           </div>
         )}
                    
-                    {/* New category input if needed */}
-                    {showNewCategoryInput && (
-                      <div className="mt-4 p-4 border rounded-md bg-muted/30">
-                        <label className="text-sm font-medium block mb-2">New Category Name</label>
-                        <div className="flex gap-2">
-                          <Input 
-                            placeholder="Enter new category name" 
-                            value={newCategory} 
-                            onChange={e => setNewCategory(e.target.value)}
-                            onKeyPress={e => {
-                              if (e.key === 'Enter' && newCategory.trim()) {
-                                setNewItem(prev => ({
-                                  ...prev,
-                                  category: newCategory.trim()
-                                }));
+                   {/* New category dialog */}
+                    <Dialog open={showNewCategoryInput} onOpenChange={setShowNewCategoryInput}>
+                      <DialogContent className="sm:max-w-md top-[20%]">
+                        <DialogHeader>
+                          <DialogTitle className="text-xl font-semibold text-blue-600">Add New Category</DialogTitle>
+                          <DialogDescription>
+                            Enter a name for the new category. It will be added to the dropdown list and selected for this item.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 pt-4">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Category Name</label>
+                            <Input 
+                              placeholder="Enter new category name" 
+                              value={newCategory} 
+                              onChange={e => setNewCategory(e.target.value)}
+                              onKeyPress={e => {
+                                if (e.key === 'Enter' && newCategory.trim()) {
+                                  setNewItem(prev => ({
+                                    ...prev,
+                                    category: newCategory.trim()
+                                  }));
+                                  setShowNewCategoryInput(false);
+                                  toast({
+                                    title: "✅ Category added",
+                                    description: `"${newCategory.trim()}" has been added and selected.`
+                                  });
+                                  setNewCategory('');
+                                }
+                              }}
+                              autoFocus 
+                            />
+                          </div>
+                          <div className="flex gap-2 justify-end">
+                            <Button 
+                              variant="outline"
+                              onClick={() => {
                                 setShowNewCategoryInput(false);
-                                toast({
-                                  title: "Category added",
-                                  description: `Category "${newCategory.trim()}" has been added.`
-                                });
-                              }
-                            }}
-                            autoFocus 
-                          />
-                          <Button 
-                            onClick={() => {
-                              if (newCategory.trim()) {
-                                setNewItem(prev => ({
-                                  ...prev,
-                                  category: newCategory.trim()
-                                }));
-                                setShowNewCategoryInput(false);
-                                toast({
-                                  title: "Category added",
-                                  description: `Category "${newCategory.trim()}" has been added.`
-                                });
-                              }
-                            }}
-                            disabled={!newCategory.trim()}
-                          >
-                            Add
-                          </Button>
-                          <Button 
-                            variant="outline"
-                            onClick={() => {
-                              setShowNewCategoryInput(false);
-                              setNewCategory('');
-                            }}
-                          >
-                            Cancel
-                          </Button>
+                                setNewCategory('');
+                              }}
+                            >
+                              Cancel
+                            </Button>
+                            <Button 
+                              onClick={() => {
+                                if (newCategory.trim()) {
+                                  setNewItem(prev => ({
+                                    ...prev,
+                                    category: newCategory.trim()
+                                  }));
+                                  setShowNewCategoryInput(false);
+                                  toast({
+                                    title: "✅ Category added",
+                                    description: `"${newCategory.trim()}" has been added and selected.`
+                                  });
+                                  setNewCategory('');
+                                }
+                              }}
+                              disabled={!newCategory.trim()}
+                            >
+                              Add Category
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      </DialogContent>
+                    </Dialog>
                    
                     {/* Notes - Last field */}
                     <div className="mt-4">

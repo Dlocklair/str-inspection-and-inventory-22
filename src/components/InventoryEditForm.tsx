@@ -211,39 +211,50 @@ export const InventoryEditForm = ({
           {/* Cost per Package - Seventh field */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-cyan">Cost per Package</label>
-            <Input 
-              type="text" 
-              placeholder="e.g., 1234.56" 
-              value={editingData.costPerPackage === 0 ? '' : editingData.costPerPackage} 
-              className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none min-w-[120px]" 
-              onFocus={e => e.target.select()} 
-              onChange={e => {
-                const value = e.target.value;
-                // Allow empty, numbers, and one decimal point with up to 2 decimals
-                if (value && !/^\d{0,4}\.?\d{0,2}$/.test(value)) return;
-                
-                // Check if value exceeds max when it's a complete number
-                const numValue = parseFloat(value);
-                if (!isNaN(numValue) && numValue > 9999.99) return;
-                
-                const costPerUnit = (parseFloat(value) || 0) / (editingData.unitsPerPackage || 1);
-                setEditingData(prev => ({
-                  ...prev,
-                  costPerPackage: value as any,
-                  cost: costPerUnit
-                }));
-              }}
-              onBlur={e => {
-                // Format to number on blur
-                const numValue = parseFloat(e.target.value) || 0;
-                setEditingData(prev => ({
-                  ...prev,
-                  costPerPackage: numValue
-                }));
-              }}
-            />
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+              <Input 
+                type="text" 
+                placeholder="1234.56" 
+                value={typeof editingData.costPerPackage === 'number' ? editingData.costPerPackage.toFixed(2) : editingData.costPerPackage || ''} 
+                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none min-w-[120px] pl-7" 
+                onFocus={e => {
+                  // Show raw value for editing
+                  const numValue = parseFloat(e.target.value) || 0;
+                  setEditingData(prev => ({
+                    ...prev,
+                    costPerPackage: numValue.toString() as any
+                  }));
+                  setTimeout(() => e.target.select(), 0);
+                }}
+                onChange={e => {
+                  const value = e.target.value;
+                  // Allow empty, numbers, and one decimal point with up to 2 decimals
+                  if (value && !/^\d{0,4}\.?\d{0,2}$/.test(value)) return;
+                  
+                  // Check if value exceeds max when it's a complete number
+                  const numValue = parseFloat(value);
+                  if (!isNaN(numValue) && numValue > 9999.99) return;
+                  
+                  const costPerUnit = (parseFloat(value) || 0) / (editingData.unitsPerPackage || 1);
+                  setEditingData(prev => ({
+                    ...prev,
+                    costPerPackage: value as any,
+                    cost: costPerUnit
+                  }));
+                }}
+                onBlur={e => {
+                  // Format to always show 2 decimal places
+                  const numValue = parseFloat(e.target.value) || 0;
+                  setEditingData(prev => ({
+                    ...prev,
+                    costPerPackage: numValue
+                  }));
+                }}
+              />
+            </div>
             <p className="text-xs text-muted-foreground">
-              Max: 9,999.99 | Display: {typeof editingData.costPerPackage === 'number' ? editingData.costPerPackage.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : editingData.costPerPackage || '0.00'}
+              Max: $9,999.99 | Will display as: ${typeof editingData.costPerPackage === 'number' ? editingData.costPerPackage.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
             </p>
           </div>
           
