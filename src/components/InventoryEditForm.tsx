@@ -110,41 +110,51 @@ export const InventoryEditForm = ({
               <PopoverContent className="w-64" align="start">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">New Category Name</label>
-                  <Input placeholder="Enter category name" value={newCategory} onChange={e => setNewCategory(e.target.value)} onKeyPress={e => {
-                  if (e.key === 'Enter' && newCategory.trim()) {
-                    setEditingData(prev => ({
-                      ...prev,
-                      category: newCategory.trim()
-                    }));
-                    setNewCategory('');
-                    setShowNewCategoryPopover(false);
-                    toast({
-                      title: "Category added",
-                      description: `Category "${newCategory.trim()}" has been added.`
-                    });
-                  }
-                }} />
+                  <Input 
+                    placeholder="Enter category name" 
+                    value={newCategory} 
+                    onChange={e => setNewCategory(e.target.value)} 
+                    onKeyPress={e => {
+                      if (e.key === 'Enter' && newCategory.trim()) {
+                        setEditingData(prev => ({
+                          ...prev,
+                          category: newCategory.trim()
+                        }));
+                        setNewCategory('');
+                        setShowNewCategoryPopover(false);
+                        toast({
+                          title: "Category added",
+                          description: `Category "${newCategory.trim()}" has been added.`
+                        });
+                      }
+                    }} 
+                    autoFocus
+                  />
                   <div className="flex gap-2">
-                    <Button size="sm" onClick={() => {
-                    if (newCategory.trim()) {
-                      setEditingData(prev => ({
-                        ...prev,
-                        category: newCategory.trim()
-                      }));
-                      setNewCategory('');
-                      setShowNewCategoryPopover(false);
-                      toast({
-                        title: "Category added",
-                        description: `Category "${newCategory.trim()}" has been added.`
-                      });
-                    }
-                  }}>
+                    <Button 
+                      type="submit"
+                      size="sm" 
+                      onClick={() => {
+                        if (newCategory.trim()) {
+                          setEditingData(prev => ({
+                            ...prev,
+                            category: newCategory.trim()
+                          }));
+                          setNewCategory('');
+                          setShowNewCategoryPopover(false);
+                          toast({
+                            title: "Category added",
+                            description: `Category "${newCategory.trim()}" has been added.`
+                          });
+                        }
+                      }}
+                    >
                       Add
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => {
-                    setShowNewCategoryPopover(false);
-                    setNewCategory('');
-                  }}>
+                      setShowNewCategoryPopover(false);
+                      setNewCategory('');
+                    }}>
                       Cancel
                     </Button>
                   </div>
@@ -341,7 +351,7 @@ export const InventoryEditForm = ({
         </div>
 
         {/* Amazon Section */}
-        <div className="grid gap-4 md:grid-cols-2 mt-6">
+        <div className="mt-6">
           <div className="space-y-2">
             <label className="text-sm font-medium text-cyan">ASIN (Amazon Standard Identification Number)</label>
             <Input placeholder="XXXXXXXXXX" value={editingData.asin ?? ''} onFocus={e => e.target.select()} onChange={e => setEditingData(prev => ({
@@ -352,51 +362,7 @@ export const InventoryEditForm = ({
               10-character Amazon product code
             </p>
           </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-cyan">Amazon Image URL (optional)</label>
-            <Input placeholder="https://m.media-amazon.com/images/... (or paste image)" value={editingData.amazon_image_url ?? ''} onFocus={e => e.target.select()} onChange={e => setEditingData(prev => ({
-            ...prev,
-            amazon_image_url: e.target.value
-          }))} onPaste={e => {
-            const items = e.clipboardData.items;
-            for (let i = 0; i < items.length; i++) {
-              if (items[i].type.indexOf('image') !== -1) {
-                const blob = items[i].getAsFile();
-                if (blob) {
-                  const reader = new FileReader();
-                  reader.onload = event => {
-                    setEditingData(prev => ({
-                      ...prev,
-                      amazon_image_url: event.target?.result as string
-                    }));
-                  };
-                  reader.readAsDataURL(blob);
-                  e.preventDefault();
-                }
-              }
-            }
-          }} />
-            <p className="text-xs text-muted-foreground">
-              Paste image URL or copy/paste an image directly
-            </p>
-          </div>
         </div>
-
-        {/* Amazon Image Preview */}
-        {editingData.amazon_image_url && <div className="mt-4">
-            <label className="text-sm font-medium text-cyan">Amazon Image Preview</label>
-            <div className="mt-2">
-              <img src={editingData.amazon_image_url} alt={editingData.name || 'Product image'} className="w-[100px] h-[100px] rounded-md border object-contain" onError={e => {
-            e.currentTarget.style.display = 'none';
-            toast({
-              title: "Image load failed",
-              description: "The image URL may be invalid or inaccessible.",
-              variant: "destructive"
-            });
-          }} />
-            </div>
-          </div>}
 
         {/* Notes - Last field */}
         <div className="mt-4">

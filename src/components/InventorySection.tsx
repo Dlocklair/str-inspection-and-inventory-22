@@ -978,7 +978,7 @@ export const InventorySection = () => {
           <div className="col-span-full mt-4 border-t pt-4">
             <h4 className="text-sm font-semibold text-blue-600 mb-3">Amazon Product Information</h4>
             
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
               {/* ASIN */}
               <div className="space-y-2">
                 <label className="text-sm font-medium text-blue-600">ASIN (Required for Amazon)</label>
@@ -996,63 +996,7 @@ export const InventorySection = () => {
                   10-character Amazon product code
                 </p>
               </div>
-
-              {/* Amazon Image URL */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-blue-600">Amazon Image URL</label>
-                <Input
-                  placeholder="https://m.media-amazon.com/images/... (or paste image)"
-                  value={newItem.amazon_image_url ?? ''}
-                  onFocus={e => e.target.select()}
-                  onChange={(e) => setNewItem(prev => ({
-                    ...prev,
-                    amazon_image_url: e.target.value
-                  }))}
-                  onPaste={(e) => {
-                    const items = e.clipboardData.items;
-                    for (let i = 0; i < items.length; i++) {
-                      if (items[i].type.indexOf('image') !== -1) {
-                        const blob = items[i].getAsFile();
-                        if (blob) {
-                          const reader = new FileReader();
-                          reader.onload = (event) => {
-                            setNewItem(prev => ({
-                              ...prev,
-                              amazon_image_url: event.target?.result as string
-                            }));
-                          };
-                          reader.readAsDataURL(blob);
-                          e.preventDefault();
-                        }
-                      }
-                    }
-                  }}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Paste image URL or copy/paste an image directly
-                </p>
-              </div>
             </div>
-
-            {/* Amazon Image Preview - 100x100px */}
-            {newItem.amazon_image_url && (
-              <div className="mt-4">
-                <label className="text-sm font-medium text-blue-600 block mb-2">Amazon Image Preview</label>
-                <img
-                  src={newItem.amazon_image_url}
-                  alt={newItem.name || 'Product image'}
-                  className="w-[100px] h-[100px] rounded-md border object-contain"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                    toast({
-                      title: "Image load failed",
-                      description: "The image URL may be invalid or inaccessible.",
-                      variant: "destructive"
-                    });
-                  }}
-                />
-              </div>
-            )}
           </div>
         )}
                    
@@ -1089,7 +1033,7 @@ export const InventorySection = () => {
                               autoFocus 
                             />
                           </div>
-                          <div className="flex gap-2 justify-end">
+                           <div className="flex gap-2 justify-end">
                             <Button 
                               variant="outline"
                               onClick={() => {
@@ -1100,6 +1044,7 @@ export const InventorySection = () => {
                               Cancel
                             </Button>
                             <Button
+                              type="submit"
                               onClick={() => {
                                 if (newCategory.trim()) {
                                   const trimmedCategory = newCategory.trim();

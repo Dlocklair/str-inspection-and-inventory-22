@@ -22,6 +22,8 @@ const InventorySetup = () => {
     'Technology and Entertainment',
   ]);
   const [newCategory, setNewCategory] = useState('');
+  const [editingCategory, setEditingCategory] = useState<string | null>(null);
+  const [editedName, setEditedName] = useState('');
 
   const addCategory = () => {
     if (!newCategory.trim()) {
@@ -56,6 +58,46 @@ const InventorySetup = () => {
       title: 'Category deleted',
       description: `"${category}" has been removed.`,
     });
+  };
+
+  const startEditing = (category: string) => {
+    setEditingCategory(category);
+    setEditedName(category);
+  };
+
+  const saveEdit = () => {
+    if (!editedName.trim()) {
+      toast({
+        title: 'Category name required',
+        description: 'Please enter a category name.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (editedName.trim() !== editingCategory && categories.includes(editedName.trim())) {
+      toast({
+        title: 'Duplicate category',
+        description: 'This category already exists.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setCategories((prev) =>
+      prev.map((c) => (c === editingCategory ? editedName.trim() : c)).sort()
+    );
+    toast({
+      title: 'Category updated',
+      description: `Category renamed to "${editedName.trim()}".`,
+    });
+    setEditingCategory(null);
+    setEditedName('');
+  };
+
+  const cancelEdit = () => {
+    setEditingCategory(null);
+    setEditedName('');
   };
 
   return (
@@ -110,15 +152,54 @@ const InventorySetup = () => {
                     key={category}
                     className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50"
                   >
-                    <span className="font-medium">{category}</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => deleteCategory(category)}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {editingCategory === category ? (
+                      <>
+                        <Input
+                          value={editedName}
+                          onChange={(e) => setEditedName(e.target.value)}
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                              saveEdit();
+                            }
+                            if (e.key === 'Escape') {
+                              cancelEdit();
+                            }
+                          }}
+                          className="flex-1 mr-2"
+                          autoFocus
+                        />
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="sm" onClick={saveEdit}>
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={cancelEdit}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <span className="font-medium">{category}</span>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => startEditing(category)}
+                            className="hover:text-primary"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => deleteCategory(category)}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>
