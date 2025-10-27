@@ -10,6 +10,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface InventoryItem {
   id: string;
@@ -65,13 +66,30 @@ const InventorySetup = () => {
       const stored = localStorage.getItem('inventory-items');
       if (stored) {
         const items = JSON.parse(stored) as InventoryItem[];
-        setInventoryItems(items);
-        // Extract unique categories from items
-        const itemCategories = [...new Set(items.map(item => item.category))];
+        
+        // Filter out items without categories and update localStorage
+        const validItems = items.filter(item => item.category && item.category.trim() !== '');
+        const removedCount = items.length - validItems.length;
+        
+        if (removedCount > 0) {
+          localStorage.setItem('inventory-items', JSON.stringify(validItems));
+          toast({
+            title: 'Items cleaned up',
+            description: `Removed ${removedCount} item(s) without categories.`,
+          });
+        }
+        
+        setInventoryItems(validItems);
+        
+        // Extract unique categories from items and ensure "Other" exists
+        const itemCategories = [...new Set(validItems.map(item => item.category))];
         setCategories(prev => {
-          const combined = [...new Set([...prev, ...itemCategories])];
+          const combined = [...new Set([...prev, ...itemCategories, 'Other'])];
           return combined.sort();
         });
+      } else {
+        // Ensure "Other" category exists even with no items
+        setCategories(prev => [...new Set([...prev, 'Other'])].sort());
       }
     } catch (error) {
       console.error('Error loading inventory:', error);
@@ -98,16 +116,24 @@ const InventorySetup = () => {
   const saveItemEdit = () => {
     if (!editingItem) return;
 
+    // Ensure category is not empty, default to "Other"
+    const itemToSave = {
+      ...editingItem,
+      category: editingItem.category?.trim() || 'Other',
+      // Calculate cost per unit
+      cost: (editingItem.costPerPackage || editingItem.cost || 0) / (editingItem.unitsPerPackage || 1)
+    };
+
     try {
       const updatedItems = inventoryItems.map(item =>
-        item.id === editingItem.id ? editingItem : item
+        item.id === itemToSave.id ? itemToSave : item
       );
       localStorage.setItem('inventory-items', JSON.stringify(updatedItems));
       setInventoryItems(updatedItems);
 
       toast({
         title: 'Item updated',
-        description: `"${editingItem.name}" has been updated.`,
+        description: `"${itemToSave.name}" has been updated.`,
       });
 
       setEditDialogOpen(false);
@@ -425,7 +451,7 @@ const InventorySetup = () => {
 
         {/* Edit Item Dialog */}
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Edit Inventory Item</DialogTitle>
             </DialogHeader>
@@ -443,12 +469,34 @@ const InventorySetup = () => {
                   </div>
                   <div className="space-y-2">
                     <Label>Category</Label>
-                    <Input
+                    <Select
                       value={editingItem.category}
-                      onChange={(e) =>
-                        setEditingItem({ ...editingItem, category: e.target.value })
-                      }
-                    />
+                      onValueChange={(value) => {
+                        if (value === 'add-new-category') {
+                          const newCat = prompt('Enter new category name:');
+                          if (newCat && newCat.trim()) {
+                            setCategories(prev => [...new Set([...prev, newCat.trim()])].sort());
+                            setEditingItem({ ...editingItem, category: newCat.trim() });
+                          }
+                        } else {
+                          setEditingItem({ ...editingItem, category: value });
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((cat) => (
+                          <SelectItem key={cat} value={cat}>
+                            {cat}
+                          </SelectItem>
+                        ))}
+                        <SelectItem value="add-new-category">
+                          + Add New Category
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-4">
@@ -479,17 +527,58 @@ const InventorySetup = () => {
                     />
                   </div>
                   <div className="space-y-2">
+                    <Label>Unit</Label>
+                    <Input
+                      value={editingItem.unit}
+                      placeholder="bottles, rolls, boxes, etc."
+                      onChange={(e) =>
+                        setEditingItem({ ...editingItem, unit: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>Units per Package</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={editingItem.unitsPerPackage || 1}
+                      onChange={(e) => {
+                        const units = parseInt(e.target.value) || 1;
+                        const costPerUnit = (editingItem.costPerPackage || editingItem.cost || 0) / units;
+                        setEditingItem({
+                          ...editingItem,
+                          unitsPerPackage: units,
+                          cost: costPerUnit,
+                        });
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-2">
                     <Label>Cost per Package</Label>
                     <Input
                       type="number"
                       step="0.01"
                       value={editingItem.costPerPackage || editingItem.cost}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const costPkg = parseFloat(e.target.value) || 0;
+                        const costPerUnit = costPkg / (editingItem.unitsPerPackage || 1);
                         setEditingItem({
                           ...editingItem,
-                          costPerPackage: parseFloat(e.target.value) || 0,
-                        })
-                      }
+                          costPerPackage: costPkg,
+                          cost: costPerUnit,
+                        });
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Cost per Unit (Calculated)</Label>
+                    <Input
+                      type="text"
+                      readOnly
+                      value={`$${((editingItem.costPerPackage || editingItem.cost || 0) / (editingItem.unitsPerPackage || 1)).toFixed(2)}`}
+                      className="bg-muted"
                     />
                   </div>
                 </div>

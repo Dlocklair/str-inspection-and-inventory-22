@@ -20,8 +20,8 @@ const menuItems = [
     title: 'Inventory', 
     icon: Package,
     subItems: [
-      { title: 'Current Inventory', url: '/inventory' },
-      { title: 'Restock Requests', url: '/inventory?tab=restock' },
+      { title: 'Current Inventory', url: '/inventory?tab=inventory' },
+      { title: 'Restock Requests', url: '/inventory?tab=requests' },
       { title: 'Email Notifications', url: '/inventory?tab=notifications' },
       { title: 'Inventory Setup and Updates', url: '/inventory-setup', icon: Settings2 },
     ]

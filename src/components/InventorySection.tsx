@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Plus, Edit, Save, X, Trash2, Package2, AlertTriangle, CheckCircle, CalendarIcon, Send, Home, ClipboardList, ChevronDown, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { EmailNotificationSettings } from './EmailNotificationSettings';
 import { InventoryEditForm } from './InventoryEditForm';
 import { format } from 'date-fns';
@@ -59,6 +59,18 @@ export const InventorySection = () => {
     profile
   } = useAuth();
   const navigate = useNavigate();
+  
+  // Get tab from URL params
+  const [searchParams] = useSearchParams();
+  const urlTab = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState(urlTab || 'inventory');
+
+  // Update active tab when URL changes
+  useEffect(() => {
+    if (urlTab) {
+      setActiveTab(urlTab);
+    }
+  }, [urlTab]);
 
   // Debug: Log the profile to check the role
   console.log('InventorySection - Profile:', profile, 'Role:', profile?.role);
@@ -1098,7 +1110,7 @@ export const InventorySection = () => {
               </CardContent>
             </Card>}
       
-      <Tabs defaultValue="inventory" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="inventory" className="flex items-center gap-2">
             <Package2 className="h-4 w-4" />
