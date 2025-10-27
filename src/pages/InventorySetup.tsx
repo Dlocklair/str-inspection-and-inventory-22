@@ -3,11 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Trash2, Pencil, ChevronDown, ChevronRight } from 'lucide-react';
+import { Trash2, Pencil, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
 
 interface InventoryItem {
@@ -52,6 +53,8 @@ const InventorySetup = () => {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchInventoryItems();
@@ -145,12 +148,36 @@ const InventorySetup = () => {
     });
   };
 
-  const deleteCategory = (category: string) => {
-    setCategories((prev) => prev.filter((c) => c !== category));
+  const openDeleteDialog = (category: string) => {
+    setCategoryToDelete(category);
+    setDeleteDialogOpen(true);
+  };
+
+  const deleteCategory = () => {
+    if (!categoryToDelete) return;
+
+    // Get items that will be deleted
+    const itemsToDelete = inventoryItems.filter(
+      (item) => item.category.toLowerCase() === categoryToDelete.toLowerCase()
+    );
+    
+    // Remove category from list
+    setCategories((prev) => prev.filter((c) => c.toLowerCase() !== categoryToDelete.toLowerCase()));
+    
+    // Remove all items in this category from localStorage
+    const updatedItems = inventoryItems.filter(
+      (item) => item.category.toLowerCase() !== categoryToDelete.toLowerCase()
+    );
+    localStorage.setItem('inventoryItems', JSON.stringify(updatedItems));
+    setInventoryItems(updatedItems);
+    
     toast({
       title: 'Category deleted',
-      description: `"${category}" has been removed.`,
+      description: `"${categoryToDelete}" and ${itemsToDelete.length} item(s) have been removed.`,
     });
+    
+    setDeleteDialogOpen(false);
+    setCategoryToDelete(null);
   };
 
   const startEditing = (category: string) => {
@@ -241,7 +268,7 @@ const InventorySetup = () => {
               <div className="space-y-3">
                 {categories.map((category) => {
                   const itemsInCategory = inventoryItems.filter(
-                    (item) => item.category === category
+                    (item) => item.category.toLowerCase() === category.toLowerCase()
                   );
                   const isExpanded = expandedCategories.has(category);
 
@@ -308,7 +335,7 @@ const InventorySetup = () => {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => deleteCategory(category)}
+                                  onClick={() => openDeleteDialog(category)}
                                   className="text-destructive hover:text-destructive"
                                 >
                                   <Trash2 className="h-4 w-4" />
@@ -359,6 +386,42 @@ const InventorySetup = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Delete Category Confirmation Dialog */}
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+                Delete Category
+              </AlertDialogTitle>
+              <AlertDialogDescription className="space-y-2">
+                <p>
+                  Deleting a category will also delete all items in that category.
+                </p>
+                {categoryToDelete && (
+                  <p className="font-semibold">
+                    This will delete {inventoryItems.filter(
+                      (item) => item.category.toLowerCase() === categoryToDelete.toLowerCase()
+                    ).length} item(s) in "{categoryToDelete}".
+                  </p>
+                )}
+                <p className="text-destructive font-medium">
+                  Do you want to proceed?
+                </p>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={deleteCategory}
+                className="bg-destructive hover:bg-destructive/90"
+              >
+                Delete Category
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Edit Item Dialog */}
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
