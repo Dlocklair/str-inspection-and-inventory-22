@@ -16,7 +16,7 @@ import { useInventoryItems, useInventoryCategories, InventoryItem, InventoryCate
 const InventorySetup = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { items, isLoading, updateItem, deleteItem, addCategory, addItem } = useInventoryItems();
+  const { items, isLoading, updateItem, deleteItem, addCategory, updateCategory, deleteCategory, addItem } = useInventoryItems();
   const { data: categories = [] } = useInventoryCategories();
   
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
@@ -25,11 +25,12 @@ const InventorySetup = () => {
   const [deleteDialogItem, setDeleteDialogItem] = useState<InventoryItem | null>(null);
   
   const [addCategoryDialogOpen, setAddCategoryDialogOpen] = useState(false);
+  const [addCategoryFromItemDialog, setAddCategoryFromItemDialog] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryDescription, setNewCategoryDescription] = useState('');
   
   const [editingCategory, setEditingCategory] = useState<InventoryCategory | null>(null);
-  const [editCategoryDialogOpen, setEditCategoryDialogOpen] = useState(false);
+  const [deletingCategory, setDeletingCategory] = useState<InventoryCategory | null>(null);
   
   const [addItemDialogOpen, setAddItemDialogOpen] = useState(false);
   const [newItem, setNewItem] = useState<Partial<InventoryItem>>({
@@ -37,12 +38,16 @@ const InventorySetup = () => {
     category_id: '',
     current_quantity: 0,
     restock_threshold: 5,
+    reorder_quantity: 10,
     unit: '',
     units_per_package: 1,
     cost_per_package: 0,
     supplier: '',
     description: '',
     notes: '',
+    amazon_link: '',
+    amazon_image_url: '',
+    asin: '',
   });
 
   const toggleCategory = (categoryName: string) => {
@@ -65,7 +70,7 @@ const InventorySetup = () => {
     setExpandedCategories(new Set(categories.map(c => c.name)));
   };
 
-  const handleAddCategory = () => {
+  const handleAddCategory = (fromItemDialog = false) => {
     if (!newCategoryName.trim()) {
       toast({
         title: 'Category name required',
@@ -90,7 +95,67 @@ const InventorySetup = () => {
     });
     setNewCategoryName('');
     setNewCategoryDescription('');
-    setAddCategoryDialogOpen(false);
+    if (fromItemDialog) {
+      setAddCategoryFromItemDialog(false);
+    } else {
+      setAddCategoryDialogOpen(false);
+    }
+  };
+
+  const handleEditCategory = () => {
+    if (!editingCategory || !editingCategory.name.trim()) {
+      toast({
+        title: 'Category name required',
+        description: 'Please enter a category name.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    updateCategory({
+      id: editingCategory.id,
+      name: editingCategory.name.trim(),
+      description: editingCategory.description || undefined,
+    });
+    setEditingCategory(null);
+  };
+
+  const handleDeleteCategory = () => {
+    if (deletingCategory) {
+      deleteCategory(deletingCategory.id);
+      setDeletingCategory(null);
+    }
+  };
+
+  const handleNumericFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    e.target.select();
+  };
+
+  const formatNumberInput = (value: string, maxLength: number, allowDecimals = false): string => {
+    let cleaned = value.replace(/[^\d.]/g, '');
+    if (!allowDecimals) {
+      cleaned = cleaned.replace(/\./g, '');
+    } else {
+      const parts = cleaned.split('.');
+      if (parts.length > 2) {
+        cleaned = parts[0] + '.' + parts.slice(1).join('');
+      }
+      if (parts[1] && parts[1].length > 2) {
+        cleaned = parts[0] + '.' + parts[1].slice(0, 2);
+      }
+    }
+    return cleaned.slice(0, maxLength);
+  };
+
+  const formatCurrency = (value: string): string => {
+    const cleaned = formatNumberInput(value, 8, true);
+    const parts = cleaned.split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return parts.join('.');
+  };
+
+  const parseCurrency = (value: string): number => {
+    return parseFloat(value.replace(/,/g, '')) || 0;
   };
 
   const handleAddItem = () => {
@@ -131,10 +196,10 @@ const InventorySetup = () => {
       supplier: newItem.supplier || null,
       description: newItem.description || null,
       notes: newItem.notes || null,
-      amazon_image_url: null,
+      amazon_image_url: newItem.amazon_image_url || null,
       amazon_title: null,
-      amazon_link: null,
-      asin: null,
+      amazon_link: newItem.amazon_link || null,
+      asin: newItem.asin || null,
       reorder_link: null,
       restock_requested: false,
     });
@@ -144,12 +209,16 @@ const InventorySetup = () => {
       category_id: '',
       current_quantity: 0,
       restock_threshold: 5,
+      reorder_quantity: 10,
       unit: '',
       units_per_package: 1,
       cost_per_package: 0,
       supplier: '',
       description: '',
       notes: '',
+      amazon_link: '',
+      amazon_image_url: '',
+      asin: '',
     });
     setAddItemDialogOpen(false);
   };
@@ -224,7 +293,7 @@ const InventorySetup = () => {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-4xl font-bold text-foreground mb-2">
-              Manage Inventory
+              Inventory Management
             </h1>
             <p className="text-muted-foreground text-lg">
               Manage inventory categories and items
@@ -298,19 +367,28 @@ const InventorySetup = () => {
                             <span className="text-sm text-muted-foreground ml-2">- {category.description}</span>
                           )}
                         </div>
-                        {!category.is_predefined && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setEditingCategory(category);
-                              setEditCategoryDialogOpen(true);
-                            }}
-                            className="hover:text-primary"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                        )}
+                        <div className="flex items-center gap-1">
+                          {!category.is_predefined && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setEditingCategory(category)}
+                                className="hover:text-primary"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setDeletingCategory(category)}
+                                className="hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </div>
 
                       {/* Items in Category */}
@@ -402,7 +480,43 @@ const InventorySetup = () => {
                 }}>
                   Cancel
                 </Button>
-                <Button onClick={handleAddCategory}>
+                <Button onClick={() => handleAddCategory(false)}>
+                  Add Category
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Add Category from Item Dialog */}
+        <Dialog open={addCategoryFromItemDialog} onOpenChange={setAddCategoryFromItemDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add New Category</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Category Name *</Label>
+                <Input
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder="Enter category name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Description</Label>
+                <Textarea
+                  value={newCategoryDescription}
+                  onChange={(e) => setNewCategoryDescription(e.target.value)}
+                  placeholder="Optional description"
+                  rows={3}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setAddCategoryFromItemDialog(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={() => handleAddCategory(true)}>
                   Add Category
                 </Button>
               </div>
@@ -411,7 +525,7 @@ const InventorySetup = () => {
         </Dialog>
 
         {/* Edit Category Dialog */}
-        <Dialog open={editCategoryDialogOpen} onOpenChange={setEditCategoryDialogOpen}>
+        <Dialog open={!!editingCategory} onOpenChange={(open) => !open && setEditingCategory(null)}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Edit Category</DialogTitle>
@@ -438,16 +552,10 @@ const InventorySetup = () => {
                   />
                 </div>
                 <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setEditCategoryDialogOpen(false)}>
+                  <Button variant="outline" onClick={() => setEditingCategory(null)}>
                     Cancel
                   </Button>
-                  <Button onClick={() => {
-                    toast({
-                      title: "Feature coming soon",
-                      description: "Category editing will be available soon",
-                    });
-                    setEditCategoryDialogOpen(false);
-                  }}>
+                  <Button onClick={handleEditCategory}>
                     Save Changes
                   </Button>
                 </div>
@@ -455,6 +563,31 @@ const InventorySetup = () => {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Delete Category Confirmation */}
+        <AlertDialog open={!!deletingCategory} onOpenChange={(open) => !open && setDeletingCategory(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+                Delete Category
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete the category "{deletingCategory?.name}"? 
+                All items in this category will also be permanently deleted. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteCategory}
+                className="bg-destructive hover:bg-destructive/90"
+              >
+                Delete Category
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Add Item Dialog */}
         <Dialog open={addItemDialogOpen} onOpenChange={setAddItemDialogOpen}>
@@ -478,14 +611,21 @@ const InventorySetup = () => {
                   <Label>Category *</Label>
                   <Select
                     value={newItem.category_id}
-                    onValueChange={(value) =>
-                      setNewItem({ ...newItem, category_id: value })
-                    }
+                    onValueChange={(value) => {
+                      if (value === '__add_new__') {
+                        setAddCategoryFromItemDialog(true);
+                      } else {
+                        setNewItem({ ...newItem, category_id: value });
+                      }
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="__add_new__" className="text-primary font-medium">
+                        + Add New Category
+                      </SelectItem>
                       {categories.map((cat) => (
                         <SelectItem key={cat.id} value={cat.id}>
                           {cat.name}
@@ -500,87 +640,126 @@ const InventorySetup = () => {
                 <div className="space-y-2">
                   <Label>Current Stock</Label>
                   <Input
-                    type="number"
-                    min="0"
-                    value={newItem.current_quantity}
+                    type="text"
+                    inputMode="numeric"
+                    value={newItem.current_quantity || ''}
                     onChange={(e) =>
                       setNewItem({
                         ...newItem,
-                        current_quantity: parseInt(e.target.value) || 0,
+                        current_quantity: parseInt(formatNumberInput(e.target.value, 3)) || 0,
                       })
                     }
+                    onFocus={handleNumericFocus}
+                    placeholder="0"
+                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>Restock Level</Label>
                   <Input
-                    type="number"
-                    min="0"
-                    value={newItem.restock_threshold}
+                    type="text"
+                    inputMode="numeric"
+                    value={newItem.restock_threshold || ''}
                     onChange={(e) =>
                       setNewItem({
                         ...newItem,
-                        restock_threshold: parseInt(e.target.value) || 0,
+                        restock_threshold: parseInt(formatNumberInput(e.target.value, 3)) || 0,
                       })
                     }
+                    onFocus={handleNumericFocus}
+                    placeholder="5"
+                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label>Reorder Quantity</Label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    value={newItem.reorder_quantity || ''}
+                    onChange={(e) =>
+                      setNewItem({
+                        ...newItem,
+                        reorder_quantity: parseInt(formatNumberInput(e.target.value, 3)) || 0,
+                      })
+                    }
+                    onFocus={handleNumericFocus}
+                    placeholder="10"
+                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Unit</Label>
                   <Input
                     value={newItem.unit || ''}
-                    placeholder="bottles, rolls, boxes"
+                    placeholder="e.g., boxes, kg, liters"
                     onChange={(e) =>
                       setNewItem({ ...newItem, unit: e.target.value })
                     }
                   />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>Units per Package</Label>
                   <Input
-                    type="number"
-                    min="1"
-                    value={newItem.units_per_package || 1}
+                    type="text"
+                    inputMode="numeric"
+                    value={newItem.units_per_package || ''}
                     onChange={(e) => {
-                      const units = parseFloat(e.target.value) || 1;
+                      const formatted = formatNumberInput(e.target.value, 4);
+                      const displayValue = formatted.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
                       setNewItem({
                         ...newItem,
-                        units_per_package: units,
+                        units_per_package: parseFloat(formatted.replace(/,/g, '')) || 1,
                       });
+                      e.target.value = displayValue;
                     }}
+                    onFocus={handleNumericFocus}
+                    placeholder="1,000"
+                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Cost per Package</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={newItem.cost_per_package || 0}
-                    onChange={(e) => {
-                      const cost = parseFloat(e.target.value) || 0;
-                      setNewItem({
-                        ...newItem,
-                        cost_per_package: cost,
-                      });
-                    }}
-                  />
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      value={newItem.cost_per_package ? formatCurrency(newItem.cost_per_package.toString()) : ''}
+                      onChange={(e) => {
+                        const value = e.target.value.replace('$', '');
+                        setNewItem({
+                          ...newItem,
+                          cost_per_package: parseCurrency(value),
+                        });
+                      }}
+                      onFocus={handleNumericFocus}
+                      placeholder="10,000.00"
+                      className="pl-7 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label>Cost per Unit</Label>
-                  <Input
-                    type="number"
-                    disabled
-                    value={
-                      newItem.cost_per_package && newItem.units_per_package
-                        ? (newItem.cost_per_package / newItem.units_per_package).toFixed(2)
-                        : '0.00'
-                    }
-                    className="bg-muted"
-                  />
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                    <Input
+                      type="text"
+                      disabled
+                      value={
+                        newItem.cost_per_package && newItem.units_per_package
+                          ? formatCurrency((newItem.cost_per_package / newItem.units_per_package).toFixed(2))
+                          : '0.00'
+                      }
+                      className="pl-7 bg-muted"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -592,6 +771,41 @@ const InventorySetup = () => {
                     setNewItem({ ...newItem, supplier: e.target.value })
                   }
                   placeholder="Supplier name"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Product URL</Label>
+                <Input
+                  type="url"
+                  value={newItem.amazon_link || ''}
+                  onChange={(e) =>
+                    setNewItem({ ...newItem, amazon_link: e.target.value })
+                  }
+                  placeholder="https://..."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Photo URL</Label>
+                <Input
+                  type="url"
+                  value={newItem.amazon_image_url || ''}
+                  onChange={(e) =>
+                    setNewItem({ ...newItem, amazon_image_url: e.target.value })
+                  }
+                  placeholder="https://..."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>ASIN (if Amazon)</Label>
+                <Input
+                  value={newItem.asin || ''}
+                  onChange={(e) =>
+                    setNewItem({ ...newItem, asin: e.target.value })
+                  }
+                  placeholder="Amazon ASIN"
                 />
               </div>
 
@@ -627,12 +841,16 @@ const InventorySetup = () => {
                     category_id: '',
                     current_quantity: 0,
                     restock_threshold: 5,
+                    reorder_quantity: 10,
                     unit: '',
                     units_per_package: 1,
                     cost_per_package: 0,
                     supplier: '',
                     description: '',
                     notes: '',
+                    amazon_link: '',
+                    amazon_image_url: '',
+                    asin: '',
                   });
                 }}>
                   Cancel
@@ -713,29 +931,33 @@ const InventorySetup = () => {
                   <div className="space-y-2">
                     <Label>Current Stock</Label>
                     <Input
-                      type="number"
-                      min="0"
-                      value={editingItem.current_quantity}
+                      type="text"
+                      inputMode="numeric"
+                      value={editingItem.current_quantity || ''}
                       onChange={(e) =>
                         setEditingItem({
                           ...editingItem,
-                          current_quantity: parseInt(e.target.value) || 0,
+                          current_quantity: parseInt(formatNumberInput(e.target.value, 3)) || 0,
                         })
                       }
+                      onFocus={handleNumericFocus}
+                      className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Restock Level</Label>
                     <Input
-                      type="number"
-                      min="0"
-                      value={editingItem.restock_threshold}
+                      type="text"
+                      inputMode="numeric"
+                      value={editingItem.restock_threshold || ''}
                       onChange={(e) =>
                         setEditingItem({
                           ...editingItem,
-                          restock_threshold: parseInt(e.target.value) || 0,
+                          restock_threshold: parseInt(formatNumberInput(e.target.value, 3)) || 0,
                         })
                       }
+                      onFocus={handleNumericFocus}
+                      className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                   </div>
                   <div className="space-y-2">
@@ -754,46 +976,55 @@ const InventorySetup = () => {
                   <div className="space-y-2">
                     <Label>Units per Package</Label>
                     <Input
-                      type="number"
-                      min="1"
-                      value={editingItem.units_per_package || 1}
+                      type="text"
+                      inputMode="numeric"
+                      value={editingItem.units_per_package || ''}
                       onChange={(e) => {
-                        const units = parseFloat(e.target.value) || 1;
+                        const formatted = formatNumberInput(e.target.value, 4);
                         setEditingItem({
                           ...editingItem,
-                          units_per_package: units,
+                          units_per_package: parseFloat(formatted.replace(/,/g, '')) || 1,
                         });
                       }}
+                      onFocus={handleNumericFocus}
+                      className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Cost per Package</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={editingItem.cost_per_package || 0}
-                      onChange={(e) => {
-                        const cost = parseFloat(e.target.value) || 0;
-                        setEditingItem({
-                          ...editingItem,
-                          cost_per_package: cost,
-                        });
-                      }}
-                    />
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                      <Input
+                        type="text"
+                        inputMode="decimal"
+                        value={editingItem.cost_per_package ? formatCurrency(editingItem.cost_per_package.toString()) : ''}
+                        onChange={(e) => {
+                          const value = e.target.value.replace('$', '');
+                          setEditingItem({
+                            ...editingItem,
+                            cost_per_package: parseCurrency(value),
+                          });
+                        }}
+                        onFocus={handleNumericFocus}
+                        className="pl-7 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label>Cost per Unit</Label>
-                    <Input
-                      type="number"
-                      disabled
-                      value={
-                        editingItem.cost_per_package && editingItem.units_per_package
-                          ? (editingItem.cost_per_package / editingItem.units_per_package).toFixed(2)
-                          : editingItem.unit_price?.toFixed(2) || '0.00'
-                      }
-                      className="bg-muted"
-                    />
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                      <Input
+                        type="text"
+                        disabled
+                        value={
+                          editingItem.cost_per_package && editingItem.units_per_package
+                            ? formatCurrency((editingItem.cost_per_package / editingItem.units_per_package).toFixed(2))
+                            : editingItem.unit_price?.toFixed(2) || '0.00'
+                        }
+                        className="pl-7 bg-muted"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -804,6 +1035,41 @@ const InventorySetup = () => {
                     onChange={(e) =>
                       setEditingItem({ ...editingItem, supplier: e.target.value })
                     }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Product URL</Label>
+                  <Input
+                    type="url"
+                    value={editingItem.amazon_link || ''}
+                    onChange={(e) =>
+                      setEditingItem({ ...editingItem, amazon_link: e.target.value })
+                    }
+                    placeholder="https://..."
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Photo URL</Label>
+                  <Input
+                    type="url"
+                    value={editingItem.amazon_image_url || ''}
+                    onChange={(e) =>
+                      setEditingItem({ ...editingItem, amazon_image_url: e.target.value })
+                    }
+                    placeholder="https://..."
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>ASIN (if Amazon)</Label>
+                  <Input
+                    value={editingItem.asin || ''}
+                    onChange={(e) =>
+                      setEditingItem({ ...editingItem, asin: e.target.value })
+                    }
+                    placeholder="Amazon ASIN"
                   />
                 </div>
 

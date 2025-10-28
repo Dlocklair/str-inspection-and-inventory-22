@@ -199,6 +199,60 @@ export const useInventoryItems = () => {
     },
   });
 
+  const updateCategory = useMutation({
+    mutationFn: async ({ id, ...updates }: Partial<InventoryCategory> & { id: string }) => {
+      const { data, error } = await supabase
+        .from('inventory_categories')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inventory-categories'] });
+      toast({
+        title: "Success",
+        description: "Category updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update category",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteCategory = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('inventory_categories')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inventory-categories'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory-items'] });
+      toast({
+        title: "Success",
+        description: "Category deleted successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete category",
+        variant: "destructive",
+      });
+    },
+  });
+
   return {
     items,
     isLoading,
@@ -207,5 +261,7 @@ export const useInventoryItems = () => {
     updateItem: updateItem.mutate,
     deleteItem: deleteItem.mutate,
     addCategory: addCategory.mutate,
+    updateCategory: updateCategory.mutate,
+    deleteCategory: deleteCategory.mutate,
   };
 };
