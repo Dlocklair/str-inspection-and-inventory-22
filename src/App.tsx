@@ -2,10 +2,12 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "./hooks/useAuth";
+import { BrowserRouter, Routes, Route, useLocation, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
+import { FirstTimeSetup } from "./components/FirstTimeSetup";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Settings from "./pages/Settings";
@@ -14,21 +16,33 @@ import { InspectionReport } from "./components/InspectionReport";
 import { InventoryReport } from "./components/InventoryReport";
 import { DamageReport } from "./components/DamageReport";
 import NotFound from "./pages/NotFound";
-import { useLocation } from "react-router-dom";
 import { useMigrateInventory } from "./hooks/useMigrateInventory";
 
 const queryClient = new QueryClient();
 
 const LayoutWrapper = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, loading } = useAuth();
   const hideMenuPaths = ['/auth'];
   const showMenu = !hideMenuPaths.includes(location.pathname);
   
   // Run inventory migration on app load
   useMigrateInventory();
 
+  // Redirect to auth if not logged in (except on auth page)
+  useEffect(() => {
+    if (!loading && !user && location.pathname !== '/auth') {
+      navigate('/auth');
+    }
+    if (!loading && user && location.pathname === '/auth') {
+      navigate('/');
+    }
+  }, [user, loading, location.pathname, navigate]);
+
   return (
     <SidebarProvider>
+      <FirstTimeSetup />
       <div className="min-h-screen flex w-full">
         {showMenu && <AppSidebar />}
         <main className="flex-1 relative">

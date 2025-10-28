@@ -49,7 +49,7 @@ interface User {
 export const DamageReport = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { profile } = useAuth();
+  const { profile, roles, isOwner } = useAuth();
   
   const [damageReports, setDamageReports] = useState<DamageItem[]>([
     {
@@ -291,9 +291,11 @@ export const DamageReport = () => {
             {profile && (
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">{profile.full_name}</span>
-                <Badge variant={profile.role === 'owner' ? 'default' : 'secondary'}>
-                  {profile.role}
-                </Badge>
+                {roles.map(role => (
+                  <Badge key={role} variant={role === 'owner' ? 'default' : 'secondary'}>
+                    {role}
+                  </Badge>
+                ))}
               </div>
             )}
             <Button variant="outline" onClick={() => navigate('/settings')}>
@@ -706,7 +708,7 @@ export const DamageReport = () => {
                                         <Button variant="outline" size="sm" onClick={() => markAsComplete(report.id)}>
                                           Mark Complete
                                         </Button>
-                                        {profile?.role === 'owner' && (
+                                        {isOwner() && (
                                           <>
                                             <Button variant="outline" size="sm" onClick={() => startEditing(report)}>
                                               <Edit className="h-4 w-4" />

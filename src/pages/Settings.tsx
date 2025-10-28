@@ -12,11 +12,12 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { RoleManagement } from '@/components/RoleManagement';
 
 const Settings = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { user, profile, signOut, loading } = useAuth();
+  const { user, profile, signOut, loading, isOwner, roles } = useAuth();
   
   const [agents, setAgents] = useState<any[]>([]);
   const [permissions, setPermissions] = useState<any[]>([]);
@@ -33,10 +34,10 @@ const Settings = () => {
 
   // Fetch agents and permissions on mount
   useEffect(() => {
-    if (user && profile?.role === 'owner') {
+    if (user && isOwner()) {
       fetchAgentsAndPermissions();
     }
-  }, [user, profile]);
+  }, [user, isOwner]);
 
   const fetchAgentsAndPermissions = async () => {
     try {
@@ -193,8 +194,8 @@ const Settings = () => {
         <Tabs defaultValue="profile" className="space-y-6">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="profile">Profile</TabsTrigger>
-            <TabsTrigger value="users" disabled={profile?.role !== 'owner'}>User Management</TabsTrigger>
-            <TabsTrigger value="permissions" disabled={profile?.role !== 'owner'}>Permissions</TabsTrigger>
+            <TabsTrigger value="roles" disabled={!isOwner()}>Role Management</TabsTrigger>
+            <TabsTrigger value="permissions" disabled={!isOwner()}>Agent Permissions</TabsTrigger>
           </TabsList>
 
           <TabsContent value="profile" className="space-y-6">
@@ -209,17 +210,25 @@ const Settings = () => {
                       <div className="space-y-1">
                         <p className="font-medium">{profile.full_name}</p>
                         <p className="text-sm text-muted-foreground">{user.email}</p>
-                        <Badge variant={profile.role === 'owner' ? 'default' : 'secondary'}>
-                          {profile.role}
-                        </Badge>
+                        <div className="flex gap-2">
+                          {roles.length > 0 ? (
+                            roles.map(role => (
+                              <Badge key={role} variant={role === 'owner' ? 'default' : 'secondary'}>
+                                {role}
+                              </Badge>
+                            ))
+                          ) : (
+                            <Badge variant="outline">No role assigned</Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <Separator />
-                    {profile.role === 'owner' && (
+                    {isOwner() && (
                       <div>
                         <h4 className="font-medium mb-2">Owner Access</h4>
                         <p className="text-sm text-muted-foreground">
-                          As an owner, you have full access to all modules and can manage agents.
+                          As an owner, you have full access to all modules and can manage roles.
                         </p>
                       </div>
                     )}
@@ -229,11 +238,44 @@ const Settings = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="users" className="space-y-6">
-            {profile?.role === 'owner' && (
+          <TabsContent value="roles" className="space-y-6">
+            {isOwner() && <RoleManagement />}
+          </TabsContent>
+
+          <TabsContent value="permissions" className="space-y-6">
+            {isOwner() ? (
+              <>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Agent Permissions (Legacy)</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                      Legacy agent permissions system. Use the "Role Management" tab to manage user roles.
+                    </p>
+                  </CardContent>
+                </Card>
+              </>
+            ) : (
               <Card>
                 <CardHeader>
-                  <CardTitle>Invite New Agent</CardTitle>
+                  <CardTitle>Access Denied</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">
+                    Only owners can manage permissions.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  );
+};
+
+export default Settings;
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

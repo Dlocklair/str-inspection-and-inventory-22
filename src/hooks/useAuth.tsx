@@ -7,7 +7,6 @@ interface Profile {
   id: string;
   user_id: string;
   full_name: string;
-  role: 'owner' | 'agent';
   phone_numbers: string[];
   email_addresses: string[];
   preferred_contact_method: 'email' | 'sms' | 'both';
@@ -17,16 +16,25 @@ interface Profile {
   updated_at: string;
 }
 
+type AppRole = 'owner' | 'manager' | 'inspector';
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   profile: Profile | null;
+  roles: AppRole[];
   loading: boolean;
-  signUp: (email: string, password: string, fullName: string, role?: 'owner' | 'agent') => Promise<{ error?: any }>;
+  signUp: (email: string, password: string, fullName: string) => Promise<{ error?: any }>;
   signIn: (email: string, password: string) => Promise<{ error?: any }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  refreshRoles: () => Promise<void>;
   resendVerificationEmail: (email: string) => Promise<{ error?: any }>;
+  claimOwnerRole: () => Promise<{ error?: any }>;
+  isOwner: () => boolean;
+  isManager: () => boolean;
+  isInspector: () => boolean;
+  hasAnyRole: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -47,6 +55,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [roles, setRoles] = useState<AppRole[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -70,6 +79,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
+  const fetchRoles = async (userId: string): Promise<AppRole[]> => {
+    try {
+      const { data, error } = await supabase
+        .rpc('get_user_roles', { _user_id: userId });
+
+      if (error) {
+        console.error('Error fetching roles:', error);
+        return [];
+      }
+
+      return (data || []).map((r: any) => r.role as AppRole);
+    } catch (error) {
+      console.error('Error in fetchRoles:', error);
+      return [];
+    }
+  };
+
   const refreshProfile = async () => {
     if (user) {
       const profileData = await fetchProfile(user.id);
@@ -77,46 +103,74 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
+  const refreshRoles = async () => {
+    if (user) {
+      const rolesData = await fetchRoles(user.id);
+      setRoles(rolesData);
+    }
+  };
+
   useEffect(() => {
-    // TEMPORARY BYPASS: Auto-login as owner
-    console.log('BYPASSING AUTH - Auto-login as owner');
-    
-    const mockUser = {
-      id: 'mock-user-id',
-      email: 'owner@example.com',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      aud: 'authenticated',
-      role: 'authenticated'
-    } as User;
-    
-    const mockProfile: Profile = {
-      id: 'mock-profile-id',
-      user_id: 'mock-user-id',
-      full_name: 'System Owner',
-      role: 'owner',
-      phone_numbers: [],
-      email_addresses: ['owner@example.com'],
-      preferred_contact_method: 'email',
-      is_active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+    let mounted = true;
+
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (!mounted) return;
+
+        setSession(session);
+        setUser(session?.user ?? null);
+
+        if (session?.user) {
+          // Fetch profile and roles in parallel
+          const [profileData, rolesData] = await Promise.all([
+            fetchProfile(session.user.id),
+            fetchRoles(session.user.id)
+          ]);
+          
+          if (mounted) {
+            setProfile(profileData);
+            setRoles(rolesData);
+          }
+        } else {
+          setProfile(null);
+          setRoles([]);
+        }
+        
+        setLoading(false);
+      }
+    );
+
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return;
+      
+      setSession(session);
+      setUser(session?.user ?? null);
+
+      if (session?.user) {
+        Promise.all([
+          fetchProfile(session.user.id),
+          fetchRoles(session.user.id)
+        ]).then(([profileData, rolesData]) => {
+          if (mounted) {
+            setProfile(profileData);
+            setRoles(rolesData);
+            setLoading(false);
+          }
+        });
+      } else {
+        setLoading(false);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
     };
-    
-    setUser(mockUser);
-    setProfile(mockProfile);
-    setSession({ 
-      access_token: 'mock-token',
-      refresh_token: 'mock-refresh', 
-      expires_in: 3600,
-      expires_at: Date.now() + 3600000,
-      token_type: 'bearer',
-      user: mockUser
-    } as Session);
-    setLoading(false);
   }, []);
 
-  const signUp = async (email: string, password: string, fullName: string, role: 'owner' | 'agent' = 'agent') => {
+  const signUp = async (email: string, password: string, fullName: string) => {
     try {
       setLoading(true);
       const redirectUrl = `${window.location.origin}/`;
@@ -127,8 +181,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         options: {
           emailRedirectTo: redirectUrl,
           data: {
-            full_name: fullName,
-            role: role
+            full_name: fullName
           }
         }
       });
@@ -254,16 +307,69 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
+  const claimOwnerRole = async () => {
+    try {
+      if (!user) {
+        return { error: new Error('No user logged in') };
+      }
+
+      const { error } = await supabase
+        .from('user_roles')
+        .insert({
+          user_id: user.id,
+          role: 'owner'
+        });
+
+      if (error) {
+        toast({
+          title: "Failed to claim owner role",
+          description: error.message,
+          variant: "destructive"
+        });
+        return { error };
+      }
+
+      // Refresh roles
+      await refreshRoles();
+
+      toast({
+        title: "Owner role claimed",
+        description: "You now have full access to the system.",
+      });
+
+      return {};
+    } catch (error: any) {
+      toast({
+        title: "Failed to claim owner role",
+        description: error.message,
+        variant: "destructive"
+      });
+      return { error };
+    }
+  };
+
+  const isOwner = () => roles.includes('owner');
+  const isManager = () => roles.includes('manager');
+  const isInspector = () => roles.includes('inspector');
+  const hasAnyRole = () => roles.length > 0;
+
   const value = {
     user,
     session,
     profile,
+    roles,
     loading,
     signUp,
     signIn,
     signOut,
     refreshProfile,
-    resendVerificationEmail
+    refreshRoles,
+    resendVerificationEmail,
+    claimOwnerRole,
+    isOwner,
+    isManager,
+    isInspector,
+    hasAnyRole
   };
 
   return (

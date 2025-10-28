@@ -10,18 +10,19 @@ const Index = () => {
   const {
     user,
     profile,
+    roles,
     loading,
-    signOut
+    signOut,
+    isOwner,
+    isManager,
+    isInspector
   } = useAuth();
+  
   useEffect(() => {
-    console.log('Index useEffect - loading:', loading, 'user:', user?.email || 'no user');
-    console.log('Profile data:', profile);
-    console.log('Profile role:', profile?.role);
     if (!loading && !user) {
-      console.log('Redirecting to auth - no user found');
       navigate('/auth');
     }
-  }, [user, loading, navigate, profile]);
+  }, [user, loading, navigate]);
   if (loading) {
     console.log('Showing loading screen...');
     return <div className="min-h-screen bg-background flex items-center justify-center">
@@ -65,10 +66,16 @@ const Index = () => {
           </div>
           <div className="flex flex-col items-end gap-2">
             <div className="flex items-center gap-2">
-              <Badge variant={profile?.role === 'owner' ? 'default' : 'secondary'}>
-                {profile?.role || 'user'}
-              </Badge>
-              {profile?.role === 'owner' && <Shield className="h-4 w-4 text-primary" />}
+              {roles.length > 0 ? (
+                roles.map(role => (
+                  <Badge key={role} variant={role === 'owner' ? 'default' : 'secondary'}>
+                    {role}
+                  </Badge>
+                ))
+              ) : (
+                <Badge variant="outline">No role assigned</Badge>
+              )}
+              {isOwner() && <Shield className="h-4 w-4 text-primary" />}
             </div>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => navigate('/settings')}>
@@ -144,7 +151,7 @@ const Index = () => {
         </div>
 
         {/* Owner Features */}
-        {profile?.role === 'owner' && (
+        {isOwner() && (
           <div className="mb-12">
             <h2 className="text-2xl font-semibold text-foreground mb-6">Owner Management</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

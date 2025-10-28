@@ -47,9 +47,6 @@ export const InspectionReport = () => {
             {profile && (
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">{profile.full_name}</span>
-                <Badge variant={profile.role === 'owner' ? 'default' : 'secondary'}>
-                  {profile.role}
-                </Badge>
               </div>
             )}
             <Button variant="outline" onClick={() => navigate('/settings')}>

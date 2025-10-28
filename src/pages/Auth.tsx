@@ -12,7 +12,7 @@ import { useEffect } from 'react';
 
 const Auth = () => {
   const [signInData, setSignInData] = useState({ email: '', password: '' });
-  const [signUpData, setSignUpData] = useState({ email: '', password: '', fullName: '', role: 'agent' as 'owner' | 'agent' });
+  const [signUpData, setSignUpData] = useState({ email: '', password: '', fullName: '' });
   const [isLoading, setIsLoading] = useState(false);
   const [showResendEmail, setShowResendEmail] = useState(false);
   const [signUpEmail, setSignUpEmail] = useState('');
@@ -40,7 +40,7 @@ const Auth = () => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      const result = await signUp(signUpData.email, signUpData.password, signUpData.fullName, signUpData.role);
+      const result = await signUp(signUpData.email, signUpData.password, signUpData.fullName);
       if (!result.error) {
         setSignUpEmail(signUpData.email);
         setShowResendEmail(true);
