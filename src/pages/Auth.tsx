@@ -157,37 +157,6 @@ const Auth = () => {
 
                 <Separator />
 
-                <div className="space-y-3">
-                  <Label>Select Your Role</Label>
-                  <div className="space-y-2">
-                    <Button
-                      type="button"
-                      variant={signUpData.role === 'owner' ? 'default' : 'outline'}
-                      className="w-full justify-start"
-                      onClick={() => setSignUpData(prev => ({ ...prev, role: 'owner' }))}
-                    >
-                      <Shield className="h-4 w-4 mr-2" />
-                      Property Owner
-                      <span className="ml-auto text-xs">Full Access</span>
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={signUpData.role === 'agent' ? 'default' : 'outline'}
-                      className="w-full justify-start"
-                      onClick={() => setSignUpData(prev => ({ ...prev, role: 'agent' }))}
-                    >
-                      <User className="h-4 w-4 mr-2" />
-                      Agent/Contractor
-                      <span className="ml-auto text-xs">Limited Access</span>
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {signUpData.role === 'owner' 
-                      ? 'Owners have full access to all modules and can manage agents.'
-                      : 'Agents receive permissions from property owners for specific modules.'
-                    }
-                  </p>
-                </div>
 
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? (

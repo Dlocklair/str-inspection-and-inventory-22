@@ -107,7 +107,7 @@ const SortableItem = ({ item, templateId, isEditing, editingText, onEdit, onSave
 
 export const InspectionTemplateManager = () => {
   const { toast } = useToast();
-  const { profile } = useAuth();
+  const { profile, isOwner } = useAuth();
   
   const [templates, setTemplates] = useState<InspectionTemplate[]>([]);
   const [newItemTexts, setNewItemTexts] = useState<{[templateId: string]: string}>({});
@@ -302,7 +302,7 @@ export const InspectionTemplateManager = () => {
     const template = templates.find(t => t.id === templateId);
     
     // Only owners can delete templates
-    if (profile?.role !== 'owner') {
+    if (!isOwner()) {
       toast({
         title: "Access denied",
         description: "Only owners can delete templates.",
@@ -352,7 +352,7 @@ export const InspectionTemplateManager = () => {
               <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle>{template.name} Template</CardTitle>
-                    {profile?.role === 'owner' && (
+                    {isOwner() && (
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button variant="outline" size="sm">

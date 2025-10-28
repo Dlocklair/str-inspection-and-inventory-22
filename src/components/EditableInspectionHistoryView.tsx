@@ -32,7 +32,7 @@ interface InspectionRecord {
 
 export const EditableInspectionHistoryView = () => {
   const { toast } = useToast();
-  const { profile } = useAuth();
+  const { profile, isOwner } = useAuth();
   const [inspectionRecords, setInspectionRecords] = useState<InspectionRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedGroups, setExpandedGroups] = useState<{[key: string]: boolean}>({});
@@ -156,7 +156,7 @@ export const EditableInspectionHistoryView = () => {
   };
 
   const deleteInspectionRecord = (recordId: string) => {
-    if (profile?.role !== 'owner') {
+    if (!isOwner()) {
       toast({
         title: "Access denied",
         description: "Only owners can delete inspection records.",
@@ -276,7 +276,7 @@ export const EditableInspectionHistoryView = () => {
                                     <Button size="sm" variant="outline" onClick={() => startEditingRecord(record.id)}>
                                       <Edit className="h-4 w-4" />
                                     </Button>
-                                    {profile?.role === 'owner' && (
+                                    {isOwner() && (
                                       <AlertDialog>
                                         <AlertDialogTrigger asChild>
                                           <Button size="sm" variant="outline">
