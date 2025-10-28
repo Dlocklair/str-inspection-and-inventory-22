@@ -15,6 +15,7 @@ import { InventoryReport } from "./components/InventoryReport";
 import { DamageReport } from "./components/DamageReport";
 import NotFound from "./pages/NotFound";
 import { useLocation } from "react-router-dom";
+import { useMigrateInventory } from "./hooks/useMigrateInventory";
 
 const queryClient = new QueryClient();
 
@@ -22,6 +23,9 @@ const LayoutWrapper = () => {
   const location = useLocation();
   const hideMenuPaths = ['/auth'];
   const showMenu = !hideMenuPaths.includes(location.pathname);
+  
+  // Run inventory migration on app load
+  useMigrateInventory();
 
   return (
     <SidebarProvider>

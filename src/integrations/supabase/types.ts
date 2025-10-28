@@ -361,17 +361,22 @@ export type Database = {
           amazon_title: string | null
           asin: string | null
           category_id: string
+          cost_per_package: number | null
           created_at: string
           created_by: string | null
           current_quantity: number | null
           description: string | null
           id: string
           name: string
+          notes: string | null
           reorder_link: string | null
           reorder_quantity: number | null
+          restock_requested: boolean | null
           restock_threshold: number | null
           supplier: string | null
+          unit: string | null
           unit_price: number | null
+          units_per_package: number | null
           updated_at: string
         }
         Insert: {
@@ -381,17 +386,22 @@ export type Database = {
           amazon_title?: string | null
           asin?: string | null
           category_id: string
+          cost_per_package?: number | null
           created_at?: string
           created_by?: string | null
           current_quantity?: number | null
           description?: string | null
           id?: string
           name: string
+          notes?: string | null
           reorder_link?: string | null
           reorder_quantity?: number | null
+          restock_requested?: boolean | null
           restock_threshold?: number | null
           supplier?: string | null
+          unit?: string | null
           unit_price?: number | null
+          units_per_package?: number | null
           updated_at?: string
         }
         Update: {
@@ -401,17 +411,22 @@ export type Database = {
           amazon_title?: string | null
           asin?: string | null
           category_id?: string
+          cost_per_package?: number | null
           created_at?: string
           created_by?: string | null
           current_quantity?: number | null
           description?: string | null
           id?: string
           name?: string
+          notes?: string | null
           reorder_link?: string | null
           reorder_quantity?: number | null
+          restock_requested?: boolean | null
           restock_threshold?: number | null
           supplier?: string | null
+          unit?: string | null
           unit_price?: number | null
+          units_per_package?: number | null
           updated_at?: string
         }
         Relationships: [
