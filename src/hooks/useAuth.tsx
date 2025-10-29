@@ -30,6 +30,7 @@ interface AuthContextType {
   refreshProfile: () => Promise<void>;
   refreshRoles: () => Promise<void>;
   resendVerificationEmail: (email: string) => Promise<{ error?: any }>;
+  resetPassword: (email: string) => Promise<{ error?: any }>;
   claimOwnerRole: () => Promise<{ error?: any }>;
   isOwner: () => boolean;
   isManager: () => boolean;
@@ -307,6 +308,39 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
+  const resetPassword = async (email: string) => {
+    try {
+      const redirectUrl = `${window.location.origin}/`;
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: redirectUrl
+      });
+
+      if (error) {
+        toast({
+          title: "Failed to send reset email",
+          description: error.message,
+          variant: "destructive"
+        });
+        return { error };
+      }
+
+      toast({
+        title: "Reset email sent",
+        description: "Please check your email for the password reset link.",
+      });
+
+      return {};
+    } catch (error: any) {
+      toast({
+        title: "Failed to send reset email",
+        description: error.message,
+        variant: "destructive"
+      });
+      return { error };
+    }
+  };
+
   const claimOwnerRole = async () => {
     try {
       if (!user) {
@@ -365,6 +399,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     refreshProfile,
     refreshRoles,
     resendVerificationEmail,
+    resetPassword,
     claimOwnerRole,
     isOwner,
     isManager,
