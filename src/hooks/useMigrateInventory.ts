@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { User } from '@supabase/supabase-js';
 
 interface LocalStorageItem {
   id: string;
@@ -21,12 +22,17 @@ interface LocalStorageItem {
   costPerPackage?: number;
 }
 
-export const useMigrateInventory = () => {
+export const useMigrateInventory = (user: User | null, authLoading: boolean) => {
   const [isMigrating, setIsMigrating] = useState(false);
   const [migrationComplete, setMigrationComplete] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
+    // Don't run migration until auth is loaded
+    if (authLoading) {
+      return;
+    }
+
     const checkAndMigrate = async () => {
       // Check if migration has already been done
       const migrationFlag = localStorage.getItem('inventory-migrated-to-supabase');
@@ -44,7 +50,6 @@ export const useMigrateInventory = () => {
       }
 
       // Check if user is authenticated
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         return;
       }
@@ -66,7 +71,7 @@ export const useMigrateInventory = () => {
     };
 
     checkAndMigrate();
-  }, []);
+  }, [user, authLoading]);
 
   const migrateData = async (localData: string) => {
     setIsMigrating(true);

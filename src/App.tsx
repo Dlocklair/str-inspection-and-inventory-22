@@ -27,8 +27,8 @@ const LayoutWrapper = () => {
   const hideMenuPaths = ['/auth'];
   const showMenu = !hideMenuPaths.includes(location.pathname);
   
-  // Run inventory migration on app load
-  useMigrateInventory();
+  // Run inventory migration on app load (after auth is ready)
+  useMigrateInventory(user, loading);
 
   // Redirect to auth if not logged in (except on auth page)
   useEffect(() => {
