@@ -69,7 +69,7 @@ export const useInventoryItems = () => {
       
       return data.map(item => ({
         ...item,
-        category_name: item.category?.name || 'Other'
+        category_name: item.category?.[0]?.name || 'Other'
       })) as InventoryItem[];
     },
   });
