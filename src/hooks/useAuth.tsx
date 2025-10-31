@@ -114,16 +114,55 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   useEffect(() => {
     let mounted = true;
 
-    // Set up auth state listener
+    // Set up auth state listener - only handles state changes after initial load
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
+        
+        console.log('Auth state changed:', event);
 
         setSession(session);
         setUser(session?.user ?? null);
-
+        
+        // Only fetch profile and roles on state change if we have a user
         if (session?.user) {
-          // Fetch profile and roles in parallel
+          try {
+            const [profileData, rolesData] = await Promise.all([
+              fetchProfile(session.user.id),
+              fetchRoles(session.user.id)
+            ]);
+            
+            if (mounted) {
+              setProfile(profileData);
+              setRoles(rolesData);
+            }
+          } catch (error) {
+            console.error('Error loading user data in auth state change:', error);
+            if (mounted) {
+              setProfile(null);
+              setRoles([]);
+            }
+          }
+        } else {
+          setProfile(null);
+          setRoles([]);
+        }
+      }
+    );
+
+    // Initial session check - this is the primary data load
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!mounted) return;
+      
+      setSession(session);
+      setUser(session?.user ?? null);
+
+      // Set loading to false immediately - we have the auth state
+      setLoading(false);
+
+      // Fetch profile and roles asynchronously if user exists
+      if (session?.user) {
+        try {
           const [profileData, rolesData] = await Promise.all([
             fetchProfile(session.user.id),
             fetchRoles(session.user.id)
@@ -133,34 +172,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             setProfile(profileData);
             setRoles(rolesData);
           }
-        } else {
-          setProfile(null);
-          setRoles([]);
-        }
-        
-        setLoading(false);
-      }
-    );
-
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!mounted) return;
-      
-      setSession(session);
-      setUser(session?.user ?? null);
-
-      if (session?.user) {
-        Promise.all([
-          fetchProfile(session.user.id),
-          fetchRoles(session.user.id)
-        ]).then(([profileData, rolesData]) => {
+        } catch (error) {
+          console.error('Error loading user data:', error);
           if (mounted) {
-            setProfile(profileData);
-            setRoles(rolesData);
-            setLoading(false);
+            setProfile(null);
+            setRoles([]);
           }
-        });
-      } else {
+        }
+      }
+    }).catch((error) => {
+      console.error('Error getting session:', error);
+      if (mounted) {
         setLoading(false);
       }
     });
