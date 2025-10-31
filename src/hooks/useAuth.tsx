@@ -113,11 +113,22 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   useEffect(() => {
     let mounted = true;
+    let loadingTimeout: NodeJS.Timeout;
+
+    // Failsafe: ensure loading completes within 10 seconds
+    loadingTimeout = setTimeout(() => {
+      if (mounted) {
+        console.warn('Auth loading timeout - forcing completion');
+        setLoading(false);
+      }
+    }, 10000);
 
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
+        
+        console.log('Auth state changed:', event, 'has user:', !!session?.user);
 
         setSession(session);
         setUser(session?.user ?? null);
@@ -133,6 +144,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             if (mounted) {
               setProfile(profileData);
               setRoles(rolesData);
+              console.log('Profile and roles loaded:', !!profileData, rolesData.length);
             }
           } catch (error) {
             console.error('Error loading user data in auth state change:', error);
@@ -146,14 +158,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           setRoles([]);
         }
         
-        setLoading(false);
+        if (mounted) {
+          console.log('Setting loading to false from auth state change');
+          setLoading(false);
+          clearTimeout(loadingTimeout);
+        }
       }
     );
 
     // Check for existing session
+    console.log('Checking for existing session...');
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!mounted) return;
       
+      console.log('Got session:', !!session, 'has user:', !!session?.user);
       setSession(session);
       setUser(session?.user ?? null);
 
@@ -165,26 +183,33 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           if (mounted) {
             setProfile(profileData);
             setRoles(rolesData);
+            console.log('Initial profile and roles loaded:', !!profileData, rolesData.length);
             setLoading(false);
+            clearTimeout(loadingTimeout);
           }
         }).catch((error) => {
           console.error('Error loading user data:', error);
           if (mounted) {
             setLoading(false);
+            clearTimeout(loadingTimeout);
           }
         });
       } else {
+        console.log('No session, setting loading to false');
         setLoading(false);
+        clearTimeout(loadingTimeout);
       }
     }).catch((error) => {
       console.error('Error getting session:', error);
       if (mounted) {
         setLoading(false);
+        clearTimeout(loadingTimeout);
       }
     });
 
     return () => {
       mounted = false;
+      clearTimeout(loadingTimeout);
       subscription.unsubscribe();
     };
   }, []);
