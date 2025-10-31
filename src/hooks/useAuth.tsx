@@ -113,29 +113,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   useEffect(() => {
     let mounted = true;
-    let loadingTimeout: NodeJS.Timeout;
 
-    // Failsafe: ensure loading completes within 10 seconds
-    loadingTimeout = setTimeout(() => {
-      if (mounted) {
-        console.warn('Auth loading timeout - forcing completion');
-        setLoading(false);
-      }
-    }, 10000);
-
-    // Set up auth state listener
+    // Set up auth state listener - only handles state changes after initial load
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
         
-        console.log('Auth state changed:', event, 'has user:', !!session?.user);
+        console.log('Auth state changed:', event);
 
         setSession(session);
         setUser(session?.user ?? null);
-
+        
+        // Only fetch profile and roles on state change if we have a user
         if (session?.user) {
           try {
-            // Fetch profile and roles in parallel
             const [profileData, rolesData] = await Promise.all([
               fetchProfile(session.user.id),
               fetchRoles(session.user.id)
@@ -144,7 +135,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             if (mounted) {
               setProfile(profileData);
               setRoles(rolesData);
-              console.log('Profile and roles loaded:', !!profileData, rolesData.length);
             }
           } catch (error) {
             console.error('Error loading user data in auth state change:', error);
@@ -157,59 +147,48 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           setProfile(null);
           setRoles([]);
         }
-        
-        if (mounted) {
-          console.log('Setting loading to false from auth state change');
-          setLoading(false);
-          clearTimeout(loadingTimeout);
-        }
       }
     );
 
-    // Check for existing session
-    console.log('Checking for existing session...');
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Initial session check - this is the primary data load
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!mounted) return;
       
-      console.log('Got session:', !!session, 'has user:', !!session?.user);
       setSession(session);
       setUser(session?.user ?? null);
 
+      // Set loading to false immediately - we have the auth state
+      setLoading(false);
+
+      // Fetch profile and roles asynchronously if user exists
       if (session?.user) {
-        Promise.all([
-          fetchProfile(session.user.id),
-          fetchRoles(session.user.id)
-        ]).then(([profileData, rolesData]) => {
+        try {
+          const [profileData, rolesData] = await Promise.all([
+            fetchProfile(session.user.id),
+            fetchRoles(session.user.id)
+          ]);
+          
           if (mounted) {
             setProfile(profileData);
             setRoles(rolesData);
-            console.log('Initial profile and roles loaded:', !!profileData, rolesData.length);
-            setLoading(false);
-            clearTimeout(loadingTimeout);
           }
-        }).catch((error) => {
+        } catch (error) {
           console.error('Error loading user data:', error);
           if (mounted) {
-            setLoading(false);
-            clearTimeout(loadingTimeout);
+            setProfile(null);
+            setRoles([]);
           }
-        });
-      } else {
-        console.log('No session, setting loading to false');
-        setLoading(false);
-        clearTimeout(loadingTimeout);
+        }
       }
     }).catch((error) => {
       console.error('Error getting session:', error);
       if (mounted) {
         setLoading(false);
-        clearTimeout(loadingTimeout);
       }
     });
 
     return () => {
       mounted = false;
-      clearTimeout(loadingTimeout);
       subscription.unsubscribe();
     };
   }, []);
