@@ -5,13 +5,14 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Edit, Save, X, Send, Loader2, AlertTriangle, CheckCircle, Package2 } from 'lucide-react';
+import { Plus, Edit, Save, X, Send, Loader2, AlertTriangle, CheckCircle, Package2, ChevronsUpDown, ChevronsDownUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useInventoryItems, useInventoryCategories, InventoryItem } from '@/hooks/useInventory';
 import { InventoryEditForm } from './InventoryEditForm';
 import { EmailNotificationSettings } from './EmailNotificationSettings';
 import { supabase } from '@/integrations/supabase/client';
+import { InventoryTable } from './InventoryTable';
 
 export const InventorySection = () => {
   const { toast } = useToast();
@@ -37,8 +38,8 @@ export const InventorySection = () => {
   }, []);
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortField, setSortField] = useState<'name' | 'currentStock' | 'restockLevel'>('name');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [expandAll, setExpandAll] = useState(false);
+  const [collapseAll, setCollapseAll] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newItem, setNewItem] = useState({
@@ -67,23 +68,12 @@ export const InventorySection = () => {
     );
   }
 
-  // Filter and sort items
-  const filteredItems = items
-    .filter(item =>
-      item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.category_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.supplier?.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    .sort((a, b) => {
-      const multiplier = sortDirection === 'asc' ? 1 : -1;
-      if (sortField === 'name') {
-        return multiplier * a.name.localeCompare(b.name);
-      } else if (sortField === 'currentStock') {
-        return multiplier * (a.current_quantity - b.current_quantity);
-      } else {
-        return multiplier * (a.restock_threshold - b.restock_threshold);
-      }
-    });
+  // Filter items based on search
+  const filteredItems = items.filter(item =>
+    item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.category_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.supplier?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const getStockStatus = (item: InventoryItem) => {
     if (item.current_quantity === 0) {
@@ -107,11 +97,23 @@ export const InventorySection = () => {
     }
   };
 
-  const handleQuickStockUpdate = (itemId: string, newQuantity: number) => {
+  const handleStockUpdate = (itemId: string, newQuantity: number) => {
     updateItem({
       id: itemId,
       current_quantity: Math.max(0, newQuantity),
     });
+  };
+
+  const handleExpandAll = () => {
+    setExpandAll(true);
+    setCollapseAll(false);
+    setTimeout(() => setExpandAll(false), 100);
+  };
+
+  const handleCollapseAll = () => {
+    setCollapseAll(true);
+    setExpandAll(false);
+    setTimeout(() => setCollapseAll(false), 100);
   };
 
   const handleEditSave = (updatedItem: any) => {
@@ -300,7 +302,7 @@ export const InventorySection = () => {
 
         <TabsContent value="inventory" className="space-y-4">
           {/* Search and Add */}
-          <div className="flex gap-4">
+          <div className="flex gap-2 flex-wrap">
             <Input
               placeholder="Search inventory..."
               value={searchTerm}
@@ -316,6 +318,14 @@ export const InventorySection = () => {
                 Add Item
               </Button>
             )}
+            <Button onClick={handleExpandAll} variant="outline" size="sm">
+              <ChevronsDownUp className="h-4 w-4 mr-2" />
+              Expand All
+            </Button>
+            <Button onClick={handleCollapseAll} variant="outline" size="sm">
+              <ChevronsUpDown className="h-4 w-4 mr-2" />
+              Collapse All
+            </Button>
             {lowStockItems.length > 0 && (
               <Button onClick={handleSendRestockEmails} variant="outline">
                 <Send className="h-4 w-4 mr-2" />
@@ -439,87 +449,14 @@ export const InventorySection = () => {
 
           {/* Inventory Table */}
           <Card>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="border-b bg-muted/50">
-                    <tr>
-                      <th className="text-left p-4 font-medium">Item</th>
-                      <th className="text-left p-4 font-medium">Category</th>
-                      <th className="text-left p-4 font-medium">Stock</th>
-                      <th className="text-left p-4 font-medium">Restock Level</th>
-                      <th className="text-left p-4 font-medium">Status</th>
-                      <th className="text-left p-4 font-medium">Supplier</th>
-                      <th className="text-left p-4 font-medium">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredItems.map((item) => {
-                      const status = getStockStatus(item);
-                      const StatusIcon = status.icon;
-
-                      return (
-                        <tr key={item.id} className="border-b hover:bg-muted/50">
-                          <td className="p-4">
-                            <div className="flex items-center gap-3">
-                              {item.amazon_image_url && (
-                                <img
-                                  src={item.amazon_image_url}
-                                  alt={item.name}
-                                  className="w-12 h-12 object-cover rounded"
-                                />
-                              )}
-                              <div>
-                                <div className="font-medium">{item.name}</div>
-                                {item.unit && (
-                                  <div className="text-sm text-muted-foreground">{item.unit}</div>
-                                )}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="p-4">{item.category_name}</td>
-                          <td className="p-4">
-                            <div className="flex items-center gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleQuickStockUpdate(item.id, item.current_quantity - 1)}
-                              >
-                                -
-                              </Button>
-                              <span className="w-12 text-center font-medium">{item.current_quantity}</span>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleQuickStockUpdate(item.id, item.current_quantity + 1)}
-                              >
-                                +
-                              </Button>
-                            </div>
-                          </td>
-                          <td className="p-4">{item.restock_threshold}</td>
-                          <td className="p-4">
-                            <Badge variant={status.color as any} className="flex items-center gap-1 w-fit">
-                              <StatusIcon className="h-3 w-3" />
-                              {status.label}
-                            </Badge>
-                          </td>
-                          <td className="p-4">{item.supplier || '-'}</td>
-                          <td className="p-4">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => setEditingItem(item)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+            <CardContent className="p-4">
+              <InventoryTable
+                items={filteredItems}
+                onEditItem={setEditingItem}
+                onUpdateStock={handleStockUpdate}
+                expandAll={expandAll}
+                collapseAll={collapseAll}
+              />
             </CardContent>
           </Card>
         </TabsContent>

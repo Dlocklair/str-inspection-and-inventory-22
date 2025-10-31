@@ -37,8 +37,8 @@ const InventorySetup = () => {
     name: '',
     category_id: '',
     current_quantity: 0,
-    restock_threshold: 5,
-    reorder_quantity: 10,
+    restock_threshold: 0,
+    reorder_quantity: 0,
     unit: '',
     units_per_package: 1,
     cost_per_package: 0,
@@ -208,8 +208,8 @@ const InventorySetup = () => {
       name: '',
       category_id: '',
       current_quantity: 0,
-      restock_threshold: 5,
-      reorder_quantity: 10,
+      restock_threshold: 0,
+      reorder_quantity: 0,
       unit: '',
       units_per_package: 1,
       cost_per_package: 0,
@@ -787,7 +787,7 @@ const InventorySetup = () => {
               </div>
 
               <div className="space-y-2">
-                <Label>Photo URL</Label>
+                <Label>Product Image URL</Label>
                 <Input
                   type="url"
                   value={newItem.amazon_image_url || ''}
@@ -796,6 +796,19 @@ const InventorySetup = () => {
                   }
                   placeholder="https://..."
                 />
+                {newItem.amazon_image_url && (
+                  <div className="mt-2 p-2 border rounded">
+                    <img 
+                      src={newItem.amazon_image_url} 
+                      alt="Product preview" 
+                      className="w-32 h-32 object-cover rounded"
+                      onError={(e) => {
+                        e.currentTarget.src = '';
+                        e.currentTarget.alt = 'Invalid image URL';
+                      }}
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -840,8 +853,8 @@ const InventorySetup = () => {
                     name: '',
                     category_id: '',
                     current_quantity: 0,
-                    restock_threshold: 5,
-                    reorder_quantity: 10,
+                    restock_threshold: 0,
+                    reorder_quantity: 0,
                     unit: '',
                     units_per_package: 1,
                     cost_per_package: 0,
