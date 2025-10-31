@@ -23,6 +23,18 @@ export const InventorySection = () => {
   const [searchParams] = useSearchParams();
   const urlTab = searchParams.get('tab');
   const [activeTab, setActiveTab] = useState(urlTab || 'inventory');
+  
+  // Email recipients state
+  const [emailRecipients, setEmailRecipients] = useState<string[]>([]);
+
+  // Load saved email settings on component mount
+  useEffect(() => {
+    const savedEmails = localStorage.getItem('inventory-email-notifications');
+    if (savedEmails) {
+      const emailSettings = JSON.parse(savedEmails);
+      setEmailRecipients(emailSettings.emails || []);
+    }
+  }, []);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<'name' | 'currentStock' | 'restockLevel'>('name');
@@ -189,6 +201,15 @@ export const InventorySection = () => {
       return;
     }
 
+    if (emailRecipients.length === 0) {
+      toast({
+        title: 'No email recipients configured',
+        description: 'Please add email recipients in the Email Notifications tab.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
       // Call the edge function to send emails
       const { error } = await supabase.functions.invoke('send-inventory-emails', {
@@ -196,11 +217,16 @@ export const InventorySection = () => {
           items: itemsNeedingRestock.map(item => ({
             id: item.id,
             name: item.name,
-            current_quantity: item.current_quantity,
-            restock_threshold: item.restock_threshold,
-            supplier: item.supplier,
-            category: item.category_name,
+            category: item.category_name || 'Other',
+            currentStock: item.current_quantity,
+            restockLevel: item.restock_threshold,
+            unit: item.unit || 'units',
+            supplier: item.supplier || 'N/A',
+            supplierUrl: item.reorder_link || item.amazon_link || '',
+            cost: item.unit_price || 0,
+            notes: item.notes || '',
           })),
+          recipients: emailRecipients,
         },
       });
 
@@ -531,7 +557,9 @@ export const InventorySection = () => {
         </TabsContent>
 
         <TabsContent value="notifications">
-          <EmailNotificationSettings onEmailSettingsChange={() => {}} />
+          <EmailNotificationSettings onEmailSettingsChange={(emails) => {
+            setEmailRecipients(emails.filter(email => email.trim() !== ''));
+          }} />
         </TabsContent>
       </Tabs>
     </div>
