@@ -123,15 +123,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setUser(session?.user ?? null);
 
         if (session?.user) {
-          // Fetch profile and roles in parallel
-          const [profileData, rolesData] = await Promise.all([
-            fetchProfile(session.user.id),
-            fetchRoles(session.user.id)
-          ]);
-          
-          if (mounted) {
-            setProfile(profileData);
-            setRoles(rolesData);
+          try {
+            // Fetch profile and roles in parallel
+            const [profileData, rolesData] = await Promise.all([
+              fetchProfile(session.user.id),
+              fetchRoles(session.user.id)
+            ]);
+            
+            if (mounted) {
+              setProfile(profileData);
+              setRoles(rolesData);
+            }
+          } catch (error) {
+            console.error('Error loading user data in auth state change:', error);
+            if (mounted) {
+              setProfile(null);
+              setRoles([]);
+            }
           }
         } else {
           setProfile(null);
@@ -159,8 +167,18 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             setRoles(rolesData);
             setLoading(false);
           }
+        }).catch((error) => {
+          console.error('Error loading user data:', error);
+          if (mounted) {
+            setLoading(false);
+          }
         });
       } else {
+        setLoading(false);
+      }
+    }).catch((error) => {
+      console.error('Error getting session:', error);
+      if (mounted) {
         setLoading(false);
       }
     });
