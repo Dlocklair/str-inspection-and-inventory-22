@@ -277,29 +277,19 @@ export const InventoryEditForm = ({
           {/* Restock level - Ninth field */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-cyan">Restock Level (Units)</label>
-            <Input type="text" placeholder="Minimum quantity before reordering" value={editingData.restockLevel ? editingData.restockLevel.toLocaleString('en-US') : ''} className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" onFocus={e => e.target.select()} onChange={e => {
-            const value = e.target.value.replace(/,/g, '');
-            if (/^\d{0,4}$/.test(value)) {
-              setEditingData(prev => ({
-                ...prev,
-                restockLevel: parseInt(value) || 0
-              }));
-            }
-          }} />
+            <Input type="number" placeholder="Minimum quantity before reordering" value={editingData.restockLevel || ''} className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" onFocus={e => e.target.select()} onChange={e => setEditingData(prev => ({
+            ...prev,
+            restockLevel: Number(e.target.value)
+          }))} />
           </div>
           
           {/* Current stock */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-cyan">Current Stock</label>
-            <Input type="text" placeholder="How many you have right now" value={editingData.currentStock ? editingData.currentStock.toLocaleString('en-US') : ''} className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" onFocus={e => e.target.select()} onChange={e => {
-            const value = e.target.value.replace(/,/g, '');
-            if (/^\d{0,4}$/.test(value)) {
-              setEditingData(prev => ({
-                ...prev,
-                currentStock: parseInt(value) || 0
-              }));
-            }
-          }} />
+            <Input type="number" placeholder="How many you have right now" value={editingData.currentStock || ''} className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" onFocus={e => e.target.select()} onChange={e => setEditingData(prev => ({
+            ...prev,
+            currentStock: Number(e.target.value)
+          }))} />
           </div>
         </div>
         

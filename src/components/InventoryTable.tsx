@@ -50,24 +50,16 @@ export const InventoryTable = ({ items, onEditItem, onUpdateStock, expandAll, co
     } else if (item.current_quantity <= item.restock_threshold) {
       return {
         label: 'Low Stock',
-        color: 'warning',
+        color: 'default',
         icon: AlertTriangle,
       };
     } else {
       return {
         label: 'In Stock',
-        color: 'success',
+        color: 'secondary',
         icon: CheckCircle,
       };
     }
-  };
-
-  const formatNumber = (num: number): string => {
-    return num.toLocaleString('en-US');
-  };
-
-  const parseFormattedNumber = (str: string): number => {
-    return parseInt(str.replace(/,/g, ''), 10) || 0;
   };
 
   const handleStockEdit = (itemId: string, currentStock: number) => {
@@ -76,10 +68,9 @@ export const InventoryTable = ({ items, onEditItem, onUpdateStock, expandAll, co
   };
 
   const handleStockSave = (itemId: string) => {
-    const newQty = parseFormattedNumber(stockValue);
+    const newQty = parseInt(stockValue) || 0;
     onUpdateStock(itemId, Math.max(0, newQty));
     setEditingStock(null);
-    setStockValue('');
   };
 
   const handleStockKeyDown = (e: React.KeyboardEvent, itemId: string) => {
@@ -167,18 +158,13 @@ export const InventoryTable = ({ items, onEditItem, onUpdateStock, expandAll, co
                             <div className="flex justify-center">
                               {isEditing ? (
                                 <Input
-                                  type="text"
+                                  type="number"
                                   value={stockValue}
-                                  onChange={(e) => {
-                                    const value = e.target.value.replace(/,/g, '');
-                                    if (/^\d{0,4}$/.test(value)) {
-                                      setStockValue(value);
-                                    }
-                                  }}
+                                  onChange={(e) => setStockValue(e.target.value)}
                                   onBlur={() => handleStockSave(item.id)}
                                   onKeyDown={(e) => handleStockKeyDown(e, item.id)}
                                   onFocus={(e) => e.target.select()}
-                                  className="w-24 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                  className="w-20 text-center"
                                   autoFocus
                                 />
                               ) : (
@@ -186,12 +172,12 @@ export const InventoryTable = ({ items, onEditItem, onUpdateStock, expandAll, co
                                   className="cursor-pointer hover:bg-muted/50 px-3 py-1 rounded"
                                   onClick={() => handleStockEdit(item.id, item.current_quantity)}
                                 >
-                                  <span className="font-medium">{formatNumber(item.current_quantity)}</span>
+                                  <span className="font-medium">{item.current_quantity}</span>
                                 </div>
                               )}
                             </div>
                           </td>
-                          <td className="p-4 text-center">{formatNumber(item.restock_threshold)}</td>
+                          <td className="p-4 text-center">{item.restock_threshold}</td>
                           <td className="p-4">
                             <div className="flex justify-center">
                               <Badge variant={status.color as any} className="flex items-center gap-1 w-fit">
