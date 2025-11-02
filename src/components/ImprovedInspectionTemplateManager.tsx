@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Plus, Edit, Save, X, Trash2, GripVertical, Copy, Bell } from 'lucide-react';
+import { Plus, Edit, Save, X, Trash2, GripVertical, Copy } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   DndContext,
@@ -39,11 +39,6 @@ interface InspectionTemplate {
   name: string;
   items: ChecklistItem[];
   isPredefined: boolean;
-  frequencyType?: string;
-  frequencyDays?: number;
-  notificationsEnabled?: boolean;
-  notificationMethod?: string;
-  notificationDaysAhead?: number;
 }
 
 interface SortableItemProps {
@@ -122,14 +117,6 @@ export const ImprovedInspectionTemplateManager = () => {
   const [newTemplateName, setNewTemplateName] = useState('');
   const [editingTemplateName, setEditingTemplateName] = useState('');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  
-  // Frequency and notification settings
-  const [editingFrequency, setEditingFrequency] = useState(false);
-  const [tempFrequencyType, setTempFrequencyType] = useState<string>('none');
-  const [tempFrequencyDays, setTempFrequencyDays] = useState<number>(30);
-  const [tempNotificationsEnabled, setTempNotificationsEnabled] = useState<boolean>(true);
-  const [tempNotificationMethod, setTempNotificationMethod] = useState<string>('email');
-  const [tempNotificationDaysAhead, setTempNotificationDaysAhead] = useState<number>(7);
   
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -396,51 +383,6 @@ export const ImprovedInspectionTemplateManager = () => {
     });
   };
 
-  const startEditingFrequency = () => {
-    if (!selectedTemplate) return;
-    setTempFrequencyType(selectedTemplate.frequencyType || 'none');
-    setTempFrequencyDays(selectedTemplate.frequencyDays || 30);
-    setTempNotificationsEnabled(selectedTemplate.notificationsEnabled ?? true);
-    setTempNotificationMethod(selectedTemplate.notificationMethod || 'email');
-    setTempNotificationDaysAhead(selectedTemplate.notificationDaysAhead || 7);
-    setEditingFrequency(true);
-  };
-
-  const saveFrequencySettings = () => {
-    if (!selectedTemplate) return;
-
-    const hasFrequency = tempFrequencyType && tempFrequencyType !== 'none';
-
-    setTemplates(prev => prev.map(template =>
-      template.id === selectedTemplateId
-        ? {
-            ...template,
-            frequencyType: hasFrequency ? tempFrequencyType : undefined,
-            frequencyDays: tempFrequencyType === 'custom' ? tempFrequencyDays : undefined,
-            notificationsEnabled: hasFrequency ? tempNotificationsEnabled : undefined,
-            notificationMethod: hasFrequency ? tempNotificationMethod : undefined,
-            notificationDaysAhead: hasFrequency ? tempNotificationDaysAhead : undefined,
-          }
-        : template
-    ));
-
-    setEditingFrequency(false);
-    
-    toast({
-      title: "Frequency settings saved",
-      description: "Inspection frequency and notification settings have been updated.",
-    });
-  };
-
-  const cancelEditingFrequency = () => {
-    setEditingFrequency(false);
-    setTempFrequencyType('none');
-    setTempFrequencyDays(30);
-    setTempNotificationsEnabled(true);
-    setTempNotificationMethod('email');
-    setTempNotificationDaysAhead(7);
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -601,170 +543,6 @@ export const ImprovedInspectionTemplateManager = () => {
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
-
-                {/* Frequency and Notification Settings */}
-                <Card className="bg-muted/20 mt-6">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <Bell className="h-4 w-4" />
-                        Frequency & Notification Settings
-                      </CardTitle>
-                      {!editingFrequency && (
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          onClick={startEditingFrequency}
-                        >
-                          <Edit className="h-4 w-4 mr-2" />
-                          Edit Settings
-                        </Button>
-                      )}
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {editingFrequency ? (
-                      <>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {/* Frequency Type */}
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium">Frequency</label>
-                            <Select value={tempFrequencyType || "none"} onValueChange={setTempFrequencyType}>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select frequency" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="none">None</SelectItem>
-                                <SelectItem value="daily">Daily</SelectItem>
-                                <SelectItem value="weekly">Weekly</SelectItem>
-                                <SelectItem value="monthly">Monthly</SelectItem>
-                                <SelectItem value="quarterly">Quarterly</SelectItem>
-                                <SelectItem value="annually">Annually</SelectItem>
-                                <SelectItem value="custom">Custom (specify days)</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          {/* Custom Frequency Days */}
-                          {tempFrequencyType === 'custom' && (
-                            <div className="space-y-2">
-                              <label className="text-sm font-medium">Days Between Inspections</label>
-                              <Input
-                                type="number"
-                                min="1"
-                                value={tempFrequencyDays}
-                                onChange={(e) => setTempFrequencyDays(parseInt(e.target.value) || 30)}
-                                placeholder="Enter number of days"
-                              />
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Notification Settings */}
-                        {tempFrequencyType && tempFrequencyType !== 'none' && (
-                          <div className="space-y-4 pt-4 border-t">
-                            <div className="flex items-center justify-between">
-                              <div className="space-y-0.5">
-                                <Label htmlFor="template-notifications-enabled" className="text-sm font-medium">
-                                  Enable Notifications
-                                </Label>
-                                <p className="text-xs text-muted-foreground">
-                                  Send reminders before inspections are due
-                                </p>
-                              </div>
-                              <Switch
-                                id="template-notifications-enabled"
-                                checked={tempNotificationsEnabled}
-                                onCheckedChange={setTempNotificationsEnabled}
-                              />
-                            </div>
-
-                            {tempNotificationsEnabled && (
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {/* Notification Method */}
-                                <div className="space-y-2">
-                                  <label className="text-sm font-medium">Notification Method</label>
-                                  <Select value={tempNotificationMethod} onValueChange={setTempNotificationMethod}>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Select method" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="email">Email</SelectItem>
-                                      <SelectItem value="phone">Phone/SMS</SelectItem>
-                                      <SelectItem value="both">Both (Email & Phone)</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-
-                                {/* Days Ahead to Notify */}
-                                <div className="space-y-2">
-                                  <label className="text-sm font-medium">Days Ahead to Notify</label>
-                                  <Input
-                                    type="number"
-                                    min="1"
-                                    max="90"
-                                    value={tempNotificationDaysAhead}
-                                    onChange={(e) => setTempNotificationDaysAhead(parseInt(e.target.value) || 7)}
-                                    placeholder="Number of days"
-                                  />
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Action Buttons */}
-                        <div className="flex gap-2 pt-4 border-t">
-                          <Button onClick={saveFrequencySettings}>
-                            <Save className="h-4 w-4 mr-2" />
-                            Save Settings
-                          </Button>
-                          <Button variant="outline" onClick={cancelEditingFrequency}>
-                            <X className="h-4 w-4 mr-2" />
-                            Cancel
-                          </Button>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        {selectedTemplate.frequencyType ? (
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium">Frequency:</span>
-                              <Badge variant="secondary">
-                                {selectedTemplate.frequencyType === 'custom' 
-                                  ? `Every ${selectedTemplate.frequencyDays} days`
-                                  : selectedTemplate.frequencyType.charAt(0).toUpperCase() + selectedTemplate.frequencyType.slice(1)
-                                }
-                              </Badge>
-                            </div>
-                            {selectedTemplate.notificationsEnabled && (
-                              <>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm font-medium">Notifications:</span>
-                                  <Badge variant="secondary">
-                                    {selectedTemplate.notificationMethod === 'email' 
-                                      ? 'Email' 
-                                      : selectedTemplate.notificationMethod === 'phone'
-                                      ? 'Phone/SMS'
-                                      : 'Both (Email & Phone)'}
-                                  </Badge>
-                                </div>
-                                <div className="text-sm text-muted-foreground">
-                                  Reminder sent {selectedTemplate.notificationDaysAhead} day{selectedTemplate.notificationDaysAhead !== 1 ? 's' : ''} before due date
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">
-                            No frequency or notification settings configured. Click "Edit Settings" to configure.
-                          </p>
-                        )}
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
               </CardContent>
             </>
           ) : (
