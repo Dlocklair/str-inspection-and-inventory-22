@@ -17,7 +17,7 @@ import { RoleManagement } from '@/components/RoleManagement';
 const Settings = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { user, profile, signOut, loading, isOwner, roles } = useAuth();
+  const { user, profile, signOut, loading, isOwner, roles, rolesLoaded } = useAuth();
   
   const [agents, setAgents] = useState<any[]>([]);
   const [permissions, setPermissions] = useState<any[]>([]);
@@ -146,12 +146,14 @@ const Settings = () => {
     }
   };
 
-  if (loading) {
+  if (loading || !rolesLoaded) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
+          <p className="text-muted-foreground">
+            {loading ? 'Loading user...' : 'Loading permissions...'}
+          </p>
         </div>
       </div>
     );
@@ -194,27 +196,37 @@ const Settings = () => {
         <Tabs defaultValue="profile" className="space-y-6">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="profile">Profile</TabsTrigger>
-            <TabsTrigger value="roles" disabled={!isOwner()}>Role Management</TabsTrigger>
-            <TabsTrigger value="permissions" disabled={!isOwner()}>Agent Permissions</TabsTrigger>
+            <TabsTrigger value="roles">Role Management</TabsTrigger>
+            <TabsTrigger value="permissions">Agent Permissions</TabsTrigger>
           </TabsList>
 
           <TabsContent value="profile" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Current User</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  User Profile
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {profile && (
                   <div className="space-y-4">
-                    <div className="flex items-center gap-4">
-                      <div className="space-y-1">
-                        <p className="font-medium">{profile.full_name}</p>
-                        <p className="text-sm text-muted-foreground">{user.email}</p>
-                        <div className="flex gap-2">
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="text-sm text-muted-foreground">Full Name</Label>
+                        <p className="font-medium text-lg">{profile.full_name}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm text-muted-foreground">Email</Label>
+                        <p className="font-medium">{user.email}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm text-muted-foreground">Role</Label>
+                        <div className="flex gap-2 mt-1">
                           {roles.length > 0 ? (
                             roles.map(role => (
-                              <Badge key={role} variant={role === 'owner' ? 'default' : 'secondary'}>
-                                {role}
+                              <Badge key={role} variant={role === 'owner' ? 'default' : 'secondary'} className="text-sm">
+                                {role.toUpperCase()}
                               </Badge>
                             ))
                           ) : (
@@ -225,11 +237,16 @@ const Settings = () => {
                     </div>
                     <Separator />
                     {isOwner() && (
-                      <div>
-                        <h4 className="font-medium mb-2">Owner Access</h4>
-                        <p className="text-sm text-muted-foreground">
-                          As an owner, you have full access to all modules and can manage roles.
-                        </p>
+                      <div className="bg-primary/5 p-4 rounded-lg border border-primary/20">
+                        <div className="flex items-start gap-3">
+                          <Shield className="h-5 w-5 text-primary mt-0.5" />
+                          <div>
+                            <h4 className="font-medium mb-1">Owner Privileges</h4>
+                            <p className="text-sm text-muted-foreground">
+                              You have full access to all modules and can manage user roles and permissions.
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
