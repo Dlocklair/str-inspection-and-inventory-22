@@ -7,7 +7,12 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Plus, Edit, Save, X, Trash2, GripVertical, Copy, Bell } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Plus, Edit, Save, X, Trash2, GripVertical, Copy, Bell, CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import {
   DndContext,
@@ -44,6 +49,7 @@ interface InspectionTemplate {
   notificationsEnabled?: boolean;
   notificationMethod?: string;
   notificationDaysAhead?: number;
+  nextOccurrence?: string;
 }
 
 interface SortableItemProps {
@@ -130,6 +136,11 @@ export const ImprovedInspectionTemplateManager = () => {
   const [tempNotificationsEnabled, setTempNotificationsEnabled] = useState<boolean>(true);
   const [tempNotificationMethod, setTempNotificationMethod] = useState<string>('email');
   const [tempNotificationDaysAhead, setTempNotificationDaysAhead] = useState<number>(7);
+  const [tempNextOccurrence, setTempNextOccurrence] = useState<Date | undefined>(undefined);
+  
+  // Delete confirmation
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [templateToDelete, setTemplateToDelete] = useState<string | null>(null);
   
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -343,32 +354,6 @@ export const ImprovedInspectionTemplateManager = () => {
     });
   };
 
-  const deleteTemplate = (templateId: string) => {
-    const template = templates.find(t => t.id === templateId);
-    if (template?.isPredefined) {
-      toast({
-        title: "Cannot delete",
-        description: "Predefined templates cannot be deleted.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setTemplates(prev => prev.filter(t => t.id !== templateId));
-    
-    // Select first template if current one was deleted
-    if (selectedTemplateId === templateId) {
-      const remainingTemplates = templates.filter(t => t.id !== templateId);
-      if (remainingTemplates.length > 0) {
-        setSelectedTemplateId(remainingTemplates[0].id);
-      }
-    }
-    
-    toast({
-      title: "Template deleted",
-      description: "Custom template has been deleted.",
-    });
-  };
 
   const updateTemplateName = () => {
     if (!editingTemplateName.trim() || !selectedTemplate) return;
@@ -403,11 +388,21 @@ export const ImprovedInspectionTemplateManager = () => {
     setTempNotificationsEnabled(selectedTemplate.notificationsEnabled ?? true);
     setTempNotificationMethod(selectedTemplate.notificationMethod || 'email');
     setTempNotificationDaysAhead(selectedTemplate.notificationDaysAhead || 7);
+    setTempNextOccurrence(selectedTemplate.nextOccurrence ? new Date(selectedTemplate.nextOccurrence) : undefined);
     setEditingFrequency(true);
   };
 
   const saveFrequencySettings = () => {
     if (!selectedTemplate) return;
+
+    // Format next occurrence date if provided
+    let nextOccurrenceString: string | undefined;
+    if (tempNextOccurrence) {
+      const year = tempNextOccurrence.getFullYear();
+      const month = String(tempNextOccurrence.getMonth() + 1).padStart(2, '0');
+      const day = String(tempNextOccurrence.getDate()).padStart(2, '0');
+      nextOccurrenceString = `${year}-${month}-${day}`;
+    }
 
     setTemplates(prev => prev.map(template =>
       template.id === selectedTemplateId
@@ -418,6 +413,7 @@ export const ImprovedInspectionTemplateManager = () => {
             notificationsEnabled: tempFrequencyType !== 'none' ? tempNotificationsEnabled : undefined,
             notificationMethod: tempFrequencyType !== 'none' && tempNotificationsEnabled ? tempNotificationMethod : undefined,
             notificationDaysAhead: tempFrequencyType !== 'none' && tempNotificationsEnabled ? tempNotificationDaysAhead : undefined,
+            nextOccurrence: tempFrequencyType !== 'none' ? nextOccurrenceString : undefined,
           }
         : template
     ));
@@ -437,6 +433,46 @@ export const ImprovedInspectionTemplateManager = () => {
     setTempNotificationsEnabled(true);
     setTempNotificationMethod('email');
     setTempNotificationDaysAhead(7);
+    setTempNextOccurrence(undefined);
+  };
+
+  const confirmDeleteTemplate = (templateId: string) => {
+    setTemplateToDelete(templateId);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleDeleteTemplate = () => {
+    if (!templateToDelete) return;
+    
+    const template = templates.find(t => t.id === templateToDelete);
+    if (template?.isPredefined) {
+      toast({
+        title: "Cannot delete",
+        description: "Predefined templates cannot be deleted.",
+        variant: "destructive"
+      });
+      setDeleteConfirmOpen(false);
+      setTemplateToDelete(null);
+      return;
+    }
+
+    setTemplates(prev => prev.filter(t => t.id !== templateToDelete));
+    
+    // Select first template if current one was deleted
+    if (selectedTemplateId === templateToDelete) {
+      const remainingTemplates = templates.filter(t => t.id !== templateToDelete);
+      if (remainingTemplates.length > 0) {
+        setSelectedTemplateId(remainingTemplates[0].id);
+      }
+    }
+    
+    toast({
+      title: "Template deleted",
+      description: "Custom template has been deleted.",
+    });
+    
+    setDeleteConfirmOpen(false);
+    setTemplateToDelete(null);
   };
 
   return (
@@ -550,7 +586,7 @@ export const ImprovedInspectionTemplateManager = () => {
                       <Button 
                         size="sm" 
                         variant="outline" 
-                        onClick={() => deleteTemplate(selectedTemplate.id)}
+                        onClick={() => confirmDeleteTemplate(selectedTemplate.id)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -645,6 +681,14 @@ export const ImprovedInspectionTemplateManager = () => {
                       {selectedTemplate.frequencyType && selectedTemplate.frequencyType !== 'none' && (
                         <>
                           <div className="flex items-center gap-2">
+                            <span className="font-medium">Next Occurrence:</span>
+                            <span className="text-muted-foreground">
+                              {selectedTemplate.nextOccurrence 
+                                ? format(new Date(selectedTemplate.nextOccurrence), 'PPP')
+                                : 'Not set'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
                             <span className="font-medium">Notifications:</span>
                             <span className="text-muted-foreground">
                               {selectedTemplate.notificationsEnabled ? 'Enabled' : 'Disabled'}
@@ -708,6 +752,37 @@ export const ImprovedInspectionTemplateManager = () => {
                         {tempFrequencyType && tempFrequencyType !== 'none' && (
                           <>
                             <div className="space-y-2">
+                              <Label>Next Occurrence Date</Label>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    className={cn(
+                                      "justify-start text-left font-normal w-full",
+                                      !tempNextOccurrence && "text-muted-foreground"
+                                    )}
+                                  >
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {tempNextOccurrence ? format(tempNextOccurrence, "PPP") : <span>Pick a date</span>}
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                  <Calendar
+                                    mode="single"
+                                    selected={tempNextOccurrence}
+                                    onSelect={setTempNextOccurrence}
+                                    disabled={(date) => date < new Date()}
+                                    initialFocus
+                                    className="p-3 pointer-events-auto"
+                                  />
+                                </PopoverContent>
+                              </Popover>
+                              <p className="text-xs text-muted-foreground">
+                                Set when the next inspection of this type should occur
+                              </p>
+                            </div>
+
+                            <div className="space-y-2">
                               <div className="flex items-center gap-2">
                                 <Switch
                                   id="notifications-enabled"
@@ -760,6 +835,22 @@ export const ImprovedInspectionTemplateManager = () => {
           )}
         </Card>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Template</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this template? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setTemplateToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteTemplate}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
