@@ -58,6 +58,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [loading, setLoading] = useState(true);
+  const [rolesLoaded, setRolesLoaded] = useState(false);
   const { toast } = useToast();
 
   const fetchProfile = async (userId: string): Promise<Profile | null> => {
@@ -82,6 +83,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const fetchRoles = async (userId: string): Promise<AppRole[]> => {
     try {
+      console.log('Fetching roles for user:', userId);
       const { data, error } = await supabase
         .rpc('get_user_roles', { _user_id: userId });
 
@@ -90,6 +92,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         return [];
       }
 
+      console.log('Roles fetched:', data);
       return (data || []).map((r: any) => r.role as AppRole);
     } catch (error) {
       console.error('Error in fetchRoles:', error);
@@ -115,13 +118,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     let mounted = true;
     let timeoutId: NodeJS.Timeout;
 
-    // Failsafe: ensure loading becomes false after 3 seconds max
+    // Failsafe: ensure loading becomes false after 5 seconds max
     timeoutId = setTimeout(() => {
       if (mounted) {
         console.warn('Auth initialization timeout - setting loading to false');
         setLoading(false);
+        setRolesLoaded(true); // Mark as loaded even on timeout
       }
-    }, 3000);
+    }, 5000);
 
     // Set up auth state listener - only handles state changes after initial load
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -135,6 +139,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         
         // Only fetch profile and roles on state change if we have a user
         if (session?.user) {
+          setRolesLoaded(false);
           try {
             const [profileData, rolesData] = await Promise.all([
               fetchProfile(session.user.id),
@@ -144,17 +149,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             if (mounted) {
               setProfile(profileData);
               setRoles(rolesData);
+              setRolesLoaded(true);
             }
           } catch (error) {
             console.error('Error loading user data in auth state change:', error);
             if (mounted) {
               setProfile(null);
               setRoles([]);
+              setRolesLoaded(true); // Mark as loaded even on error
             }
           }
         } else {
           setProfile(null);
           setRoles([]);
+          setRolesLoaded(true);
         }
       }
     );
@@ -170,7 +178,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       // Set loading to false immediately - we have the auth state
       setLoading(false);
 
-      // Fetch profile and roles asynchronously if user exists
+      // Fetch profile and roles if user exists
       if (session?.user) {
         try {
           const [profileData, rolesData] = await Promise.all([
@@ -181,20 +189,25 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           if (mounted) {
             setProfile(profileData);
             setRoles(rolesData);
+            setRolesLoaded(true);
           }
         } catch (error) {
           console.error('Error loading user data:', error);
           if (mounted) {
             setProfile(null);
             setRoles([]);
+            setRolesLoaded(true); // Mark as loaded even on error
           }
         }
+      } else {
+        setRolesLoaded(true); // No user, so roles are "loaded" (empty)
       }
     }).catch((error) => {
       console.error('Error getting session:', error);
       if (mounted) {
         clearTimeout(timeoutId);
         setLoading(false);
+        setRolesLoaded(true);
       }
     });
 
@@ -426,7 +439,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     session,
     profile,
     roles,
-    loading,
+    loading: loading || !rolesLoaded, // Show loading until both auth and roles are ready
     signUp,
     signIn,
     signOut,
