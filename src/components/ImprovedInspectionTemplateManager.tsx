@@ -691,6 +691,7 @@ export const ImprovedInspectionTemplateManager = () => {
                                     <SelectContent>
                                       <SelectItem value="email">Email</SelectItem>
                                       <SelectItem value="phone">Phone/SMS</SelectItem>
+                                      <SelectItem value="both">Both (Email & Phone)</SelectItem>
                                     </SelectContent>
                                   </Select>
                                 </div>
@@ -742,7 +743,11 @@ export const ImprovedInspectionTemplateManager = () => {
                                 <div className="flex items-center gap-2">
                                   <span className="text-sm font-medium">Notifications:</span>
                                   <Badge variant="secondary">
-                                    {selectedTemplate.notificationMethod === 'email' ? 'Email' : 'Phone/SMS'}
+                                    {selectedTemplate.notificationMethod === 'email' 
+                                      ? 'Email' 
+                                      : selectedTemplate.notificationMethod === 'phone'
+                                      ? 'Phone/SMS'
+                                      : 'Both (Email & Phone)'}
                                   </Badge>
                                 </div>
                                 <div className="text-sm text-muted-foreground">

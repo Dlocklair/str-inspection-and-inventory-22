@@ -286,7 +286,10 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
 
             {/* Next Due Date (Optional) */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Next Due Date (Optional)</label>
+              <label className="text-sm font-medium">
+                Next Occurrence Date
+                <span className="text-xs text-muted-foreground ml-2">(For recurring inspections)</span>
+              </label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -312,6 +315,9 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
                   />
                 </PopoverContent>
               </Popover>
+              <p className="text-xs text-muted-foreground">
+                Set when the next inspection of this type should occur to establish a recurring schedule
+              </p>
             </div>
           </div>
 
