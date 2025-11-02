@@ -84,8 +84,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const fetchRoles = async (userId: string): Promise<AppRole[]> => {
     try {
       console.log('Fetching roles for user:', userId);
-      const { data, error } = await supabase
-        .rpc('get_user_roles', { _user_id: userId });
+      
+      // Create a timeout promise
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Role fetch timeout')), 3000);
+      });
+      
+      // Race between the actual fetch and timeout
+      const fetchPromise = supabase.rpc('get_user_roles', { _user_id: userId });
+      
+      const { data, error } = await Promise.race([fetchPromise, timeoutPromise]) as any;
 
       if (error) {
         console.error('Error fetching roles:', error);
@@ -93,10 +101,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
 
       console.log('Roles fetched:', data);
-      // The RPC returns objects like {get_user_roles: 'owner'}
-      return (data || []).map((r: any) => r.get_user_roles as AppRole);
+      // The RPC returns TABLE(role app_role), so each row has a 'role' column
+      return (data || []).map((r: any) => r.role as AppRole);
     } catch (error) {
-      console.error('Error in fetchRoles:', error);
+      console.error('Error in fetchRoles (timeout or other):', error);
       return [];
     }
   };
