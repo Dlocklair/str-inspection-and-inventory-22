@@ -223,23 +223,38 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          frequency_days: number | null
+          frequency_type: string | null
           id: string
           is_custom: boolean | null
           name: string
+          notification_days_ahead: number | null
+          notification_method: string | null
+          notifications_enabled: boolean | null
         }
         Insert: {
           created_at?: string
           created_by?: string | null
+          frequency_days?: number | null
+          frequency_type?: string | null
           id?: string
           is_custom?: boolean | null
           name: string
+          notification_days_ahead?: number | null
+          notification_method?: string | null
+          notifications_enabled?: boolean | null
         }
         Update: {
           created_at?: string
           created_by?: string | null
+          frequency_days?: number | null
+          frequency_type?: string | null
           id?: string
           is_custom?: boolean | null
           name?: string
+          notification_days_ahead?: number | null
+          notification_method?: string | null
+          notifications_enabled?: boolean | null
         }
         Relationships: [
           {
@@ -256,16 +271,11 @@ export type Database = {
           created_at: string
           due_date: string | null
           entered_by: string
-          frequency_days: number | null
-          frequency_type: string | null
           id: string
           inspection_date: string
           inspection_type_id: string
           next_due_date: string | null
           notes: string | null
-          notification_days_ahead: number | null
-          notification_method: string | null
-          notifications_enabled: boolean | null
           performed_by: string | null
           property_name: string | null
           status: string | null
@@ -275,16 +285,11 @@ export type Database = {
           created_at?: string
           due_date?: string | null
           entered_by: string
-          frequency_days?: number | null
-          frequency_type?: string | null
           id?: string
           inspection_date?: string
           inspection_type_id: string
           next_due_date?: string | null
           notes?: string | null
-          notification_days_ahead?: number | null
-          notification_method?: string | null
-          notifications_enabled?: boolean | null
           performed_by?: string | null
           property_name?: string | null
           status?: string | null
@@ -294,16 +299,11 @@ export type Database = {
           created_at?: string
           due_date?: string | null
           entered_by?: string
-          frequency_days?: number | null
-          frequency_type?: string | null
           id?: string
           inspection_date?: string
           inspection_type_id?: string
           next_due_date?: string | null
           notes?: string | null
-          notification_days_ahead?: number | null
-          notification_method?: string | null
-          notifications_enabled?: boolean | null
           performed_by?: string | null
           property_name?: string | null
           status?: string | null

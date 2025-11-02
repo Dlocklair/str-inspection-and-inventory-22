@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Plus, Edit, Save, X, Trash2, GripVertical, Copy } from 'lucide-react';
+import { Plus, Edit, Save, X, Trash2, GripVertical, Copy, Bell } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   DndContext,
@@ -39,6 +39,11 @@ interface InspectionTemplate {
   name: string;
   items: ChecklistItem[];
   isPredefined: boolean;
+  frequencyType?: string;
+  frequencyDays?: number;
+  notificationsEnabled?: boolean;
+  notificationMethod?: string;
+  notificationDaysAhead?: number;
 }
 
 interface SortableItemProps {
@@ -117,6 +122,14 @@ export const ImprovedInspectionTemplateManager = () => {
   const [newTemplateName, setNewTemplateName] = useState('');
   const [editingTemplateName, setEditingTemplateName] = useState('');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  
+  // Frequency and notification settings
+  const [editingFrequency, setEditingFrequency] = useState(false);
+  const [tempFrequencyType, setTempFrequencyType] = useState<string>('none');
+  const [tempFrequencyDays, setTempFrequencyDays] = useState<number>(30);
+  const [tempNotificationsEnabled, setTempNotificationsEnabled] = useState<boolean>(true);
+  const [tempNotificationMethod, setTempNotificationMethod] = useState<string>('email');
+  const [tempNotificationDaysAhead, setTempNotificationDaysAhead] = useState<number>(7);
   
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -383,6 +396,49 @@ export const ImprovedInspectionTemplateManager = () => {
     });
   };
 
+  const startEditingFrequency = () => {
+    if (!selectedTemplate) return;
+    setTempFrequencyType(selectedTemplate.frequencyType || 'none');
+    setTempFrequencyDays(selectedTemplate.frequencyDays || 30);
+    setTempNotificationsEnabled(selectedTemplate.notificationsEnabled ?? true);
+    setTempNotificationMethod(selectedTemplate.notificationMethod || 'email');
+    setTempNotificationDaysAhead(selectedTemplate.notificationDaysAhead || 7);
+    setEditingFrequency(true);
+  };
+
+  const saveFrequencySettings = () => {
+    if (!selectedTemplate) return;
+
+    setTemplates(prev => prev.map(template =>
+      template.id === selectedTemplateId
+        ? {
+            ...template,
+            frequencyType: tempFrequencyType !== 'none' ? tempFrequencyType : undefined,
+            frequencyDays: tempFrequencyType === 'custom' ? tempFrequencyDays : undefined,
+            notificationsEnabled: tempFrequencyType !== 'none' ? tempNotificationsEnabled : undefined,
+            notificationMethod: tempFrequencyType !== 'none' && tempNotificationsEnabled ? tempNotificationMethod : undefined,
+            notificationDaysAhead: tempFrequencyType !== 'none' && tempNotificationsEnabled ? tempNotificationDaysAhead : undefined,
+          }
+        : template
+    ));
+
+    setEditingFrequency(false);
+    
+    toast({
+      title: "Settings saved",
+      description: "Frequency and notification settings have been updated.",
+    });
+  };
+
+  const cancelEditingFrequency = () => {
+    setEditingFrequency(false);
+    setTempFrequencyType('none');
+    setTempFrequencyDays(30);
+    setTempNotificationsEnabled(true);
+    setTempNotificationMethod('email');
+    setTempNotificationDaysAhead(7);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -542,6 +598,158 @@ export const ImprovedInspectionTemplateManager = () => {
                   <Button onClick={addNewItem}>
                     <Plus className="h-4 w-4" />
                   </Button>
+                </div>
+              </CardContent>
+
+              {/* Frequency and Notification Settings */}
+              <CardContent className="border-t pt-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Bell className="h-5 w-5" />
+                      <h3 className="text-lg font-semibold">Frequency & Notifications</h3>
+                    </div>
+                    {!editingFrequency ? (
+                      <Button size="sm" variant="outline" onClick={startEditingFrequency}>
+                        <Edit className="h-4 w-4 mr-2" />
+                        Configure
+                      </Button>
+                    ) : (
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={saveFrequencySettings}>
+                          <Save className="h-4 w-4 mr-2" />
+                          Save
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={cancelEditingFrequency}>
+                          <X className="h-4 w-4 mr-2" />
+                          Cancel
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
+                  {!editingFrequency ? (
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">Frequency:</span>
+                        <span className="text-muted-foreground">
+                          {selectedTemplate.frequencyType 
+                            ? selectedTemplate.frequencyType === 'per_visit' 
+                              ? 'Per Visit'
+                              : selectedTemplate.frequencyType === 'custom'
+                              ? `Every ${selectedTemplate.frequencyDays} days`
+                              : selectedTemplate.frequencyType.charAt(0).toUpperCase() + selectedTemplate.frequencyType.slice(1)
+                            : 'Not set'}
+                        </span>
+                      </div>
+                      {selectedTemplate.frequencyType && selectedTemplate.frequencyType !== 'none' && (
+                        <>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">Notifications:</span>
+                            <span className="text-muted-foreground">
+                              {selectedTemplate.notificationsEnabled ? 'Enabled' : 'Disabled'}
+                            </span>
+                          </div>
+                          {selectedTemplate.notificationsEnabled && (
+                            <>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">Method:</span>
+                                <span className="text-muted-foreground">
+                                  {selectedTemplate.notificationMethod === 'both' 
+                                    ? 'Both (Email & Phone)'
+                                    : selectedTemplate.notificationMethod === 'phone'
+                                    ? 'Phone/SMS'
+                                    : 'Email'}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">Notify Days Ahead:</span>
+                                <span className="text-muted-foreground">
+                                  {selectedTemplate.notificationDaysAhead || 7} days
+                                </span>
+                              </div>
+                            </>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Frequency</Label>
+                          <Select value={tempFrequencyType || 'none'} onValueChange={setTempFrequencyType}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select frequency" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">None</SelectItem>
+                              <SelectItem value="per_visit">Per Visit</SelectItem>
+                              <SelectItem value="monthly">Monthly</SelectItem>
+                              <SelectItem value="quarterly">Quarterly</SelectItem>
+                              <SelectItem value="annually">Annually</SelectItem>
+                              <SelectItem value="custom">Custom (Days)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {tempFrequencyType === 'custom' && (
+                          <div className="space-y-2">
+                            <Label>Custom Frequency (Days)</Label>
+                            <Input
+                              type="number"
+                              min="1"
+                              value={tempFrequencyDays}
+                              onChange={(e) => setTempFrequencyDays(parseInt(e.target.value) || 30)}
+                            />
+                          </div>
+                        )}
+
+                        {tempFrequencyType && tempFrequencyType !== 'none' && (
+                          <>
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <Switch
+                                  id="notifications-enabled"
+                                  checked={tempNotificationsEnabled}
+                                  onCheckedChange={setTempNotificationsEnabled}
+                                />
+                                <Label htmlFor="notifications-enabled">Enable Notifications</Label>
+                              </div>
+                            </div>
+
+                            {tempNotificationsEnabled && (
+                              <>
+                                <div className="space-y-2">
+                                  <Label>Notification Method</Label>
+                                  <Select value={tempNotificationMethod} onValueChange={setTempNotificationMethod}>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select method" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="email">Email</SelectItem>
+                                      <SelectItem value="phone">Phone/SMS</SelectItem>
+                                      <SelectItem value="both">Both (Email & Phone)</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label>Notify Days Ahead</Label>
+                                  <Input
+                                    type="number"
+                                    min="1"
+                                    value={tempNotificationDaysAhead}
+                                    onChange={(e) => setTempNotificationDaysAhead(parseInt(e.target.value) || 7)}
+                                  />
+                                </div>
+                              </>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </>

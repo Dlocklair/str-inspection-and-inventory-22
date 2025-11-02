@@ -53,11 +53,6 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [currentInspection, setCurrentInspection] = useState<InspectionItem[]>([]);
   const [nextDueDate, setNextDueDate] = useState<Date>();
-  const [frequencyType, setFrequencyType] = useState<string>('none');
-  const [frequencyDays, setFrequencyDays] = useState<number>(30);
-  const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(true);
-  const [notificationMethod, setNotificationMethod] = useState<string>('email');
-  const [notificationDaysAhead, setNotificationDaysAhead] = useState<number>(7);
 
   // Load templates on mount and add default templates if none exist
   useEffect(() => {
@@ -204,11 +199,6 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
     setSelectedTemplateId('');
     setSelectedDate(undefined);
     setNextDueDate(undefined);
-    setFrequencyType('none');
-    setFrequencyDays(30);
-    setNotificationsEnabled(true);
-    setNotificationMethod('email');
-    setNotificationDaysAhead(7);
 
     toast({
       title: "Inspection saved successfully!",
@@ -330,94 +320,6 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
               </p>
             </div>
           </div>
-
-          {/* Frequency Settings */}
-          {selectedTemplateId && (
-            <div className="space-y-4 border rounded-lg p-4">
-              <h3 className="text-lg font-semibold">Frequency & Notifications</h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Frequency Type */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Frequency</label>
-                  <Select value={frequencyType} onValueChange={setFrequencyType}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select frequency" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      <SelectItem value="per_visit">Per Visit</SelectItem>
-                      <SelectItem value="monthly">Monthly</SelectItem>
-                      <SelectItem value="quarterly">Quarterly</SelectItem>
-                      <SelectItem value="annually">Annually</SelectItem>
-                      <SelectItem value="custom">Custom (Days)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Custom Frequency Days */}
-                {frequencyType === 'custom' && (
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Custom Frequency (Days)</label>
-                    <Input
-                      type="number"
-                      min="1"
-                      value={frequencyDays}
-                      onChange={(e) => setFrequencyDays(parseInt(e.target.value) || 30)}
-                    />
-                  </div>
-                )}
-
-                {/* Notifications Enabled */}
-                {frequencyType && frequencyType !== 'none' && (
-                  <>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Enable Notifications</label>
-                      <div className="flex items-center gap-2">
-                        <Checkbox
-                          id="notifications-enabled"
-                          checked={notificationsEnabled}
-                          onCheckedChange={(checked) => setNotificationsEnabled(checked as boolean)}
-                        />
-                        <label htmlFor="notifications-enabled" className="text-sm cursor-pointer">
-                          Send reminders for this inspection
-                        </label>
-                      </div>
-                    </div>
-
-                    {/* Notification Settings */}
-                    {notificationsEnabled && (
-                      <>
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">Notification Method</label>
-                          <Select value={notificationMethod} onValueChange={setNotificationMethod}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select method" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="email">Email</SelectItem>
-                              <SelectItem value="phone">Phone/SMS</SelectItem>
-                              <SelectItem value="both">Both (Email & Phone)</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">Notify Days Ahead</label>
-                          <Input
-                            type="number"
-                            min="1"
-                            value={notificationDaysAhead}
-                            onChange={(e) => setNotificationDaysAhead(parseInt(e.target.value) || 7)}
-                          />
-                        </div>
-                      </>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-          )}
 
           {/* Inspection Items */}
           {currentInspection.length > 0 && (
