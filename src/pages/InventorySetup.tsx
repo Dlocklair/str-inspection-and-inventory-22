@@ -12,12 +12,17 @@ import { Trash2, Pencil, ChevronDown, ChevronRight, AlertTriangle, Loader2, Plus
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { useInventoryItems, useInventoryCategories, InventoryItem, InventoryCategory } from '@/hooks/useInventory';
+import { useAuth } from '@/hooks/useAuth';
 
 const InventorySetup = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { items, isLoading, updateItem, deleteItem, addCategory, updateCategory, deleteCategory, addItem } = useInventoryItems();
-  const { data: categories = [] } = useInventoryCategories();
+  const { rolesLoaded, hasAnyRole } = useAuth();
+  
+  // Only enable queries when roles are loaded
+  const queriesEnabled = rolesLoaded && hasAnyRole();
+  const { items, isLoading, updateItem, deleteItem, addCategory, updateCategory, deleteCategory, addItem } = useInventoryItems(queriesEnabled);
+  const { data: categories = [] } = useInventoryCategories(queriesEnabled);
   
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
@@ -274,10 +279,23 @@ const InventorySetup = () => {
     setDeleteDialogItem(null);
   };
 
-  if (isLoading) {
+  // Show loading until roles are loaded and queries can run
+  if (!rolesLoaded || isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2 text-muted-foreground">
+          {!rolesLoaded ? 'Loading permissions...' : 'Loading inventory...'}
+        </span>
+      </div>
+    );
+  }
+
+  // Show message if user doesn't have the required role
+  if (!hasAnyRole()) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">You don't have permission to manage inventory.</p>
       </div>
     );
   }
