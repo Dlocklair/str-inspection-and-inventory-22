@@ -318,6 +318,52 @@ export type Database = {
           },
         ]
       }
+      inspector_inspection_permissions: {
+        Row: {
+          granted_at: string
+          granted_by: string
+          id: string
+          inspection_type_id: string
+          inspector_id: string
+        }
+        Insert: {
+          granted_at?: string
+          granted_by: string
+          id?: string
+          inspection_type_id: string
+          inspector_id: string
+        }
+        Update: {
+          granted_at?: string
+          granted_by?: string
+          id?: string
+          inspection_type_id?: string
+          inspector_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inspector_inspection_permissions_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inspector_inspection_permissions_inspection_type_id_fkey"
+            columns: ["inspection_type_id"]
+            isOneToOne: false
+            referencedRelation: "inspection_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inspector_inspection_permissions_inspector_id_fkey"
+            columns: ["inspector_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_categories: {
         Row: {
           created_at: string
