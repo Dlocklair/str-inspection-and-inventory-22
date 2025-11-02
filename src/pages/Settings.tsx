@@ -17,10 +17,14 @@ import { RoleManagement } from '@/components/RoleManagement';
 const Settings = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { user, profile, signOut, loading, isOwner, roles, rolesLoaded } = useAuth();
+  const { user, profile, signOut, loading, isOwner, roles, rolesLoaded, refreshProfile } = useAuth();
   
   const [agents, setAgents] = useState<any[]>([]);
   const [permissions, setPermissions] = useState<any[]>([]);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editedFullName, setEditedFullName] = useState('');
+  const [editedEmail, setEditedEmail] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   const [newInvitation, setNewInvitation] = useState({
     email: '',
     fullName: '',
@@ -146,6 +150,73 @@ const Settings = () => {
     }
   };
 
+  const handleEditProfile = () => {
+    setEditedFullName(profile?.full_name || '');
+    setEditedEmail(user?.email || '');
+    setIsEditingProfile(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditingProfile(false);
+    setEditedFullName('');
+    setEditedEmail('');
+  };
+
+  const handleSaveProfile = async () => {
+    if (!editedFullName.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Name cannot be empty.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      // Update profile name
+      if (editedFullName !== profile?.full_name) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ full_name: editedFullName.trim() })
+          .eq('user_id', user?.id);
+
+        if (profileError) throw profileError;
+      }
+
+      // Update email if changed
+      if (editedEmail !== user?.email) {
+        const { error: emailError } = await supabase.auth.updateUser({
+          email: editedEmail.trim()
+        });
+
+        if (emailError) throw emailError;
+
+        toast({
+          title: "Verification email sent",
+          description: "Please check your new email address to confirm the change.",
+        });
+      } else {
+        toast({
+          title: "Profile updated",
+          description: "Your profile has been updated successfully.",
+        });
+      }
+
+      await refreshProfile();
+      setIsEditingProfile(false);
+    } catch (error: any) {
+      console.error('Error updating profile:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update profile.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   if (loading || !rolesLoaded) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -203,38 +274,91 @@ const Settings = () => {
           <TabsContent value="profile" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
-                  User Profile
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <User className="h-5 w-5" />
+                    User Profile
+                  </CardTitle>
+                  {!isEditingProfile && (
+                    <Button onClick={handleEditProfile} variant="outline" size="sm">
+                      Edit Profile
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 {profile && (
                   <div className="space-y-4">
-                    <div className="space-y-3">
-                      <div>
-                        <Label className="text-sm text-muted-foreground">Full Name</Label>
-                        <p className="font-medium text-lg">{profile.full_name}</p>
-                      </div>
-                      <div>
-                        <Label className="text-sm text-muted-foreground">Email</Label>
-                        <p className="font-medium">{user.email}</p>
-                      </div>
-                      <div>
-                        <Label className="text-sm text-muted-foreground">Role</Label>
-                        <div className="flex gap-2 mt-1">
-                          {roles.length > 0 ? (
-                            roles.map(role => (
-                              <Badge key={role} variant={role === 'owner' ? 'default' : 'secondary'} className="text-sm">
-                                {role.toUpperCase()}
-                              </Badge>
-                            ))
-                          ) : (
-                            <Badge variant="outline">No role assigned</Badge>
-                          )}
+                    {isEditingProfile ? (
+                      <>
+                        <div className="space-y-3">
+                          <div>
+                            <Label htmlFor="fullName">Full Name</Label>
+                            <Input
+                              id="fullName"
+                              value={editedFullName}
+                              onChange={(e) => setEditedFullName(e.target.value)}
+                              placeholder="Enter your full name"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="email">Email</Label>
+                            <Input
+                              id="email"
+                              type="email"
+                              value={editedEmail}
+                              onChange={(e) => setEditedEmail(e.target.value)}
+                              placeholder="Enter your email"
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Changing your email will require verification
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    </div>
+                        <div className="flex gap-2">
+                          <Button 
+                            onClick={handleSaveProfile} 
+                            disabled={isSaving}
+                          >
+                            {isSaving ? 'Saving...' : 'Save Changes'}
+                          </Button>
+                          <Button 
+                            onClick={handleCancelEdit} 
+                            variant="outline"
+                            disabled={isSaving}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="space-y-3">
+                          <div>
+                            <Label className="text-sm text-muted-foreground">Full Name</Label>
+                            <p className="font-medium text-lg">{profile.full_name}</p>
+                          </div>
+                          <div>
+                            <Label className="text-sm text-muted-foreground">Email</Label>
+                            <p className="font-medium">{user.email}</p>
+                          </div>
+                          <div>
+                            <Label className="text-sm text-muted-foreground">Role</Label>
+                            <div className="flex gap-2 mt-1">
+                              {roles.length > 0 ? (
+                                roles.map(role => (
+                                  <Badge key={role} variant={role === 'owner' ? 'default' : 'secondary'} className="text-sm">
+                                    {role.toUpperCase()}
+                                  </Badge>
+                                ))
+                              ) : (
+                                <Badge variant="outline">No role assigned</Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    )}
                     <Separator />
                     {isOwner() && (
                       <div className="bg-primary/5 p-4 rounded-lg border border-primary/20">
