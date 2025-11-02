@@ -93,7 +93,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
 
       console.log('Roles fetched:', data);
-      return (data || []).map((r: any) => r.role as AppRole);
+      // The RPC returns objects like {get_user_roles: 'owner'}
+      return (data || []).map((r: any) => r.get_user_roles as AppRole);
     } catch (error) {
       console.error('Error in fetchRoles:', error);
       return [];
