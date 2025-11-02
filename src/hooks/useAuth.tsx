@@ -24,6 +24,7 @@ interface AuthContextType {
   profile: Profile | null;
   roles: AppRole[];
   loading: boolean;
+  rolesLoaded: boolean;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error?: any }>;
   signIn: (email: string, password: string) => Promise<{ error?: any }>;
   signOut: () => Promise<void>;
@@ -455,6 +456,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     profile,
     roles,
     loading, // Only wait for auth, not roles
+    rolesLoaded,
     signUp,
     signIn,
     signOut,

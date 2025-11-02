@@ -13,12 +13,17 @@ import { InventoryEditForm } from './InventoryEditForm';
 import { EmailNotificationSettings } from './EmailNotificationSettings';
 import { supabase } from '@/integrations/supabase/client';
 import { InventoryTable } from './InventoryTable';
+import { useAuth } from '@/hooks/useAuth';
 
 export const InventorySection = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { items, isLoading, updateItem, addItem } = useInventoryItems();
-  const { data: categories = [] } = useInventoryCategories();
+  const { rolesLoaded, hasAnyRole } = useAuth();
+  
+  // Only enable queries when roles are loaded
+  const queriesEnabled = rolesLoaded && hasAnyRole();
+  const { items, isLoading, updateItem, addItem } = useInventoryItems(queriesEnabled);
+  const { data: categories = [] } = useInventoryCategories(queriesEnabled);
   
   // Get tab from URL params
   const [searchParams] = useSearchParams();
@@ -60,10 +65,23 @@ export const InventorySection = () => {
     }
   }, [urlTab]);
 
-  if (isLoading) {
+  // Show loading until roles are loaded and queries can run
+  if (!rolesLoaded || isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
         <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2 text-muted-foreground">
+          {!rolesLoaded ? 'Loading permissions...' : 'Loading inventory...'}
+        </span>
+      </div>
+    );
+  }
+
+  // Show message if user doesn't have the required role
+  if (!hasAnyRole()) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <p className="text-muted-foreground">You don't have permission to view inventory.</p>
       </div>
     );
   }

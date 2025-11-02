@@ -35,7 +35,7 @@ export interface InventoryCategory {
   created_at: string;
 }
 
-export const useInventoryCategories = () => {
+export const useInventoryCategories = (enabled: boolean = true) => {
   return useQuery({
     queryKey: ['inventory-categories'],
     queryFn: async () => {
@@ -47,10 +47,11 @@ export const useInventoryCategories = () => {
       if (error) throw error;
       return data as InventoryCategory[];
     },
+    enabled,
   });
 };
 
-export const useInventoryItems = () => {
+export const useInventoryItems = (enabled: boolean = true) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -72,6 +73,7 @@ export const useInventoryItems = () => {
         category_name: item.category?.name || 'Other'
       })) as InventoryItem[];
     },
+    enabled,
   });
 
   const addItem = useMutation({
