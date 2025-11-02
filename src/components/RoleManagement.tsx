@@ -11,10 +11,10 @@ import { Shield, UserCog, Eye, Trash2 } from 'lucide-react';
 type AppRole = 'owner' | 'manager' | 'inspector';
 
 interface UserWithRoles {
-  id: string;
+  profile_id: string;
   user_id: string;
   full_name: string;
-  email_addresses: string[];
+  email: string;
   roles: AppRole[];
 }
 
@@ -46,13 +46,11 @@ export const RoleManagement = () => {
     try {
       setLoading(true);
 
-      // Fetch all profiles
-      const { data: profiles, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
+      // Fetch users with emails using the database function
+      const { data: usersData, error: usersError } = await supabase
+        .rpc('get_users_with_emails');
 
-      if (profileError) throw profileError;
+      if (usersError) throw usersError;
 
       // Fetch all user roles
       const { data: userRoles, error: rolesError } = await supabase
@@ -61,14 +59,17 @@ export const RoleManagement = () => {
 
       if (rolesError) throw rolesError;
 
-      // Combine profiles with their roles
-      const usersWithRoles: UserWithRoles[] = (profiles || []).map(profile => {
+      // Combine users with their roles
+      const usersWithRoles: UserWithRoles[] = (usersData || []).map(user => {
         const roles = (userRoles || [])
-          .filter(ur => ur.user_id === profile.user_id)
+          .filter(ur => ur.user_id === user.user_id)
           .map(ur => ur.role as AppRole);
 
         return {
-          ...profile,
+          profile_id: user.profile_id,
+          user_id: user.user_id,
+          full_name: user.full_name,
+          email: user.email || 'No email',
           roles
         };
       });
@@ -180,7 +181,7 @@ export const RoleManagement = () => {
               <SelectContent>
                 {users.map(u => (
                   <SelectItem key={u.user_id} value={u.user_id}>
-                    {u.full_name} ({u.email_addresses[0] || 'No email'})
+                    {u.full_name} ({u.email})
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -210,12 +211,12 @@ export const RoleManagement = () => {
         <CardContent>
           <div className="space-y-4">
             {users.map(userItem => (
-              <div key={userItem.id} className="border rounded-lg p-4">
+              <div key={userItem.profile_id} className="border rounded-lg p-4">
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
                     <h4 className="font-medium">{userItem.full_name}</h4>
                     <p className="text-sm text-muted-foreground">
-                      {userItem.email_addresses[0] || 'No email'}
+                      {userItem.email}
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">

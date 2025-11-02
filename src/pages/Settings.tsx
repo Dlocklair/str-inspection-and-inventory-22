@@ -1,13 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { User, LogOut, Shield, UserPlus, Trash2 } from 'lucide-react';
+import { User, LogOut, Shield } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -19,135 +18,14 @@ const Settings = () => {
   const navigate = useNavigate();
   const { user, profile, signOut, loading, isOwner, roles, rolesLoaded, refreshProfile } = useAuth();
   
-  const [agents, setAgents] = useState<any[]>([]);
-  const [permissions, setPermissions] = useState<any[]>([]);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editedFullName, setEditedFullName] = useState('');
   const [editedEmail, setEditedEmail] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-  const [newInvitation, setNewInvitation] = useState({
-    email: '',
-    fullName: '',
-    phone: '',
-    permissions: {
-      inspections: false,
-      inventory: false,
-      damage: false
-    }
-  });
 
-  // Fetch agents and permissions on mount
-  useEffect(() => {
-    if (user && isOwner()) {
-      fetchAgentsAndPermissions();
-    }
-  }, [user, isOwner]);
-
-  const fetchAgentsAndPermissions = async () => {
-    try {
-      // Fetch agent permissions for this owner
-      const { data: agentPerms, error: permsError } = await supabase
-        .from('agent_permissions')
-        .select(`
-          *,
-          agent:profiles!agent_permissions_agent_id_fkey(*)
-        `)
-        .eq('owner_id', profile?.id);
-
-      if (permsError) throw permsError;
-
-      setAgents(agentPerms || []);
-      setPermissions(agentPerms || []);
-    } catch (error) {
-      console.error('Error fetching agents:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch agents and permissions.",
-        variant: "destructive"
-      });
-    }
-  };
 
   const handleSignOut = async () => {
     await signOut();
-  };
-
-  const sendInvitation = async () => {
-    if (!newInvitation.email.trim() || !newInvitation.fullName.trim()) {
-      toast({
-        title: "Required fields missing",
-        description: "Please fill in name and email.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('invitations')
-        .insert({
-          owner_id: profile?.id,
-          email: newInvitation.email.trim(),
-          full_name: newInvitation.fullName.trim(),
-          phone: newInvitation.phone.trim() || null,
-          permissions: newInvitation.permissions
-        });
-
-      if (error) throw error;
-
-      setNewInvitation({
-        email: '',
-        fullName: '',
-        phone: '',
-        permissions: {
-          inspections: false,
-          inventory: false,
-          damage: false
-        }
-      });
-
-      toast({
-        title: "Invitation sent",
-        description: `Invitation sent to ${newInvitation.fullName}.`,
-      });
-    } catch (error) {
-      console.error('Error sending invitation:', error);
-      toast({
-        title: "Error",
-        description: "Failed to send invitation.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const updateAgentPermissions = async (agentId: string, newPermissions: any) => {
-    try {
-      const { error } = await supabase
-        .from('agent_permissions')
-        .update({
-          inspections: newPermissions.inspections,
-          inventory: newPermissions.inventory,
-          damage: newPermissions.damage
-        })
-        .eq('agent_id', agentId)
-        .eq('owner_id', profile?.id);
-
-      if (error) throw error;
-
-      await fetchAgentsAndPermissions();
-
-      toast({
-        title: "Permissions updated",
-        description: "Agent permissions have been updated successfully.",
-      });
-    } catch (error) {
-      console.error('Error updating permissions:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update permissions.",
-        variant: "destructive"
-      });
-    }
   };
 
   const handleEditProfile = () => {
@@ -265,10 +143,9 @@ const Settings = () => {
         </div>
 
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="profile">Profile</TabsTrigger>
             <TabsTrigger value="roles">Role Management</TabsTrigger>
-            <TabsTrigger value="permissions">Agent Permissions</TabsTrigger>
           </TabsList>
 
           <TabsContent value="profile" className="space-y-6">
@@ -380,23 +257,8 @@ const Settings = () => {
           </TabsContent>
 
           <TabsContent value="roles" className="space-y-6">
-            {isOwner() && <RoleManagement />}
-          </TabsContent>
-
-          <TabsContent value="permissions" className="space-y-6">
             {isOwner() ? (
-              <>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Agent Permissions (Legacy)</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground">
-                      Legacy agent permissions system. Use the "Role Management" tab to manage user roles.
-                    </p>
-                  </CardContent>
-                </Card>
-              </>
+              <RoleManagement />
             ) : (
               <Card>
                 <CardHeader>
@@ -404,7 +266,7 @@ const Settings = () => {
                 </CardHeader>
                 <CardContent>
                   <p className="text-muted-foreground">
-                    Only owners can manage permissions.
+                    Only owners can manage user roles.
                   </p>
                 </CardContent>
               </Card>
