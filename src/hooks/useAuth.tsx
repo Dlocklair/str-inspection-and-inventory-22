@@ -113,6 +113,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   useEffect(() => {
     let mounted = true;
+    let timeoutId: NodeJS.Timeout;
+
+    // Failsafe: ensure loading becomes false after 3 seconds max
+    timeoutId = setTimeout(() => {
+      if (mounted) {
+        console.warn('Auth initialization timeout - setting loading to false');
+        setLoading(false);
+      }
+    }, 3000);
 
     // Set up auth state listener - only handles state changes after initial load
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -154,6 +163,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!mounted) return;
       
+      clearTimeout(timeoutId);
       setSession(session);
       setUser(session?.user ?? null);
 
@@ -183,12 +193,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }).catch((error) => {
       console.error('Error getting session:', error);
       if (mounted) {
+        clearTimeout(timeoutId);
         setLoading(false);
       }
     });
 
     return () => {
       mounted = false;
+      clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
   }, []);
