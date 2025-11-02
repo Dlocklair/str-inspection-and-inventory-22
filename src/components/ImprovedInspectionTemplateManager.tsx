@@ -125,7 +125,7 @@ export const ImprovedInspectionTemplateManager = () => {
   
   // Frequency and notification settings
   const [editingFrequency, setEditingFrequency] = useState(false);
-  const [tempFrequencyType, setTempFrequencyType] = useState<string>('');
+  const [tempFrequencyType, setTempFrequencyType] = useState<string>('none');
   const [tempFrequencyDays, setTempFrequencyDays] = useState<number>(30);
   const [tempNotificationsEnabled, setTempNotificationsEnabled] = useState<boolean>(true);
   const [tempNotificationMethod, setTempNotificationMethod] = useState<string>('email');
@@ -398,7 +398,7 @@ export const ImprovedInspectionTemplateManager = () => {
 
   const startEditingFrequency = () => {
     if (!selectedTemplate) return;
-    setTempFrequencyType(selectedTemplate.frequencyType || '');
+    setTempFrequencyType(selectedTemplate.frequencyType || 'none');
     setTempFrequencyDays(selectedTemplate.frequencyDays || 30);
     setTempNotificationsEnabled(selectedTemplate.notificationsEnabled ?? true);
     setTempNotificationMethod(selectedTemplate.notificationMethod || 'email');
@@ -409,15 +409,17 @@ export const ImprovedInspectionTemplateManager = () => {
   const saveFrequencySettings = () => {
     if (!selectedTemplate) return;
 
+    const hasFrequency = tempFrequencyType && tempFrequencyType !== 'none';
+
     setTemplates(prev => prev.map(template =>
       template.id === selectedTemplateId
         ? {
             ...template,
-            frequencyType: tempFrequencyType || undefined,
+            frequencyType: hasFrequency ? tempFrequencyType : undefined,
             frequencyDays: tempFrequencyType === 'custom' ? tempFrequencyDays : undefined,
-            notificationsEnabled: tempFrequencyType ? tempNotificationsEnabled : undefined,
-            notificationMethod: tempFrequencyType ? tempNotificationMethod : undefined,
-            notificationDaysAhead: tempFrequencyType ? tempNotificationDaysAhead : undefined,
+            notificationsEnabled: hasFrequency ? tempNotificationsEnabled : undefined,
+            notificationMethod: hasFrequency ? tempNotificationMethod : undefined,
+            notificationDaysAhead: hasFrequency ? tempNotificationDaysAhead : undefined,
           }
         : template
     ));
@@ -432,7 +434,7 @@ export const ImprovedInspectionTemplateManager = () => {
 
   const cancelEditingFrequency = () => {
     setEditingFrequency(false);
-    setTempFrequencyType('');
+    setTempFrequencyType('none');
     setTempFrequencyDays(30);
     setTempNotificationsEnabled(true);
     setTempNotificationMethod('email');
@@ -627,12 +629,12 @@ export const ImprovedInspectionTemplateManager = () => {
                           {/* Frequency Type */}
                           <div className="space-y-2">
                             <label className="text-sm font-medium">Frequency</label>
-                            <Select value={tempFrequencyType} onValueChange={setTempFrequencyType}>
+                            <Select value={tempFrequencyType || "none"} onValueChange={setTempFrequencyType}>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select frequency" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="">None</SelectItem>
+                                <SelectItem value="none">None</SelectItem>
                                 <SelectItem value="daily">Daily</SelectItem>
                                 <SelectItem value="weekly">Weekly</SelectItem>
                                 <SelectItem value="monthly">Monthly</SelectItem>
@@ -659,7 +661,7 @@ export const ImprovedInspectionTemplateManager = () => {
                         </div>
 
                         {/* Notification Settings */}
-                        {tempFrequencyType && (
+                        {tempFrequencyType && tempFrequencyType !== 'none' && (
                           <div className="space-y-4 pt-4 border-t">
                             <div className="flex items-center justify-between">
                               <div className="space-y-0.5">
