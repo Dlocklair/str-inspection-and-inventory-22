@@ -15,6 +15,10 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { usePropertyContext } from '@/contexts/PropertyContext';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { FileText } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -33,6 +37,15 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+
+interface Property {
+  id: string;
+  name: string;
+  address: string;
+  city: string;
+  state: string;
+  zip: string;
+}
 
 interface ChecklistItem {
   id: string;
@@ -122,8 +135,10 @@ const SortableItem = ({ item, templateId, isEditing, editingText, onEdit, onSave
 
 export const ImprovedInspectionTemplateManager = () => {
   const { toast } = useToast();
+  const { profile } = useAuth();
+  const { selectedProperty } = usePropertyContext();
   
-  const [properties, setProperties] = useState<any[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
   const [templates, setTemplates] = useState<InspectionTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [newItemText, setNewItemText] = useState('');
@@ -239,6 +254,23 @@ export const ImprovedInspectionTemplateManager = () => {
   }, [templates]);
 
   const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
+
+  // Filter templates based on selected property
+  const filteredTemplates = selectedProperty 
+    ? templates.filter(t => t.propertyId === selectedProperty.id || !t.propertyId)
+    : templates;
+
+  // Group templates by property
+  const groupedTemplates = filteredTemplates.reduce((groups, template) => {
+    const key = template.propertyId || 'unassigned';
+    const propertyName = template.propertyName || 'Unassigned Templates';
+    
+    if (!groups[key]) {
+      groups[key] = { propertyName, templates: [] };
+    }
+    groups[key].templates.push(template);
+    return groups;
+  }, {} as Record<string, { propertyName: string; templates: InspectionTemplate[] }>);
 
   const addNewItem = () => {
     const text = newItemText?.trim();
@@ -590,33 +622,44 @@ export const ImprovedInspectionTemplateManager = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Template Selection */}
-        <Card className="lg:col-span-1">
+        <Card className="lg:col-span-1 h-[calc(100vh-12rem)]">
           <CardHeader>
             <CardTitle className="text-lg">Templates</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
-            {templates.map(template => (
-              <div
-                key={template.id}
-                className={`p-2 rounded cursor-pointer border ${
-                  selectedTemplateId === template.id 
-                    ? 'bg-primary text-primary-foreground' 
-                    : 'hover:bg-muted/50'
-                }`}
-                onClick={() => setSelectedTemplateId(template.id)}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">{template.name}</span>
-                  {template.isPredefined && (
-                    <Badge variant="secondary" className="text-xs">Built-in</Badge>
-                  )}
+          <ScrollArea className="flex-1">
+            <div className="space-y-1 p-4">
+              {Object.entries(groupedTemplates).map(([key, group]) => (
+                <div key={key} className="mb-4">
+                  <div className="flex items-center gap-2 px-2 py-1 mb-1">
+                    {key !== 'unassigned' && <Building2 className="h-3 w-3 text-muted-foreground" />}
+                    <span className="text-xs font-semibold text-muted-foreground uppercase">
+                      {group.propertyName}
+                    </span>
+                    <Badge variant="secondary" className="ml-auto text-xs">{group.templates.length}</Badge>
+                  </div>
+                  {group.templates.map((template) => (
+                    <Button
+                      key={template.id}
+                      variant={selectedTemplateId === template.id ? 'secondary' : 'ghost'}
+                      className="w-full justify-start pl-6 mb-1"
+                      onClick={() => setSelectedTemplateId(template.id)}
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      <div className="flex-1 text-left">
+                        <div className="text-sm font-medium">{template.name}</div>
+                        <div className="text-xs opacity-70">
+                          {template.items.length} item{template.items.length !== 1 ? 's' : ''}
+                        </div>
+                      </div>
+                      {template.isPredefined && (
+                        <Badge variant="outline" className="text-xs">Built-in</Badge>
+                      )}
+                    </Button>
+                  ))}
                 </div>
-                <div className="text-xs opacity-70">
-                  {template.items.length} item{template.items.length !== 1 ? 's' : ''}
-                </div>
-              </div>
-            ))}
-          </CardContent>
+              ))}
+            </div>
+          </ScrollArea>
         </Card>
 
         {/* Template Editor */}

@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -27,6 +28,8 @@ interface InspectionTemplate {
   isPredefined: boolean;
   propertyId?: string;
   propertyName?: string;
+  frequencyType?: string;
+  frequencyDays?: number;
 }
 
 interface InspectionItem {
@@ -40,6 +43,8 @@ interface InspectionRecord {
   id: string;
   templateId: string;
   templateName: string;
+  propertyId?: string;
+  propertyName?: string;
   date: string;
   items: InspectionItem[];
   createdAt: string;
@@ -74,12 +79,61 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
     const savedTemplates = localStorage.getItem('inspection-templates');
     if (savedTemplates) {
       const allTemplates = JSON.parse(savedTemplates);
+      // Include templates assigned to this property AND unassigned templates
       const propertyTemplates = allTemplates.filter((t: InspectionTemplate) => 
-        t.propertyId === propertyId
+        t.propertyId === propertyId || !t.propertyId
       );
       setTemplates(propertyTemplates);
     }
   };
+
+  // Calculate next occurrence based on frequency
+  const calculateNextOccurrence = (
+    inspectionDate: Date,
+    frequencyType?: string,
+    frequencyDays?: number
+  ): Date | undefined => {
+    if (!frequencyType || frequencyType === 'none') return undefined;
+    
+    const nextDate = new Date(inspectionDate);
+    
+    switch (frequencyType) {
+      case 'weekly':
+        nextDate.setDate(nextDate.getDate() + 7);
+        break;
+      case 'monthly':
+        nextDate.setMonth(nextDate.getMonth() + 1);
+        break;
+      case 'quarterly':
+        nextDate.setMonth(nextDate.getMonth() + 3);
+        break;
+      case 'yearly':
+        nextDate.setFullYear(nextDate.getFullYear() + 1);
+        break;
+      case 'custom':
+        if (frequencyDays) {
+          nextDate.setDate(nextDate.getDate() + frequencyDays);
+        }
+        break;
+    }
+    
+    return nextDate;
+  };
+
+  // Auto-calculate next occurrence when date and template with frequency are selected
+  useEffect(() => {
+    const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
+    if (selectedDate && selectedTemplate?.frequencyType) {
+      const calculatedNext = calculateNextOccurrence(
+        selectedDate,
+        selectedTemplate.frequencyType,
+        selectedTemplate.frequencyDays
+      );
+      if (calculatedNext) {
+        setNextDueDate(calculatedNext);
+      }
+    }
+  }, [selectedDate, selectedTemplateId, templates]);
 
   // Load template items when template is selected
   const handleTemplateChange = (templateId: string) => {
@@ -173,6 +227,8 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
       id: Date.now().toString(),
       templateId: selectedTemplateId,
       templateName: template?.name || '',
+      propertyId: selectedProperty?.id,
+      propertyName: selectedProperty?.name,
       date: dateString,
       items: currentInspection,
       createdAt: new Date().toISOString(),
@@ -297,10 +353,16 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
 
             {/* Next Due Date (Optional) */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">
-                Next Occurrence Date
-                <span className="text-xs text-muted-foreground ml-2">(For recurring inspections)</span>
-              </label>
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium">
+                  Next Occurrence Date
+                </label>
+                {selectedTemplate?.frequencyType && selectedTemplate.frequencyType !== 'none' && (
+                  <Badge variant="secondary" className="text-xs">
+                    Auto: {selectedTemplate.frequencyType}
+                  </Badge>
+                )}
+              </div>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -326,9 +388,15 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
                   />
                 </PopoverContent>
               </Popover>
-              <p className="text-xs text-muted-foreground">
-                Set when the next inspection of this type should occur to establish a recurring schedule
-              </p>
+              {selectedTemplate?.frequencyType && selectedTemplate.frequencyType !== 'none' ? (
+                <p className="text-xs text-muted-foreground">
+                  Auto-calculated based on {selectedTemplate.frequencyType} frequency. You can override if needed.
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Optional: Set when the next inspection should occur
+                </p>
+              )}
             </div>
           </div>
 

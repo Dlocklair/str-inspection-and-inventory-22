@@ -8,11 +8,13 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Search, ChevronDown, ChevronRight, Calendar as CalendarIcon, FileText, CheckCircle, X, Edit, Save, Trash2 } from 'lucide-react';
+import { Search, ChevronDown, ChevronRight, Calendar as CalendarIcon, FileText, CheckCircle, X, Edit, Save, Trash2, Building2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
+import { usePropertyContext } from '@/contexts/PropertyContext';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface InspectionItem {
   id: string;
@@ -25,16 +27,21 @@ interface InspectionRecord {
   id: string;
   templateId: string;
   templateName: string;
+  propertyId?: string;
+  propertyName?: string;
   date: string;
   items: InspectionItem[];
   createdAt: string;
+  nextDueDate?: string;
 }
 
 export const EditableInspectionHistoryView = () => {
   const { toast } = useToast();
   const { profile, isOwner } = useAuth();
+  const { userProperties } = usePropertyContext();
   const [inspectionRecords, setInspectionRecords] = useState<InspectionRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [propertyFilter, setPropertyFilter] = useState<'all' | string>('all');
   const [expandedGroups, setExpandedGroups] = useState<{[key: string]: boolean}>({});
   const [editingRecord, setEditingRecord] = useState<string | null>(null);
   const [editingDate, setEditingDate] = useState<Date | undefined>();
@@ -53,34 +60,53 @@ export const EditableInspectionHistoryView = () => {
     localStorage.setItem('inspection-records', JSON.stringify(records));
   };
 
-  // Filter records based on search term
+  // Filter records based on search term and property
   const filteredRecords = inspectionRecords.filter(record => {
     const searchLower = searchTerm.toLowerCase();
-    return (
+    const matchesSearch = (
       record.templateName?.toLowerCase().includes(searchLower) ||
       record.date?.includes(searchLower) ||
+      record.propertyName?.toLowerCase().includes(searchLower) ||
       record.items?.some(item => 
         item.description?.toLowerCase().includes(searchLower) ||
         item.notes?.toLowerCase().includes(searchLower)
       )
     );
+
+    const matchesProperty = propertyFilter === 'all' || 
+      (propertyFilter === 'unassigned' ? !record.propertyId : record.propertyId === propertyFilter);
+
+    return matchesSearch && matchesProperty;
   });
 
-  // Group records by template
-  const groupedRecords = filteredRecords.reduce((groups, record) => {
-    const templateName = record.templateName;
-    if (!groups[templateName]) {
-      groups[templateName] = [];
+  // Group records by property, then by template
+  const groupedByProperty = filteredRecords.reduce((groups, record) => {
+    const propertyKey = record.propertyId || 'unassigned';
+    const propertyName = record.propertyName || 'Unassigned';
+    
+    if (!groups[propertyKey]) {
+      groups[propertyKey] = {
+        propertyName,
+        templates: {}
+      };
     }
-    groups[templateName].push(record);
+    
+    const templateName = record.templateName;
+    if (!groups[propertyKey].templates[templateName]) {
+      groups[propertyKey].templates[templateName] = [];
+    }
+    
+    groups[propertyKey].templates[templateName].push(record);
     return groups;
-  }, {} as {[templateName: string]: InspectionRecord[]});
+  }, {} as {[propertyKey: string]: {propertyName: string, templates: {[templateName: string]: InspectionRecord[]}}});
 
-  // Sort records within each group by date (newest first)
-  Object.keys(groupedRecords).forEach(templateName => {
-    groupedRecords[templateName].sort((a, b) => 
-      new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
+  // Sort records within each template by date (newest first)
+  Object.values(groupedByProperty).forEach(property => {
+    Object.values(property.templates).forEach(records => {
+      records.sort((a, b) => 
+        new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+    });
   });
 
   const toggleGroup = (templateName: string) => {
@@ -176,12 +202,12 @@ export const EditableInspectionHistoryView = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <h2 className="text-2xl font-bold">Inspection History</h2>
         <div className="flex items-center gap-2">
           <Search className="h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search inspections, items, or notes..."
+            placeholder="Search inspections..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-64"
@@ -189,7 +215,21 @@ export const EditableInspectionHistoryView = () => {
         </div>
       </div>
 
-      {Object.keys(groupedRecords).length === 0 ? (
+      {/* Property Filter Tabs */}
+      <Tabs value={propertyFilter} onValueChange={setPropertyFilter} className="w-full">
+        <TabsList className="w-full justify-start flex-wrap h-auto">
+          <TabsTrigger value="all">All Properties</TabsTrigger>
+          {userProperties.map(property => (
+            <TabsTrigger key={property.id} value={property.id}>
+              <Building2 className="h-3 w-3 mr-1" />
+              {property.name}
+            </TabsTrigger>
+          ))}
+          <TabsTrigger value="unassigned">Unassigned</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      {Object.keys(groupedByProperty).length === 0 ? (
         <Card>
           <CardContent className="py-8 text-center">
             <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -200,40 +240,52 @@ export const EditableInspectionHistoryView = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
-          {Object.entries(groupedRecords).map(([templateName, records]) => (
-            <Card key={templateName}>
-              <Collapsible
-                open={expandedGroups[templateName]}
-                onOpenChange={() => toggleGroup(templateName)}
-              >
-                <CollapsibleTrigger asChild>
-                  <CardHeader className="cursor-pointer hover:bg-muted/50">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        {expandedGroups[templateName] ? (
-                          <ChevronDown className="h-4 w-4" />
-                        ) : (
-                          <ChevronRight className="h-4 w-4" />
-                        )}
-                        <CardTitle className="text-lg">{templateName} Inspections</CardTitle>
-                        <Badge variant="secondary">{records.length} record{records.length !== 1 ? 's' : ''}</Badge>
-                      </div>
-                    </div>
-                  </CardHeader>
-                </CollapsibleTrigger>
+        <div className="space-y-6">
+          {Object.entries(groupedByProperty).map(([propertyKey, propertyGroup]) => (
+            <div key={propertyKey} className="space-y-4">
+              {/* Property Header */}
+              <div className="flex items-center gap-2 px-2">
+                <Building2 className="h-5 w-5 text-primary" />
+                <h3 className="text-xl font-bold">{propertyGroup.propertyName}</h3>
+                <Badge variant="secondary">
+                  {Object.values(propertyGroup.templates).reduce((sum, records) => sum + records.length, 0)} inspection{Object.values(propertyGroup.templates).reduce((sum, records) => sum + records.length, 0) !== 1 ? 's' : ''}
+                </Badge>
+              </div>
+
+              {/* Templates within Property */}
+              {Object.entries(propertyGroup.templates).map(([templateName, records]) => (
+                <Card key={templateName} className="ml-6">
+                  <Collapsible
+                    open={expandedGroups[`${propertyKey}-${templateName}`]}
+                    onOpenChange={() => toggleGroup(`${propertyKey}-${templateName}`)}
+                  >
+                    <CollapsibleTrigger asChild>
+                      <CardHeader className="cursor-pointer hover:bg-muted/50">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            {expandedGroups[`${propertyKey}-${templateName}`] ? (
+                              <ChevronDown className="h-4 w-4" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4" />
+                            )}
+                            <CardTitle className="text-lg">{templateName}</CardTitle>
+                            <Badge variant="secondary">{records.length} record{records.length !== 1 ? 's' : ''}</Badge>
+                          </div>
+                        </div>
+                      </CardHeader>
+                    </CollapsibleTrigger>
                 
-                <CollapsibleContent>
-                  <CardContent className="space-y-4">
-                    {records.map(record => {
-                      const isEditing = editingRecord === record.id;
+                    <CollapsibleContent>
+                      <CardContent className="space-y-4">
+                        {records.map(record => {
+                          const isEditing = editingRecord === record.id;
                       
-                      return (
-                        <Card key={record.id} className="border-l-4 border-l-primary">
-                          <CardHeader className="pb-3">
-                            <div className="flex items-center justify-between">
-                               <div className="flex items-center gap-3">
-                                 <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                          return (
+                            <Card key={record.id} className="border-l-4 border-l-primary">
+                              <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <CalendarIcon className="h-4 w-4 text-muted-foreground" />
                                  {isEditing ? (
                                    <Popover>
                                      <PopoverTrigger asChild>
@@ -261,117 +313,124 @@ export const EditableInspectionHistoryView = () => {
                                  ) : (
                                    <span className="font-medium">{format(new Date(record.date + 'T00:00:00'), 'PPP')}</span>
                                  )}
-                                <Badge 
-                                  variant={getCompletionPercentage(record.items) === 100 ? 'default' : 'secondary'}
-                                >
-                                  {getCompletedCount(record.items)}/{record.items.length} completed
-                                </Badge>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm text-muted-foreground">
-                                  Created: {format(new Date(record.createdAt), 'PPp')}
-                                </span>
-                                {!isEditing ? (
-                                  <div className="flex gap-1">
-                                    <Button size="sm" variant="outline" onClick={() => startEditingRecord(record.id)}>
-                                      <Edit className="h-4 w-4" />
-                                    </Button>
-                                    {isOwner() && (
-                                      <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                          <Button size="sm" variant="outline">
-                                            <Trash2 className="h-4 w-4" />
-                                          </Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                          <AlertDialogHeader>
-                                            <AlertDialogTitle>Delete Inspection</AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                              Are you sure you want to delete this inspection record from {format(new Date(record.date + 'T00:00:00'), 'PPP')}? This action cannot be undone.
-                                            </AlertDialogDescription>
-                                          </AlertDialogHeader>
-                                          <AlertDialogFooter>
-                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                            <AlertDialogAction onClick={() => deleteInspectionRecord(record.id)}>Delete</AlertDialogAction>
-                                          </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                      </AlertDialog>
+                                    <Badge 
+                                      variant={getCompletionPercentage(record.items) === 100 ? 'default' : 'secondary'}
+                                    >
+                                      {getCompletedCount(record.items)}/{record.items.length} completed
+                                    </Badge>
+                                    {record.nextDueDate && (
+                                      <Badge variant="outline" className="text-xs">
+                                        Next: {format(new Date(record.nextDueDate + 'T00:00:00'), 'MMM d, yyyy')}
+                                      </Badge>
                                     )}
                                   </div>
-                                ) : (
-                                  <div className="flex gap-1">
-                                    <Button size="sm" onClick={() => saveEditedRecord(record.id)}>
-                                      <Save className="h-4 w-4" />
-                                    </Button>
-                                    <Button size="sm" variant="outline" onClick={cancelEditing}>
-                                      <X className="h-4 w-4" />
-                                    </Button>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm text-muted-foreground">
+                                      Created: {format(new Date(record.createdAt), 'PPp')}
+                                    </span>
+                                    {!isEditing ? (
+                                      <div className="flex gap-1">
+                                        <Button size="sm" variant="outline" onClick={() => startEditingRecord(record.id)}>
+                                          <Edit className="h-4 w-4" />
+                                        </Button>
+                                        {isOwner() && (
+                                          <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                              <Button size="sm" variant="outline">
+                                                <Trash2 className="h-4 w-4" />
+                                              </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                              <AlertDialogHeader>
+                                                <AlertDialogTitle>Delete Inspection</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                  Are you sure you want to delete this inspection record from {format(new Date(record.date + 'T00:00:00'), 'PPP')}? This action cannot be undone.
+                                                </AlertDialogDescription>
+                                              </AlertDialogHeader>
+                                              <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => deleteInspectionRecord(record.id)}>Delete</AlertDialogAction>
+                                              </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                          </AlertDialog>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <div className="flex gap-1">
+                                        <Button size="sm" onClick={() => saveEditedRecord(record.id)}>
+                                          <Save className="h-4 w-4" />
+                                        </Button>
+                                        <Button size="sm" variant="outline" onClick={cancelEditing}>
+                                          <X className="h-4 w-4" />
+                                        </Button>
+                                      </div>
+                                    )}
                                   </div>
-                                )}
-                              </div>
-                            </div>
-                          </CardHeader>
-                          
-                          <CardContent>
-                            <div className="space-y-2">
-                              {record.items.map(item => (
-                                <div key={item.id} className="flex items-center gap-3 p-2 bg-muted/20 rounded">
-                                  {isEditing ? (
-                                    <>
-                                      <Checkbox
-                                        checked={item.completed}
-                                        onCheckedChange={(checked) => 
-                                          updateInspectionItem(record.id, item.id, { completed: checked as boolean })
-                                        }
-                                      />
-                                      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2">
-                                        <span className={cn(
-                                          "text-sm font-medium flex items-center",
-                                          item.completed && "line-through text-muted-foreground"
-                                        )}>
-                                          {item.description}
-                                        </span>
-                                        <Input
-                                          placeholder="Add notes..."
-                                          value={item.notes}
-                                          onChange={(e) => updateInspectionItem(record.id, item.id, { notes: e.target.value })}
-                                          className="text-sm h-8"
-                                        />
-                                      </div>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <div className="mt-1">
-                                        {item.completed ? (
-                                          <CheckCircle className="h-4 w-4 text-green-600" />
-                                        ) : (
-                                          <X className="h-4 w-4 text-muted-foreground" />
-                                        )}
-                                      </div>
-                                      
-                                      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2">
-                                        <div className={`text-sm font-medium ${item.completed ? 'line-through text-muted-foreground' : ''}`}>
-                                          {item.description}
-                                        </div>
-                                        {item.notes && (
-                                          <div className="text-sm text-muted-foreground">
-                                            <strong>Notes:</strong> {item.notes}
-                                          </div>
-                                        )}
-                                      </div>
-                                    </>
-                                  )}
                                 </div>
-                              ))}
-                            </div>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </CardContent>
-                </CollapsibleContent>
-              </Collapsible>
-            </Card>
+                              </CardHeader>
+                              
+                              <CardContent>
+                                <div className="space-y-2">
+                                  {record.items.map(item => (
+                                    <div key={item.id} className="flex items-center gap-3 p-2 bg-muted/20 rounded">
+                                      {isEditing ? (
+                                        <>
+                                          <Checkbox
+                                            checked={item.completed}
+                                            onCheckedChange={(checked) => 
+                                              updateInspectionItem(record.id, item.id, { completed: checked as boolean })
+                                            }
+                                          />
+                                          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2">
+                                            <span className={cn(
+                                              "text-sm font-medium flex items-center",
+                                              item.completed && "line-through text-muted-foreground"
+                                            )}>
+                                              {item.description}
+                                            </span>
+                                            <Input
+                                              placeholder="Add notes..."
+                                              value={item.notes}
+                                              onChange={(e) => updateInspectionItem(record.id, item.id, { notes: e.target.value })}
+                                              className="text-sm h-8"
+                                            />
+                                          </div>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <div className="mt-1">
+                                            {item.completed ? (
+                                              <CheckCircle className="h-4 w-4 text-green-600" />
+                                            ) : (
+                                              <X className="h-4 w-4 text-muted-foreground" />
+                                            )}
+                                          </div>
+                                          
+                                          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2">
+                                            <div className={`text-sm font-medium ${item.completed ? 'line-through text-muted-foreground' : ''}`}>
+                                              {item.description}
+                                            </div>
+                                            {item.notes && (
+                                              <div className="text-sm text-muted-foreground">
+                                                <strong>Notes:</strong> {item.notes}
+                                              </div>
+                                            )}
+                                          </div>
+                                        </>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </Card>
+              ))}
+            </div>
           ))}
         </div>
       )}

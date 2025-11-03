@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { NewInspectionForm } from './NewInspectionForm';
 import { EditableInspectionHistoryView } from './EditableInspectionHistoryView';
 import { ImprovedInspectionTemplateManager } from './ImprovedInspectionTemplateManager';
+import { PropertySelector } from './PropertySelector';
 
 export const InspectionReport = () => {
   const navigate = useNavigate();
@@ -17,6 +18,10 @@ export const InspectionReport = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
+        {/* Property Selector - Prominent at top */}
+        <div className="mb-6">
+          <PropertySelector />
+        </div>
         {/* Navigation Header */}
         <div className="flex justify-between items-center mb-8">
           <div className="flex items-center gap-4">
