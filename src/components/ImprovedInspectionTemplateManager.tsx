@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
@@ -531,31 +531,41 @@ export const ImprovedInspectionTemplateManager = () => {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Create New Template</DialogTitle>
+              <DialogDescription>
+                First select the property this template will be assigned to
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>Property</Label>
+                <Label>Property *</Label>
                 <Select value={newTemplatePropertyId} onValueChange={setNewTemplatePropertyId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a property" />
+                    <SelectValue placeholder="Select a property first" />
                   </SelectTrigger>
                   <SelectContent>
                     {properties.map(property => (
                       <SelectItem key={property.id} value={property.id}>
-                        {property.name}
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4" />
+                          {property.name} - {property.address}
+                        </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground">Select the property this template will be used for</p>
               </div>
-              <Input
-                placeholder="Template name"
-                value={newTemplateName}
-                onChange={(e) => setNewTemplateName(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && createCustomTemplate()}
-              />
+              <div className="space-y-2">
+                <Label>Template Name *</Label>
+                <Input
+                  placeholder="Template name"
+                  value={newTemplateName}
+                  onChange={(e) => setNewTemplateName(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && createCustomTemplate()}
+                />
+              </div>
               <div className="flex gap-2">
-                <Button onClick={createCustomTemplate}>Create</Button>
+                <Button onClick={createCustomTemplate} disabled={!newTemplatePropertyId || !newTemplateName}>Create</Button>
                 <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>Cancel</Button>
               </div>
             </div>
@@ -638,7 +648,7 @@ export const ImprovedInspectionTemplateManager = () => {
                       onClick={() => duplicateTemplate(selectedTemplate.id)}
                     >
                       <Copy className="h-4 w-4 mr-1" />
-                      Duplicate to Property
+                      Duplicate Inspection for another property
                     </Button>
                     {!selectedTemplate.isPredefined && (
                       <Button 
@@ -898,7 +908,10 @@ export const ImprovedInspectionTemplateManager = () => {
       <Dialog open={isDuplicateDialogOpen} onOpenChange={setIsDuplicateDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Duplicate Template to Property</DialogTitle>
+            <DialogTitle>Duplicate Inspection for another property</DialogTitle>
+            <DialogDescription>
+              Select a property to copy this inspection template to
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -910,11 +923,15 @@ export const ImprovedInspectionTemplateManager = () => {
                 <SelectContent>
                   {properties.map(property => (
                     <SelectItem key={property.id} value={property.id}>
-                      {property.name}
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-4 w-4" />
+                        {property.name} - {property.address}
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">This will create a copy of the template for the selected property</p>
             </div>
             <div className="flex gap-2">
               <Button onClick={handleDuplicateToProperty} disabled={!duplicateTargetPropertyId}>

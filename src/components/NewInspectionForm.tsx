@@ -66,6 +66,7 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
 
   const fetchProperties = async () => {
     try {
+      // Fetch properties - RLS will handle filtering based on user role and assignments
       const { data, error } = await supabase
         .from('properties')
         .select('*')

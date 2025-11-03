@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { Shield, UserCog, Eye, Trash2, Send, Loader2, Clock, CheckCircle2, XCircle } from 'lucide-react';
+import { Shield, UserCog, Eye, Trash2, Send, Loader2, Clock, CheckCircle2, XCircle, Building2 } from 'lucide-react';
 
 type AppRole = 'owner' | 'manager' | 'inspector';
 
@@ -24,6 +24,12 @@ interface UserWithRoles {
 interface InspectionType {
   id: string;
   name: string;
+}
+
+interface Property {
+  id: string;
+  name: string;
+  address: string;
 }
 
 interface Invitation {
@@ -69,11 +75,16 @@ export const RoleManagement = () => {
   const [inspectionTypes, setInspectionTypes] = useState<InspectionType[]>([]);
   const [selectedInspectionTypes, setSelectedInspectionTypes] = useState<string[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [selectedProperties, setSelectedProperties] = useState<string[]>([]);
+  const [userProperties, setUserProperties] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
     fetchUsersAndRoles();
     fetchInspectionTypes();
     fetchInvitations();
+    fetchProperties();
+    fetchUserProperties();
   }, []);
 
   const fetchUsersAndRoles = async () => {
@@ -220,6 +231,100 @@ export const RoleManagement = () => {
       setInvitations(data || []);
     } catch (error: any) {
       console.error('Error fetching invitations:', error);
+    }
+  };
+
+  const fetchProperties = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('properties')
+        .select('id, name, address')
+        .order('name');
+
+      if (error) throw error;
+      setProperties(data || []);
+    } catch (error: any) {
+      console.error('Error fetching properties:', error);
+    }
+  };
+
+  const fetchUserProperties = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('user_properties')
+        .select('user_id, property_id');
+
+      if (error) throw error;
+      
+      // Group properties by user_id
+      const grouped = (data || []).reduce((acc, item) => {
+        if (!acc[item.user_id]) {
+          acc[item.user_id] = [];
+        }
+        acc[item.user_id].push(item.property_id);
+        return acc;
+      }, {} as Record<string, string[]>);
+      
+      setUserProperties(grouped);
+    } catch (error: any) {
+      console.error('Error fetching user properties:', error);
+    }
+  };
+
+  const toggleProperty = (propertyId: string) => {
+    setSelectedProperties(prev =>
+      prev.includes(propertyId)
+        ? prev.filter(id => id !== propertyId)
+        : [...prev, propertyId]
+    );
+  };
+
+  const handleAssignProperties = async (userId: string) => {
+    if (selectedProperties.length === 0) {
+      toast({
+        title: 'Error',
+        description: 'Please select at least one property',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    try {
+      // Remove existing property assignments
+      const { error: deleteError } = await supabase
+        .from('user_properties')
+        .delete()
+        .eq('user_id', userId);
+
+      if (deleteError) throw deleteError;
+
+      // Add new property assignments
+      const { error: insertError } = await supabase
+        .from('user_properties')
+        .insert(
+          selectedProperties.map(propertyId => ({
+            user_id: userId,
+            property_id: propertyId,
+            assigned_by: profile?.id
+          }))
+        );
+
+      if (insertError) throw insertError;
+
+      toast({
+        title: 'Success',
+        description: 'Properties assigned successfully'
+      });
+
+      await fetchUserProperties();
+      setSelectedProperties([]);
+    } catch (error: any) {
+      console.error('Error assigning properties:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to assign properties',
+        variant: 'destructive'
+      });
     }
   };
 
@@ -513,43 +618,102 @@ export const RoleManagement = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {users.map(userItem => (
-              <div key={userItem.profile_id} className="border rounded-lg p-4">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-1">
-                    <h4 className="font-medium">{userItem.full_name}</h4>
-                    <p className="text-sm text-muted-foreground">
-                      {userItem.email}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {userItem.roles.length === 0 ? (
-                      <Badge variant="outline">No roles</Badge>
-                    ) : (
-                      userItem.roles.map(role => {
-                        const Icon = roleIcons[role];
-                        return (
-                          <div key={role} className="flex items-center gap-1">
-                            <Badge className={roleColors[role]}>
-                              <Icon className="h-3 w-3 mr-1" />
-                              {role}
+            {users.map(userItem => {
+              const userPropertyIds = userProperties[userItem.profile_id] || [];
+              const assignedProperties = properties.filter(p => userPropertyIds.includes(p.id));
+              const hasNonOwnerRole = userItem.roles.some(r => r === 'manager' || r === 'inspector');
+
+              return (
+                <div key={userItem.profile_id} className="border rounded-lg p-4">
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1">
+                        <h4 className="font-medium">{userItem.full_name}</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {userItem.email}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {userItem.roles.length === 0 ? (
+                          <Badge variant="outline">No roles</Badge>
+                        ) : (
+                          userItem.roles.map(role => {
+                            const Icon = roleIcons[role];
+                            return (
+                              <div key={role} className="flex items-center gap-1">
+                                <Badge className={roleColors[role]}>
+                                  <Icon className="h-3 w-3 mr-1" />
+                                  {role}
+                                </Badge>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6"
+                                  onClick={() => handleRemoveRole(userItem.user_id, role)}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+
+                    {hasNonOwnerRole && (
+                      <div className="space-y-2 pt-2 border-t">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-sm font-medium">Assigned Properties</Label>
+                          {assignedProperties.length === 0 && (
+                            <Badge variant="outline" className="text-orange-600">
+                              No properties assigned
                             </Badge>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => handleRemoveRole(userItem.user_id, role)}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
+                          )}
+                        </div>
+                        {assignedProperties.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {assignedProperties.map(prop => (
+                              <Badge key={prop.id} variant="secondary" className="text-xs">
+                                <Building2 className="h-3 w-3 mr-1" />
+                                {prop.name}
+                              </Badge>
+                            ))}
                           </div>
-                        );
-                      })
+                        )}
+                        <div className="space-y-2 pt-2">
+                          <Label className="text-xs">Assign Properties:</Label>
+                          <div className="border rounded-md p-3 space-y-2 max-h-40 overflow-y-auto">
+                            {properties.map((property) => (
+                              <div key={property.id} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={`${userItem.profile_id}-property-${property.id}`}
+                                  checked={selectedProperties.includes(property.id)}
+                                  onCheckedChange={() => toggleProperty(property.id)}
+                                />
+                                <Label 
+                                  htmlFor={`${userItem.profile_id}-property-${property.id}`} 
+                                  className="cursor-pointer text-sm"
+                                >
+                                  {property.name} - {property.address}
+                                </Label>
+                              </div>
+                            ))}
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleAssignProperties(userItem.profile_id)}
+                            disabled={selectedProperties.length === 0}
+                          >
+                            Update Property Access
+                          </Button>
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </CardContent>
       </Card>

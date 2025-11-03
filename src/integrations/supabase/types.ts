@@ -807,6 +807,38 @@ export type Database = {
         }
         Relationships: []
       }
+      user_properties: {
+        Row: {
+          assigned_at: string
+          assigned_by: string
+          id: string
+          property_id: string
+          user_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by: string
+          id?: string
+          property_id: string
+          user_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string
+          id?: string
+          property_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_properties_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           assigned_at: string | null

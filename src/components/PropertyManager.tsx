@@ -43,11 +43,13 @@ export const PropertyManager = () => {
 
   useEffect(() => {
     fetchProperties();
-  }, []);
+  }, [profile]);
 
   const fetchProperties = async () => {
     try {
       setLoading(true);
+      
+      // Fetch properties - RLS will handle filtering based on user role and assignments
       const { data, error } = await supabase
         .from('properties')
         .select('*')
