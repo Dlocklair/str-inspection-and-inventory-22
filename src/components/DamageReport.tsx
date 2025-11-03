@@ -17,6 +17,8 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { LocationManagerModal } from './LocationManagerModal';
 import DamageReportHistory from './DamageReportHistory';
+import { usePropertyContext } from '@/contexts/PropertyContext';
+import { PropertySelector } from './PropertySelector';
 
 interface DamageItem {
   id: string;
@@ -50,6 +52,7 @@ export const DamageReport = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { profile, roles, isOwner } = useAuth();
+  const { selectedProperty } = usePropertyContext();
   
   const [damageReports, setDamageReports] = useState<DamageItem[]>([
     {
@@ -257,6 +260,9 @@ export const DamageReport = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
+        {/* Property Selector */}
+        <PropertySelector />
+        
         {/* Navigation Header */}
         <div className="flex justify-between items-center mb-8">
           <div className="flex items-center gap-4">

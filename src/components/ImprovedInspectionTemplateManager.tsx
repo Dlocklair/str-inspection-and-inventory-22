@@ -157,6 +157,21 @@ export const ImprovedInspectionTemplateManager = () => {
     })
   );
 
+  // Fetch properties on mount
+  useEffect(() => {
+    const fetchProperties = async () => {
+      const { data, error } = await supabase
+        .from('properties')
+        .select('*')
+        .order('name');
+      
+      if (!error && data) {
+        setProperties(data);
+      }
+    };
+    fetchProperties();
+  }, []);
+
   // Load templates on mount
   useEffect(() => {
     const savedTemplates = localStorage.getItem('inspection-templates');

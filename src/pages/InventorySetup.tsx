@@ -207,6 +207,7 @@ const InventorySetup = () => {
       asin: newItem.asin || null,
       reorder_link: null,
       restock_requested: false,
+      property_id: null,
     });
 
     setNewItem({

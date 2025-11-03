@@ -23,6 +23,7 @@ export interface InventoryItem {
   asin: string | null;
   reorder_link: string | null;
   restock_requested: boolean;
+  property_id: string | null;
   created_at: string;
   updated_at: string;
 }

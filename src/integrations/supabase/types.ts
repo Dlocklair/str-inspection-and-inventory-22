@@ -80,6 +80,7 @@ export type Database = {
           location: string
           notes: string | null
           photo_urls: string[] | null
+          property_id: string | null
           property_name: string | null
           repair_completed: boolean | null
           repair_cost: number | null
@@ -100,6 +101,7 @@ export type Database = {
           location: string
           notes?: string | null
           photo_urls?: string[] | null
+          property_id?: string | null
           property_name?: string | null
           repair_completed?: boolean | null
           repair_cost?: number | null
@@ -120,6 +122,7 @@ export type Database = {
           location?: string
           notes?: string | null
           photo_urls?: string[] | null
+          property_id?: string | null
           property_name?: string | null
           repair_completed?: boolean | null
           repair_cost?: number | null
@@ -130,6 +133,13 @@ export type Database = {
           work_order_number?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "damage_reports_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "damage_reports_reported_by_fkey"
             columns: ["reported_by"]
@@ -215,6 +225,42 @@ export type Database = {
             columns: ["inspection_item_id"]
             isOneToOne: false
             referencedRelation: "inspection_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inspection_template_properties: {
+        Row: {
+          created_at: string
+          id: string
+          property_id: string
+          template_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          property_id: string
+          template_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          property_id?: string
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inspection_template_properties_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inspection_template_properties_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "inspection_types"
             referencedColumns: ["id"]
           },
         ]
@@ -450,6 +496,7 @@ export type Database = {
           id: string
           name: string
           notes: string | null
+          property_id: string | null
           reorder_link: string | null
           reorder_quantity: number | null
           restock_requested: boolean | null
@@ -475,6 +522,7 @@ export type Database = {
           id?: string
           name: string
           notes?: string | null
+          property_id?: string | null
           reorder_link?: string | null
           reorder_quantity?: number | null
           restock_requested?: boolean | null
@@ -500,6 +548,7 @@ export type Database = {
           id?: string
           name?: string
           notes?: string | null
+          property_id?: string | null
           reorder_link?: string | null
           reorder_quantity?: number | null
           restock_requested?: boolean | null
@@ -523,6 +572,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
             referencedColumns: ["id"]
           },
         ]

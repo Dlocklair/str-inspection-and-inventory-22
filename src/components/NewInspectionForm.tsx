@@ -11,6 +11,8 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
+import { usePropertyContext } from '@/contexts/PropertyContext';
+import { PropertySelector } from './PropertySelector';
 
 interface ChecklistItem {
   id: string;
@@ -50,41 +52,23 @@ interface NewInspectionFormProps {
 
 export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspectionFormProps) => {
   const { toast } = useToast();
+  const { selectedProperty } = usePropertyContext();
   
-  const [properties, setProperties] = useState<any[]>([]);
-  const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
   const [templates, setTemplates] = useState<InspectionTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [currentInspection, setCurrentInspection] = useState<InspectionItem[]>([]);
   const [nextDueDate, setNextDueDate] = useState<Date>();
 
-  // Load properties on mount
+  // Load templates when property context changes
   useEffect(() => {
-    fetchProperties();
-  }, []);
-
-  const fetchProperties = async () => {
-    try {
-      // Fetch properties - RLS will handle filtering based on user role and assignments
-      const { data, error } = await supabase
-        .from('properties')
-        .select('*')
-        .order('name');
-
-      if (error) throw error;
-      setProperties(data || []);
-    } catch (error: any) {
-      console.error('Error fetching properties:', error);
+    if (selectedProperty) {
+      loadTemplatesForProperty(selectedProperty.id);
+    } else {
+      setTemplates([]);
+      setSelectedTemplateId('');
     }
-  };
-
-  // Load templates when property is selected
-  useEffect(() => {
-    if (selectedPropertyId) {
-      loadTemplatesForProperty(selectedPropertyId);
-    }
-  }, [selectedPropertyId]);
+  }, [selectedProperty]);
 
   const loadTemplatesForProperty = (propertyId: string) => {
     const savedTemplates = localStorage.getItem('inspection-templates');
@@ -218,6 +202,9 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
 
   return (
     <div className="space-y-6">
+      {/* Property Selector */}
+      <PropertySelector />
+      
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
@@ -237,35 +224,28 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Property and Template Selection, Date, and Next Due Date */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Property Selection */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium flex items-center gap-2">
-                <Building2 className="h-4 w-4" />
-                Select Property
-              </label>
-              <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose a property" />
-                </SelectTrigger>
-                <SelectContent>
-                  {properties.map(property => (
-                    <SelectItem key={property.id} value={property.id}>
-                      {property.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {/* Property Info Display */}
+          {selectedProperty && (
+            <div className="p-3 bg-muted/50 rounded-lg">
+              <div className="flex items-center gap-2 text-sm">
+                <Building2 className="h-4 w-4 text-primary" />
+                <div>
+                  <div className="font-medium">{selectedProperty.name}</div>
+                  <div className="text-xs text-muted-foreground">{selectedProperty.address}</div>
+                </div>
+              </div>
             </div>
+          )}
 
+          {/* Template Selection, Date, and Next Due Date */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Template Selection */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Select Inspection Template</label>
               <Select 
                 value={selectedTemplateId} 
                 onValueChange={handleTemplateChange}
-                disabled={!selectedPropertyId}
+                disabled={!selectedProperty}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Choose an inspection template" />

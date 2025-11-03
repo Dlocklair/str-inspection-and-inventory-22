@@ -14,11 +14,14 @@ import { EmailNotificationSettings } from './EmailNotificationSettings';
 import { supabase } from '@/integrations/supabase/client';
 import { InventoryTable } from './InventoryTable';
 import { useAuth } from '@/hooks/useAuth';
+import { usePropertyContext } from '@/contexts/PropertyContext';
+import { PropertySelector } from './PropertySelector';
 
 export const InventorySection = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { rolesLoaded, hasAnyRole } = useAuth();
+  const { selectedProperty } = usePropertyContext();
   
   // Only enable queries when roles are loaded
   const queriesEnabled = rolesLoaded && hasAnyRole();
@@ -86,12 +89,14 @@ export const InventorySection = () => {
     );
   }
 
-  // Filter items based on search
-  const filteredItems = items.filter(item =>
-    item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.category_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.supplier?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter items based on search and selected property
+  const filteredItems = items.filter(item => {
+    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.category_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.supplier?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesProperty = !selectedProperty || item.property_id === selectedProperty.id;
+    return matchesSearch && matchesProperty;
+  });
 
   const getStockStatus = (item: InventoryItem) => {
     if (item.current_quantity === 0) {
@@ -192,6 +197,7 @@ export const InventorySection = () => {
       restock_requested: false,
       notes: newItem.notes,
       created_by: profile.id,
+      property_id: selectedProperty?.id || null,
     } as any);
 
     // Reset form
@@ -279,6 +285,9 @@ export const InventorySection = () => {
 
   return (
     <div className="space-y-6">
+      {/* Property Selector */}
+      <PropertySelector />
+      
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
