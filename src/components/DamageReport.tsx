@@ -9,14 +9,15 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Plus, Edit, Save, X, Trash2, AlertTriangle, Camera, FileText, CalendarIcon, DollarSign, Home, ClipboardList, Package, Settings, History, Upload, MapPin } from 'lucide-react';
+import { Plus, Edit, Save, X, Trash2, AlertTriangle, Camera, FileText, CalendarIcon, DollarSign, Home, ClipboardList, Package, Settings, History, Upload, MapPin, Search, Image as ImageIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { LocationManagerModal } from './LocationManagerModal';
-import DamageReportHistory from './DamageReportHistory';
+import DamageReportHistoryEnhanced from './DamageReportHistoryEnhanced';
+import CameraCapture from './CameraCapture';
 import { usePropertyContext } from '@/contexts/PropertyContext';
 import { PropertySelector } from './PropertySelector';
 
@@ -30,10 +31,13 @@ interface DamageItem {
   reportDate: string;
   estimatedCost: number;
   status: 'reported' | 'assessed' | 'approved' | 'in-repair' | 'completed';
-  photos: File[];
+  photos: (File | string)[]; // Allow both File objects and base64 strings
+  photoUrls?: string[]; // For persisted photo URLs
   notes: string;
   responsibleParty: 'guest' | 'owner' | 'other' | 'no-fault';
   repairDate?: string;
+  propertyId?: string;
+  propertyName?: string;
 }
 
 interface User {
@@ -52,7 +56,7 @@ export const DamageReport = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { profile, roles, isOwner } = useAuth();
-  const { selectedProperty } = usePropertyContext();
+  const { selectedProperty, propertyMode, userProperties } = usePropertyContext();
   
   const [damageReports, setDamageReports] = useState<DamageItem[]>([
     {
@@ -85,7 +89,7 @@ export const DamageReport = () => {
     notes: '',
     responsibleParty: 'guest' as const,
     reportDate: new Date().toISOString().split('T')[0],
-    photos: [] as File[],
+    photos: [] as (File | string)[],
   });
 
   const [showAddForm, setShowAddForm] = useState(false);
@@ -95,6 +99,9 @@ export const DamageReport = () => {
   const [showLocationManager, setShowLocationManager] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [selectedHistoryReport, setSelectedHistoryReport] = useState<DamageItem | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [captureMode, setCaptureMode] = useState(false);
+  const [editingPhotoIndex, setEditingPhotoIndex] = useState<number | null>(null);
 
   const severityColors = {
     minor: 'default',
@@ -145,11 +152,22 @@ export const DamageReport = () => {
       return;
     }
 
+    if (!selectedProperty && propertyMode === 'property') {
+      toast({
+        title: "Property required",
+        description: "Please select a property for this damage report.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     const report: DamageItem = {
       id: Date.now().toString(),
       ...newReport,
       reportedDate: new Date().toISOString(),
       status: 'reported',
+      propertyId: selectedProperty?.id,
+      propertyName: selectedProperty?.name,
     };
 
     setDamageReports(prev => [...prev, report]);
@@ -172,7 +190,7 @@ export const DamageReport = () => {
     });
   };
 
-  const handlePhotoUpload = (index: number, file: File) => {
+  const handlePhotoUpload = (index: number, file: File | string) => {
     const newPhotos = [...newReport.photos];
     newPhotos[index] = file;
     setNewReport(prev => ({ ...prev, photos: newPhotos }));
@@ -241,8 +259,43 @@ export const DamageReport = () => {
     return [];
   };
 
+  // Filter reports based on property selection and search
+  const filteredReports = damageReports.filter(report => {
+    const matchesSearch = !searchTerm || 
+      report.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      report.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      report.location.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    if (propertyMode === 'all') {
+      return matchesSearch;
+    } else if (selectedProperty) {
+      return matchesSearch && report.propertyId === selectedProperty.id;
+    }
+    return matchesSearch;
+  });
+
+  // Group reports by property and year for "all" mode
+  const groupedReports = () => {
+    const grouped: Record<string, Record<string, DamageItem[]>> = {};
+    
+    filteredReports.forEach(report => {
+      const propertyKey = report.propertyId || 'unassigned';
+      const year = new Date(report.reportDate).getFullYear().toString();
+      
+      if (!grouped[propertyKey]) {
+        grouped[propertyKey] = {};
+      }
+      if (!grouped[propertyKey][year]) {
+        grouped[propertyKey][year] = [];
+      }
+      grouped[propertyKey][year].push(report);
+    });
+    
+    return grouped;
+  };
+
   const getHistoryData = () => {
-    return damageReports.map(report => ({
+    return filteredReports.map(report => ({
       ...report,
       createdAt: report.reportDate,
       updatedAt: report.reportedDate,
@@ -334,17 +387,18 @@ export const DamageReport = () => {
                   Back to Reports
                 </Button>
               </div>
-               <DamageReportHistory
+               <DamageReportHistoryEnhanced
                  reports={getHistoryData()}
                  onViewReport={(report) => {
                    const originalReport = damageReports.find(r => r.id === report.id);
                    if (originalReport) {
-                     // Set up editing mode with the selected report
-                     setEditingReport(originalReport.id);
-                     setEditingData({ ...originalReport });
+                     // Set selected history report to view
+                     setSelectedHistoryReport(originalReport);
                      setShowHistory(false);
                    }
                  }}
+                 propertyMode={propertyMode}
+                 properties={userProperties}
                />
             </div>
           )}
@@ -384,22 +438,72 @@ export const DamageReport = () => {
                   {selectedHistoryReport.notes && (
                     <div><strong>Notes:</strong> {selectedHistoryReport.notes}</div>
                   )}
-                                   {selectedHistoryReport.photos.length > 0 && (
-                                     <div className="space-y-2">
+                                   <div className="space-y-2">
+                                     <div className="flex items-center justify-between">
                                        <strong>Photos ({selectedHistoryReport.photos.length}):</strong>
-                                       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                                         {selectedHistoryReport.photos.map((photo, index) => (
-                                           <div key={index} className="aspect-[4/3] border rounded-lg overflow-hidden">
-                                             <img 
-                                               src={URL.createObjectURL(photo)} 
-                                               alt={`Damage photo ${index + 1}`}
-                                               className="w-full h-full object-cover" 
-                                             />
-                                           </div>
-                                         ))}
+                                       <div className="flex gap-2">
+                                         <Button
+                                           variant="outline"
+                                           size="sm"
+                                           onClick={() => {
+                                             setCaptureMode(true);
+                                             setEditingReport(selectedHistoryReport.id);
+                                           }}
+                                         >
+                                           <Camera className="h-4 w-4 mr-1" />
+                                           Take Photo
+                                         </Button>
+                                         <Button
+                                           variant="outline"
+                                           size="sm"
+                                           onClick={() => {
+                                             const input = document.createElement('input');
+                                             input.type = 'file';
+                                             input.accept = 'image/*';
+                                             input.onchange = (e: any) => {
+                                               const file = e.target?.files?.[0];
+                                               if (file && editingReport) {
+                                                 const updatedPhotos = [...selectedHistoryReport.photos, file];
+                                                 setDamageReports(prev => prev.map(r => 
+                                                   r.id === selectedHistoryReport.id ? { ...r, photos: updatedPhotos } : r
+                                                 ));
+                                                 setSelectedHistoryReport({ ...selectedHistoryReport, photos: updatedPhotos });
+                                               }
+                                             };
+                                             input.click();
+                                           }}
+                                         >
+                                           <ImageIcon className="h-4 w-4 mr-1" />
+                                           Upload Photo
+                                         </Button>
                                        </div>
                                      </div>
-                                   )}
+                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                       {selectedHistoryReport.photos.map((photo, index) => (
+                                         <div key={index} className="aspect-[4/3] border rounded-lg overflow-hidden relative group">
+                                           <img 
+                                             src={typeof photo === 'string' ? photo : URL.createObjectURL(photo)} 
+                                             alt={`Damage photo ${index + 1}`}
+                                             className="w-full h-full object-cover" 
+                                           />
+                                           <Button
+                                             variant="destructive"
+                                             size="sm"
+                                             onClick={() => {
+                                               const updatedPhotos = selectedHistoryReport.photos.filter((_, i) => i !== index);
+                                               setDamageReports(prev => prev.map(r => 
+                                                 r.id === selectedHistoryReport.id ? { ...r, photos: updatedPhotos } : r
+                                               ));
+                                               setSelectedHistoryReport({ ...selectedHistoryReport, photos: updatedPhotos });
+                                             }}
+                                             className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                           >
+                                             <X className="h-3 w-3" />
+                                           </Button>
+                                         </div>
+                                       ))}
+                                     </div>
+                                   </div>
                 </CardContent>
               </Card>
             </div>
@@ -409,25 +513,40 @@ export const DamageReport = () => {
           {!showHistory && !selectedHistoryReport && (
             <div className="space-y-6">
               {/* Top Action Bar */}
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-4">
-                  <h2 className="text-xl font-semibold text-sky-600">Active Reports</h2>
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setShowHistory(true)}
-                      className="flex items-center gap-2"
-                    >
-                      <History className="h-4 w-4" />
-                      Damage Report History
-                    </Button>
+              <div className="flex flex-col gap-4">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-4">
+                    <h2 className="text-xl font-semibold text-sky-600">Active Reports</h2>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setShowHistory(true)}
+                        className="flex items-center gap-2"
+                      >
+                        <History className="h-4 w-4" />
+                        Damage Report History
+                      </Button>
+                    </div>
                   </div>
+                  {!showAddForm && (
+                    <Button onClick={() => setShowAddForm(true)} className="flex items-center gap-2">
+                      <Plus className="h-4 w-4" />
+                      Create Damage Report
+                    </Button>
+                  )}
                 </div>
+                
+                {/* Search Box */}
                 {!showAddForm && (
-                  <Button onClick={() => setShowAddForm(true)} className="flex items-center gap-2">
-                    <Plus className="h-4 w-4" />
-                    Create Damage Report
-                  </Button>
+                  <div className="relative max-w-md">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search damage reports..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
                 )}
               </div>
               
@@ -579,10 +698,13 @@ export const DamageReport = () => {
                                 key={index} 
                                 className="aspect-[4/3] border-2 border-dashed border-border rounded-lg p-2 flex flex-col items-center justify-center hover:border-primary/50 transition-colors relative"
                               >
-                                {newReport.photos[index] ? (
+                                 {newReport.photos[index] ? (
                                   <>
                                     <img 
-                                      src={URL.createObjectURL(newReport.photos[index])} 
+                                      src={typeof newReport.photos[index] === 'string' 
+                                        ? newReport.photos[index] as string
+                                        : URL.createObjectURL(newReport.photos[index] as File)
+                                      } 
                                       alt={`Damage photo ${index + 1}`}
                                       className="w-full h-full object-cover rounded"
                                     />
@@ -645,7 +767,7 @@ export const DamageReport = () => {
                   {/* Reports List - Only show when not adding new report */}
                   {!showAddForm && (
                     <div className="space-y-4">
-                      {damageReports.filter(report => report.status !== 'completed').map(report => (
+                      {filteredReports.filter(report => report.status !== 'completed').map(report => (
                         <Card key={report.id}>
                           <CardContent className="p-6">
                             {editingReport === report.id ? (
@@ -818,6 +940,34 @@ export const DamageReport = () => {
           onClose={() => setShowLocationManager(false)}
           locations={locations}
           onUpdateLocations={setLocations}
+        />
+
+        {/* Camera Capture Modal */}
+        <CameraCapture
+          isOpen={captureMode}
+          onCapture={(imageSrc) => {
+            if (editingReport) {
+              const report = damageReports.find(r => r.id === editingReport);
+              if (report) {
+                const updatedPhotos = [...report.photos, imageSrc];
+                setDamageReports(prev => prev.map(r => 
+                  r.id === editingReport ? { ...r, photos: updatedPhotos } : r
+                ));
+                if (selectedHistoryReport?.id === editingReport) {
+                  setSelectedHistoryReport({ ...report, photos: updatedPhotos });
+                }
+              }
+            }
+            setCaptureMode(false);
+            toast({
+              title: "Photo captured",
+              description: "Photo added to damage report.",
+            });
+          }}
+          onClose={() => {
+            setCaptureMode(false);
+            setEditingPhotoIndex(null);
+          }}
         />
       </div>
     </div>

@@ -280,8 +280,9 @@ export const InventorySection = () => {
     }
   };
 
-  const lowStockItems = items.filter(item => item.current_quantity <= item.restock_threshold);
-  const outOfStockItems = items.filter(item => item.current_quantity === 0);
+  // Use filteredItems for property-specific counts
+  const lowStockItems = filteredItems.filter(item => item.current_quantity <= item.restock_threshold);
+  const outOfStockItems = filteredItems.filter(item => item.current_quantity === 0);
 
   return (
     <div className="space-y-6">
@@ -296,7 +297,7 @@ export const InventorySection = () => {
             <Package2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{items.length}</div>
+            <div className="text-2xl font-bold">{filteredItems.length}</div>
           </CardContent>
         </Card>
         <Card>
