@@ -82,6 +82,22 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     fetchProperties();
+
+    // Subscribe to property changes for real-time updates
+    const channel = supabase
+      .channel('properties-changes')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'properties' 
+      }, () => {
+        fetchProperties();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const setSelectedProperty = (property: Property | null) => {

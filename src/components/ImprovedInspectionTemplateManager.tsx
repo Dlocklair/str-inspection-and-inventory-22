@@ -921,7 +921,8 @@ export const ImprovedInspectionTemplateManager = () => {
                               <SelectItem value="none">None</SelectItem>
                               <SelectItem value="per_visit">Per Visit</SelectItem>
                               <SelectItem value="monthly">Monthly</SelectItem>
-                              <SelectItem value="quarterly">Quarterly</SelectItem>
+                              <SelectItem value="quarterly">Quarterly (Every 3 Months)</SelectItem>
+                              <SelectItem value="semi-annual">Every 6 Months</SelectItem>
                               <SelectItem value="annually">Annually</SelectItem>
                               <SelectItem value="custom">Custom (Days)</SelectItem>
                             </SelectContent>
@@ -986,7 +987,7 @@ export const ImprovedInspectionTemplateManager = () => {
 
                             {tempNotificationsEnabled && (
                               <>
-                                <div className="space-y-2">
+                                 <div className="space-y-2">
                                   <Label>Notification Method</Label>
                                   <Select value={tempNotificationMethod} onValueChange={setTempNotificationMethod}>
                                     <SelectTrigger>
@@ -998,6 +999,16 @@ export const ImprovedInspectionTemplateManager = () => {
                                       <SelectItem value="both">Both (Email & Phone)</SelectItem>
                                     </SelectContent>
                                   </Select>
+                                  {(tempNotificationMethod === 'email' || tempNotificationMethod === 'both') && (
+                                    <p className="text-xs text-yellow-600 dark:text-yellow-500">
+                                      Note: Email address must be configured in Settings for email notifications.
+                                    </p>
+                                  )}
+                                  {(tempNotificationMethod === 'phone' || tempNotificationMethod === 'both') && (
+                                    <p className="text-xs text-yellow-600 dark:text-yellow-500">
+                                      Note: Phone number must be configured in Settings for SMS notifications.
+                                    </p>
+                                  )}
                                 </div>
 
                                 <div className="space-y-2">

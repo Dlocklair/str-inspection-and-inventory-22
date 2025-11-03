@@ -14,7 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { usePropertyContext } from '@/contexts/PropertyContext';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PropertySelector } from './PropertySelector';
 
 interface InspectionItem {
   id: string;
@@ -38,10 +38,9 @@ interface InspectionRecord {
 export const EditableInspectionHistoryView = () => {
   const { toast } = useToast();
   const { profile, isOwner } = useAuth();
-  const { userProperties } = usePropertyContext();
+  const { selectedProperty, propertyMode } = usePropertyContext();
   const [inspectionRecords, setInspectionRecords] = useState<InspectionRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [propertyFilter, setPropertyFilter] = useState<'all' | string>('all');
   const [expandedGroups, setExpandedGroups] = useState<{[key: string]: boolean}>({});
   const [collapsedPropertyGroups, setCollapsedPropertyGroups] = useState<{[key: string]: boolean}>({});
   const [editingRecord, setEditingRecord] = useState<string | null>(null);
@@ -61,7 +60,7 @@ export const EditableInspectionHistoryView = () => {
     localStorage.setItem('inspection-records', JSON.stringify(records));
   };
 
-  // Filter records based on search term and property (no "unassigned" option)
+  // Filter records based on search term and property
   const filteredRecords = inspectionRecords.filter(record => {
     const searchLower = searchTerm.toLowerCase();
     const matchesSearch = (
@@ -74,7 +73,14 @@ export const EditableInspectionHistoryView = () => {
       )
     );
 
-    const matchesProperty = propertyFilter === 'all' || record.propertyId === propertyFilter;
+    // Filter based on property mode
+    let matchesProperty = true;
+    if (propertyMode === 'property' && selectedProperty) {
+      matchesProperty = record.propertyId === selectedProperty.id;
+    } else if (propertyMode === 'unassigned') {
+      matchesProperty = !record.propertyId;
+    }
+    // 'all' mode shows everything
 
     return matchesSearch && matchesProperty;
   });
@@ -222,18 +228,8 @@ export const EditableInspectionHistoryView = () => {
         </div>
       </div>
 
-      {/* Property Filter Tabs */}
-      <Tabs value={propertyFilter} onValueChange={setPropertyFilter} className="w-full">
-        <TabsList className="w-full justify-start flex-wrap h-auto">
-          <TabsTrigger value="all">All Properties</TabsTrigger>
-          {userProperties.map(property => (
-            <TabsTrigger key={property.id} value={property.id}>
-              <Building2 className="h-3 w-3 mr-1" />
-              {property.name}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+      {/* Property Selector */}
+      <PropertySelector />
 
       {Object.keys(groupedByProperty).length === 0 ? (
         <Card>
@@ -248,7 +244,7 @@ export const EditableInspectionHistoryView = () => {
       ) : (
         <div className="space-y-6">
           {Object.entries(groupedByProperty).map(([propertyKey, propertyGroup]) => {
-            const showCollapsible = propertyFilter === 'all';
+            const showCollapsible = propertyMode === 'all';
             
             if (showCollapsible) {
               // When "All Properties" is selected, make property groups collapsible
