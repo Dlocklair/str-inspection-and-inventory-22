@@ -21,6 +21,7 @@ const Settings = () => {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editedFullName, setEditedFullName] = useState('');
   const [editedEmail, setEditedEmail] = useState('');
+  const [editedSmsPhone, setEditedSmsPhone] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
 
@@ -31,6 +32,7 @@ const Settings = () => {
   const handleEditProfile = () => {
     setEditedFullName(profile?.full_name || '');
     setEditedEmail(user?.email || '');
+    setEditedSmsPhone((profile as any)?.sms_phone || '');
     setIsEditingProfile(true);
   };
 
@@ -38,6 +40,7 @@ const Settings = () => {
     setIsEditingProfile(false);
     setEditedFullName('');
     setEditedEmail('');
+    setEditedSmsPhone('');
   };
 
   const handleSaveProfile = async () => {
@@ -52,11 +55,14 @@ const Settings = () => {
 
     setIsSaving(true);
     try {
-      // Update profile name
-      if (editedFullName !== profile?.full_name) {
+      // Update profile name and SMS phone
+      if (editedFullName !== profile?.full_name || editedSmsPhone !== (profile as any)?.sms_phone) {
         const { error: profileError } = await supabase
           .from('profiles')
-          .update({ full_name: editedFullName.trim() })
+          .update({ 
+            full_name: editedFullName.trim(),
+            sms_phone: editedSmsPhone.trim() || null
+          })
           .eq('user_id', user?.id);
 
         if (profileError) throw profileError;
@@ -167,7 +173,7 @@ const Settings = () => {
                 {profile && (
                   <div className="space-y-4">
                     {isEditingProfile ? (
-                      <>
+                    <>
                         <div className="space-y-3">
                           <div>
                             <Label htmlFor="fullName">Full Name</Label>
@@ -189,6 +195,19 @@ const Settings = () => {
                             />
                             <p className="text-xs text-muted-foreground mt-1">
                               Changing your email will require verification
+                            </p>
+                          </div>
+                          <div>
+                            <Label htmlFor="smsPhone">Phone Number (for SMS)</Label>
+                            <Input
+                              id="smsPhone"
+                              type="tel"
+                              value={editedSmsPhone}
+                              onChange={(e) => setEditedSmsPhone(e.target.value)}
+                              placeholder="+1234567890"
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">
+                              This number will be used for text message notifications
                             </p>
                           </div>
                         </div>
@@ -215,9 +234,18 @@ const Settings = () => {
                             <Label className="text-sm text-muted-foreground">Full Name</Label>
                             <p className="font-medium text-lg">{profile.full_name}</p>
                           </div>
-                          <div>
+                         <div>
                             <Label className="text-sm text-muted-foreground">Email</Label>
                             <p className="font-medium">{user.email}</p>
+                          </div>
+                          <div>
+                            <Label className="text-sm text-muted-foreground">Phone Number (for SMS)</Label>
+                            <p className="font-medium text-muted-foreground">
+                              {(profile as any).sms_phone || 'Not set'}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              This number will be used for text message notifications
+                            </p>
                           </div>
                           <div>
                             <Label className="text-sm text-muted-foreground">Role</Label>

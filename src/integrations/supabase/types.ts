@@ -231,6 +231,7 @@ export type Database = {
           notification_days_ahead: number | null
           notification_method: string | null
           notifications_enabled: boolean | null
+          property_id: string | null
         }
         Insert: {
           created_at?: string
@@ -243,6 +244,7 @@ export type Database = {
           notification_days_ahead?: number | null
           notification_method?: string | null
           notifications_enabled?: boolean | null
+          property_id?: string | null
         }
         Update: {
           created_at?: string
@@ -255,6 +257,7 @@ export type Database = {
           notification_days_ahead?: number | null
           notification_method?: string | null
           notifications_enabled?: boolean | null
+          property_id?: string | null
         }
         Relationships: [
           {
@@ -262,6 +265,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inspection_types_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
             referencedColumns: ["id"]
           },
         ]
@@ -277,6 +287,7 @@ export type Database = {
           next_due_date: string | null
           notes: string | null
           performed_by: string | null
+          property_id: string | null
           property_name: string | null
           status: string | null
           updated_at: string
@@ -291,6 +302,7 @@ export type Database = {
           next_due_date?: string | null
           notes?: string | null
           performed_by?: string | null
+          property_id?: string | null
           property_name?: string | null
           status?: string | null
           updated_at?: string
@@ -305,6 +317,7 @@ export type Database = {
           next_due_date?: string | null
           notes?: string | null
           performed_by?: string | null
+          property_id?: string | null
           property_name?: string | null
           status?: string | null
           updated_at?: string
@@ -329,6 +342,13 @@ export type Database = {
             columns: ["performed_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inspections_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
             referencedColumns: ["id"]
           },
         ]
@@ -709,6 +729,7 @@ export type Database = {
           phone_numbers: string[] | null
           preferred_contact_method: string | null
           role: string
+          sms_phone: string | null
           updated_at: string
           user_id: string
         }
@@ -722,6 +743,7 @@ export type Database = {
           phone_numbers?: string[] | null
           preferred_contact_method?: string | null
           role?: string
+          sms_phone?: string | null
           updated_at?: string
           user_id: string
         }
@@ -735,6 +757,7 @@ export type Database = {
           phone_numbers?: string[] | null
           preferred_contact_method?: string | null
           role?: string
+          sms_phone?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -747,6 +770,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      properties: {
+        Row: {
+          address: string
+          city: string
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+          state: string
+          updated_at: string
+          zip: string
+        }
+        Insert: {
+          address: string
+          city: string
+          created_at?: string
+          created_by: string
+          id?: string
+          name: string
+          state: string
+          updated_at?: string
+          zip: string
+        }
+        Update: {
+          address?: string
+          city?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+          state?: string
+          updated_at?: string
+          zip?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {

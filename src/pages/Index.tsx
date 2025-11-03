@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ClipboardList, Package, AlertTriangle, Settings, User, Shield, Loader2, LogOut } from 'lucide-react';
+import { ClipboardList, Package, AlertTriangle, Settings, User, Shield, Loader2, LogOut, Building2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 const Index = () => {
@@ -91,7 +91,26 @@ const Index = () => {
         </div>
 
         {/* Main Content - Report Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+          {/* Properties */}
+          <Card className="cursor-pointer transition-all hover:shadow-lg border-2 hover:border-primary/20 min-h-[200px] flex flex-col">
+            <CardHeader className="bg-slate-900 text-white">
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-6 w-6 text-primary" />
+                Properties
+                <Badge variant="default" className="ml-2">Active</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="bg-slate-900 text-white flex-1 flex flex-col justify-between">
+              <p className="text-muted-foreground">
+                Manage all your property locations and details in one place.
+              </p>
+              <Button onClick={() => navigate('/properties')} className="w-full mt-4">
+                Manage Properties
+              </Button>
+            </CardContent>
+          </Card>
+
           {/* Inspection Reports */}
           <Card className="cursor-pointer transition-all hover:shadow-lg border-2 hover:border-primary/20 min-h-[200px] flex flex-col">
             <CardHeader className="bg-slate-900 text-white">

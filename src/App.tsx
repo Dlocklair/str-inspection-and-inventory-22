@@ -15,6 +15,7 @@ import InventorySetup from "./pages/InventorySetup";
 import { InspectionReport } from "./components/InspectionReport";
 import { InventoryReport } from "./components/InventoryReport";
 import { DamageReport } from "./components/DamageReport";
+import { PropertyManager } from "./components/PropertyManager";
 import AcceptInvitation from "./pages/AcceptInvitation";
 import NotFound from "./pages/NotFound";
 import { useMigrateInventory } from "./hooks/useMigrateInventory";
@@ -57,6 +58,7 @@ const LayoutWrapper = () => {
             <Route path="/auth" element={<Auth />} />
             <Route path="/accept-invitation" element={<AcceptInvitation />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/properties" element={<PropertyManager />} />
             <Route path="/inventory-setup" element={<InventorySetup />} />
             <Route path="/inspections" element={<InspectionReport />} />
             <Route path="/inventory" element={<InventoryReport />} />

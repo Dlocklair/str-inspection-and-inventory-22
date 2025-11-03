@@ -1,4 +1,4 @@
-import { Home, Package, ClipboardList, AlertTriangle, Settings, Settings2 } from 'lucide-react';
+import { Home, Package, ClipboardList, AlertTriangle, Settings, Settings2, Building2 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import {
   Sidebar,
@@ -15,6 +15,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/h
 
 const menuItems = [
   { title: 'Dashboard', url: '/', icon: Home },
+  { title: 'Properties', url: '/properties', icon: Building2 },
   { title: 'Inspections', url: '/inspections', icon: ClipboardList },
   { 
     title: 'Inventory', 

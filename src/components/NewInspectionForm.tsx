@@ -6,10 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarIcon, Save, Settings, X } from 'lucide-react';
+import { CalendarIcon, Save, Settings, X, Building2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ChecklistItem {
   id: string;
@@ -22,6 +23,8 @@ interface InspectionTemplate {
   name: string;
   items: ChecklistItem[];
   isPredefined: boolean;
+  propertyId?: string;
+  propertyName?: string;
 }
 
 interface InspectionItem {
@@ -48,47 +51,50 @@ interface NewInspectionFormProps {
 export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspectionFormProps) => {
   const { toast } = useToast();
   
+  const [properties, setProperties] = useState<any[]>([]);
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
   const [templates, setTemplates] = useState<InspectionTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [currentInspection, setCurrentInspection] = useState<InspectionItem[]>([]);
   const [nextDueDate, setNextDueDate] = useState<Date>();
 
-  // Load templates on mount and add default templates if none exist
+  // Load properties on mount
   useEffect(() => {
+    fetchProperties();
+  }, []);
+
+  const fetchProperties = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('properties')
+        .select('*')
+        .order('name');
+
+      if (error) throw error;
+      setProperties(data || []);
+    } catch (error: any) {
+      console.error('Error fetching properties:', error);
+    }
+  };
+
+  // Load templates when property is selected
+  useEffect(() => {
+    if (selectedPropertyId) {
+      loadTemplatesForProperty(selectedPropertyId);
+    }
+  }, [selectedPropertyId]);
+
+  const loadTemplatesForProperty = (propertyId: string) => {
     const savedTemplates = localStorage.getItem('inspection-templates');
     if (savedTemplates) {
-      setTemplates(JSON.parse(savedTemplates));
-    } else {
-      // Add default templates
-      const defaultTemplates = [
-        {
-          id: 'default-1',
-          name: 'Standard Property Inspection',
-          isPredefined: true,
-          items: [
-            { id: '1', description: 'Check all light fixtures and bulbs', notes: '' },
-            { id: '2', description: 'Inspect HVAC filters', notes: '' },
-            { id: '3', description: 'Test smoke detectors', notes: '' },
-            { id: '4', description: 'Check plumbing for leaks', notes: '' },
-            { id: '5', description: 'Inspect doors and windows', notes: '' }
-          ]
-        },
-        {
-          id: 'default-2',
-          name: 'Quick Maintenance Check',
-          isPredefined: true,
-          items: [
-            { id: '1', description: 'Check thermostat settings', notes: '' },
-            { id: '2', description: 'Test all electrical outlets', notes: '' },
-            { id: '3', description: 'Inspect exterior lighting', notes: '' }
-          ]
-        }
-      ];
-      setTemplates(defaultTemplates);
-      localStorage.setItem('inspection-templates', JSON.stringify(defaultTemplates));
+      const allTemplates = JSON.parse(savedTemplates);
+      const propertyTemplates = allTemplates.filter((t: InspectionTemplate) => 
+        t.propertyId === propertyId
+      );
+      setTemplates(propertyTemplates);
     }
-  }, []);
+  };
 
   // Load template items when template is selected
   const handleTemplateChange = (templateId: string) => {
@@ -230,12 +236,36 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Template Selection, Date, and Next Due Date */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Property and Template Selection, Date, and Next Due Date */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Property Selection */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium flex items-center gap-2">
+                <Building2 className="h-4 w-4" />
+                Select Property
+              </label>
+              <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a property" />
+                </SelectTrigger>
+                <SelectContent>
+                  {properties.map(property => (
+                    <SelectItem key={property.id} value={property.id}>
+                      {property.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Template Selection */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Select Inspection Template</label>
-              <Select value={selectedTemplateId} onValueChange={handleTemplateChange}>
+              <Select 
+                value={selectedTemplateId} 
+                onValueChange={handleTemplateChange}
+                disabled={!selectedPropertyId}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Choose an inspection template" />
                 </SelectTrigger>

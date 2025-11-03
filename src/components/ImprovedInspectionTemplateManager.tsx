@@ -10,10 +10,11 @@ import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Plus, Edit, Save, X, Trash2, GripVertical, Copy, Bell, CalendarIcon } from 'lucide-react';
+import { Plus, Edit, Save, X, Trash2, GripVertical, Copy, Bell, CalendarIcon, Building2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import {
   DndContext,
   closestCenter,
@@ -50,6 +51,8 @@ interface InspectionTemplate {
   notificationMethod?: string;
   notificationDaysAhead?: number;
   nextOccurrence?: string;
+  propertyId?: string;
+  propertyName?: string;
 }
 
 interface SortableItemProps {
@@ -120,14 +123,19 @@ const SortableItem = ({ item, templateId, isEditing, editingText, onEdit, onSave
 export const ImprovedInspectionTemplateManager = () => {
   const { toast } = useToast();
   
+  const [properties, setProperties] = useState<any[]>([]);
   const [templates, setTemplates] = useState<InspectionTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [newItemText, setNewItemText] = useState('');
   const [editingItem, setEditingItem] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
   const [newTemplateName, setNewTemplateName] = useState('');
+  const [newTemplatePropertyId, setNewTemplatePropertyId] = useState('');
   const [editingTemplateName, setEditingTemplateName] = useState('');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isDuplicateDialogOpen, setIsDuplicateDialogOpen] = useState(false);
+  const [duplicateTargetPropertyId, setDuplicateTargetPropertyId] = useState('');
+  const [templateToDuplicate, setTemplateToDuplicate] = useState<InspectionTemplate | null>(null);
   
   // Frequency and notification settings
   const [editingFrequency, setEditingFrequency] = useState(false);
@@ -313,33 +321,64 @@ export const ImprovedInspectionTemplateManager = () => {
       return;
     }
 
+    if (!newTemplatePropertyId) {
+      toast({
+        title: "Property required",
+        description: "Please select a property for this template.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const property = properties.find(p => p.id === newTemplatePropertyId);
+
     const newTemplate: InspectionTemplate = {
       id: Date.now().toString(),
       name: newTemplateName,
       isPredefined: false,
+      propertyId: newTemplatePropertyId,
+      propertyName: property?.name,
       items: []
     };
 
     setTemplates(prev => [...prev, newTemplate]);
     setSelectedTemplateId(newTemplate.id);
     setNewTemplateName('');
+    setNewTemplatePropertyId('');
     setIsCreateDialogOpen(false);
     
     toast({
       title: "Template created",
-      description: `Custom template "${newTemplate.name}" has been created.`,
+      description: `Custom template "${newTemplate.name}" has been created for ${property?.name}.`,
     });
   };
 
   const duplicateTemplate = (templateId: string) => {
-    const templateToDupe = templates.find(t => t.id === templateId);
-    if (!templateToDupe) return;
+    const template = templates.find(t => t.id === templateId);
+    if (!template) return;
+
+    setTemplateToDuplicate(template);
+    setIsDuplicateDialogOpen(true);
+  };
+
+  const handleDuplicateToProperty = () => {
+    if (!templateToDuplicate || !duplicateTargetPropertyId) return;
+
+    const targetProperty = properties.find(p => p.id === duplicateTargetPropertyId);
 
     const newTemplate: InspectionTemplate = {
       id: Date.now().toString(),
-      name: `${templateToDupe.name} (Copy)`,
+      name: `${templateToDuplicate.name} (Copy)`,
       isPredefined: false,
-      items: templateToDupe.items.map(item => ({
+      propertyId: duplicateTargetPropertyId,
+      propertyName: targetProperty?.name,
+      frequencyType: templateToDuplicate.frequencyType,
+      frequencyDays: templateToDuplicate.frequencyDays,
+      notificationsEnabled: templateToDuplicate.notificationsEnabled,
+      notificationMethod: templateToDuplicate.notificationMethod,
+      notificationDaysAhead: templateToDuplicate.notificationDaysAhead,
+      nextOccurrence: templateToDuplicate.nextOccurrence,
+      items: templateToDuplicate.items.map(item => ({
         ...item,
         id: `${Date.now()}-${item.id}`
       }))
@@ -347,10 +386,13 @@ export const ImprovedInspectionTemplateManager = () => {
 
     setTemplates(prev => [...prev, newTemplate]);
     setSelectedTemplateId(newTemplate.id);
+    setDuplicateTargetPropertyId('');
+    setTemplateToDuplicate(null);
+    setIsDuplicateDialogOpen(false);
     
     toast({
       title: "Template duplicated",
-      description: `Template "${newTemplate.name}" has been created.`,
+      description: `Template "${newTemplate.name}" has been created for ${targetProperty?.name}.`,
     });
   };
 
@@ -491,6 +533,21 @@ export const ImprovedInspectionTemplateManager = () => {
               <DialogTitle>Create New Template</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Property</Label>
+                <Select value={newTemplatePropertyId} onValueChange={setNewTemplatePropertyId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a property" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {properties.map(property => (
+                      <SelectItem key={property.id} value={property.id}>
+                        {property.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <Input
                 placeholder="Template name"
                 value={newTemplateName}
@@ -580,7 +637,8 @@ export const ImprovedInspectionTemplateManager = () => {
                       variant="outline" 
                       onClick={() => duplicateTemplate(selectedTemplate.id)}
                     >
-                      <Copy className="h-4 w-4" />
+                      <Copy className="h-4 w-4 mr-1" />
+                      Duplicate to Property
                     </Button>
                     {!selectedTemplate.isPredefined && (
                       <Button 
@@ -835,6 +893,40 @@ export const ImprovedInspectionTemplateManager = () => {
           )}
         </Card>
       </div>
+
+      {/* Duplicate to Property Dialog */}
+      <Dialog open={isDuplicateDialogOpen} onOpenChange={setIsDuplicateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Duplicate Template to Property</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Target Property</Label>
+              <Select value={duplicateTargetPropertyId} onValueChange={setDuplicateTargetPropertyId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a property" />
+                </SelectTrigger>
+                <SelectContent>
+                  {properties.map(property => (
+                    <SelectItem key={property.id} value={property.id}>
+                      {property.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={handleDuplicateToProperty} disabled={!duplicateTargetPropertyId}>
+                Duplicate Template
+              </Button>
+              <Button variant="outline" onClick={() => setIsDuplicateDialogOpen(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
