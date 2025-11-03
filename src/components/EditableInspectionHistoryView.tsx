@@ -43,6 +43,7 @@ export const EditableInspectionHistoryView = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [propertyFilter, setPropertyFilter] = useState<'all' | string>('all');
   const [expandedGroups, setExpandedGroups] = useState<{[key: string]: boolean}>({});
+  const [collapsedPropertyGroups, setCollapsedPropertyGroups] = useState<{[key: string]: boolean}>({});
   const [editingRecord, setEditingRecord] = useState<string | null>(null);
   const [editingDate, setEditingDate] = useState<Date | undefined>();
 
@@ -60,7 +61,7 @@ export const EditableInspectionHistoryView = () => {
     localStorage.setItem('inspection-records', JSON.stringify(records));
   };
 
-  // Filter records based on search term and property
+  // Filter records based on search term and property (no "unassigned" option)
   const filteredRecords = inspectionRecords.filter(record => {
     const searchLower = searchTerm.toLowerCase();
     const matchesSearch = (
@@ -73,8 +74,7 @@ export const EditableInspectionHistoryView = () => {
       )
     );
 
-    const matchesProperty = propertyFilter === 'all' || 
-      (propertyFilter === 'unassigned' ? !record.propertyId : record.propertyId === propertyFilter);
+    const matchesProperty = propertyFilter === 'all' || record.propertyId === propertyFilter;
 
     return matchesSearch && matchesProperty;
   });
@@ -225,7 +225,6 @@ export const EditableInspectionHistoryView = () => {
               {property.name}
             </TabsTrigger>
           ))}
-          <TabsTrigger value="unassigned">Unassigned</TabsTrigger>
         </TabsList>
       </Tabs>
 
@@ -241,24 +240,406 @@ export const EditableInspectionHistoryView = () => {
         </Card>
       ) : (
         <div className="space-y-6">
-          {Object.entries(groupedByProperty).map(([propertyKey, propertyGroup]) => (
-            <div key={propertyKey} className="space-y-4">
-              {/* Property Header */}
-              <div className="flex items-center gap-2 px-2">
-                <Building2 className="h-5 w-5 text-primary" />
-                <h3 className="text-xl font-bold">{propertyGroup.propertyName}</h3>
-                <Badge variant="secondary">
-                  {Object.values(propertyGroup.templates).reduce((sum, records) => sum + records.length, 0)} inspection{Object.values(propertyGroup.templates).reduce((sum, records) => sum + records.length, 0) !== 1 ? 's' : ''}
-                </Badge>
-              </div>
-
-              {/* Templates within Property */}
-              {Object.entries(propertyGroup.templates).map(([templateName, records]) => (
-                <Card key={templateName} className="ml-6">
-                  <Collapsible
-                    open={expandedGroups[`${propertyKey}-${templateName}`]}
-                    onOpenChange={() => toggleGroup(`${propertyKey}-${templateName}`)}
-                  >
+          {Object.entries(groupedByProperty).map(([propertyKey, propertyGroup]) => {
+            const showCollapsible = propertyFilter === 'all';
+            
+            if (showCollapsible) {
+              // When "All Properties" is selected, make property groups collapsible
+              return (
+                <Collapsible
+                  key={propertyKey}
+                  open={!collapsedPropertyGroups[propertyKey]}
+                  onOpenChange={() => togglePropertyGroup(propertyKey)}
+                >
+                  <Card>
+                    <CollapsibleTrigger asChild>
+                      <CardHeader className="cursor-pointer hover:bg-muted/50">
+                        <div className="flex items-center gap-2">
+                          {collapsedPropertyGroups[propertyKey] ? (
+                            <ChevronRight className="h-5 w-5" />
+                          ) : (
+                            <ChevronDown className="h-5 w-5" />
+                          )}
+                          <Building2 className="h-5 w-5 text-primary" />
+                          <h3 className="text-xl font-bold">{propertyGroup.propertyName}</h3>
+                          <Badge variant="secondary">
+                            {Object.values(propertyGroup.templates).reduce((sum, records) => sum + records.length, 0)} inspection(s)
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                    </CollapsibleTrigger>
+                    
+                    <CollapsibleContent>
+                      <CardContent className="space-y-4">
+                        {/* Templates within Property */}
+                        {Object.entries(propertyGroup.templates).map(([templateName, records]) => (
+                          <Card key={templateName} className="border-l-4 border-l-primary">
+                            <Collapsible
+                              open={expandedGroups[`${propertyKey}-${templateName}`]}
+                              onOpenChange={() => toggleGroup(`${propertyKey}-${templateName}`)}
+                            >
+                              <CollapsibleTrigger asChild>
+                                <CardHeader className="cursor-pointer hover:bg-muted/50">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                      {expandedGroups[`${propertyKey}-${templateName}`] ? (
+                                        <ChevronDown className="h-4 w-4" />
+                                      ) : (
+                                        <ChevronRight className="h-4 w-4" />
+                                      )}
+                                      <CardTitle className="text-lg">{templateName}</CardTitle>
+                                      <Badge variant="secondary">{records.length} record{records.length !== 1 ? 's' : ''}</Badge>
+                                    </div>
+                                  </div>
+                                </CardHeader>
+                              </CollapsibleTrigger>
+                          
+                              <CollapsibleContent>
+                                <CardContent className="space-y-4">
+                                  {records.map(record => {
+                                    const isEditing = editingRecord === record.id;
+                                
+                                    return (
+                                      <Card key={record.id} className="border-l-4 border-l-primary">
+                                        <CardHeader className="pb-3">
+                                          <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                              <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                                          {isEditing ? (
+                                            <Popover>
+                                              <PopoverTrigger asChild>
+                                                <Button
+                                                  variant="outline"
+                                                  className={cn(
+                                                    "justify-start text-left font-normal",
+                                                    !editingDate && "text-muted-foreground"
+                                                  )}
+                                                >
+                                                  <CalendarIcon className="mr-2 h-4 w-4" />
+                                                  {editingDate ? format(editingDate, "PPP") : <span>Pick a date</span>}
+                                                </Button>
+                                              </PopoverTrigger>
+                                              <PopoverContent className="w-auto p-0" align="start">
+                                                <Calendar
+                                                  mode="single"
+                                                  selected={editingDate}
+                                                  onSelect={(date) => handleDateChange(record.id, date)}
+                                                  initialFocus
+                                                  className="p-3 pointer-events-auto"
+                                                />
+                                              </PopoverContent>
+                                            </Popover>
+                                          ) : (
+                                            <span className="font-medium">{format(new Date(record.date + 'T00:00:00'), 'PPP')}</span>
+                                          )}
+                                              <Badge 
+                                                variant={getCompletionPercentage(record.items) === 100 ? 'default' : 'secondary'}
+                                              >
+                                                {getCompletedCount(record.items)}/{record.items.length} completed
+                                              </Badge>
+                                              {record.nextDueDate && (
+                                                <Badge variant="outline" className="text-xs">
+                                                  Next: {format(new Date(record.nextDueDate + 'T00:00:00'), 'MMM d, yyyy')}
+                                                </Badge>
+                                              )}
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                              <span className="text-sm text-muted-foreground">
+                                                Created: {format(new Date(record.createdAt), 'PPp')}
+                                              </span>
+                                              {!isEditing ? (
+                                                <div className="flex gap-1">
+                                                  <Button size="sm" variant="outline" onClick={() => startEditingRecord(record.id)}>
+                                                    <Edit className="h-4 w-4" />
+                                                  </Button>
+                                                  {isOwner() && (
+                                                    <AlertDialog>
+                                                      <AlertDialogTrigger asChild>
+                                                        <Button size="sm" variant="outline">
+                                                          <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                      </AlertDialogTrigger>
+                                                      <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                          <AlertDialogTitle>Delete Inspection</AlertDialogTitle>
+                                                          <AlertDialogDescription>
+                                                            Are you sure you want to delete this inspection record from {format(new Date(record.date + 'T00:00:00'), 'PPP')}? This action cannot be undone.
+                                                          </AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                          <AlertDialogAction onClick={() => deleteInspectionRecord(record.id)}>Delete</AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                      </AlertDialogContent>
+                                                    </AlertDialog>
+                                                  )}
+                                                </div>
+                                              ) : (
+                                                <div className="flex gap-1">
+                                                  <Button size="sm" onClick={() => saveEditedRecord(record.id)}>
+                                                    <Save className="h-4 w-4" />
+                                                  </Button>
+                                                  <Button size="sm" variant="outline" onClick={cancelEditing}>
+                                                    <X className="h-4 w-4" />
+                                                  </Button>
+                                                </div>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </CardHeader>
+                                        
+                                        <CardContent>
+                                          <div className="space-y-2">
+                                            {record.items.map(item => (
+                                              <div key={item.id} className="flex items-center gap-3 p-2 bg-muted/20 rounded">
+                                                {isEditing ? (
+                                                  <>
+                                                    <Checkbox
+                                                      checked={item.completed}
+                                                      onCheckedChange={(checked) => 
+                                                        updateInspectionItem(record.id, item.id, { completed: checked as boolean })
+                                                      }
+                                                    />
+                                                    <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                      <span className={cn(
+                                                        "text-sm font-medium flex items-center",
+                                                        item.completed && "line-through text-muted-foreground"
+                                                      )}>
+                                                        {item.description}
+                                                      </span>
+                                                      <Input
+                                                        placeholder="Add notes..."
+                                                        value={item.notes}
+                                                        onChange={(e) => updateInspectionItem(record.id, item.id, { notes: e.target.value })}
+                                                        className="text-sm h-8"
+                                                      />
+                                                    </div>
+                                                  </>
+                                                ) : (
+                                                  <>
+                                                    <div className="mt-1">
+                                                      {item.completed ? (
+                                                        <CheckCircle className="h-4 w-4 text-green-600" />
+                                                      ) : (
+                                                        <X className="h-4 w-4 text-muted-foreground" />
+                                                      )}
+                                                    </div>
+                                                    
+                                                    <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                      <div className={`text-sm font-medium ${item.completed ? 'line-through text-muted-foreground' : ''}`}>
+                                                        {item.description}
+                                                      </div>
+                                                      {item.notes && (
+                                                        <div className="text-sm text-muted-foreground">
+                                                          <strong>Notes:</strong> {item.notes}
+                                                        </div>
+                                                      )}
+                                                    </div>
+                                                  </>
+                                                )}
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </CardContent>
+                                      </Card>
+                                    );
+                                  })}
+                                </CardContent>
+                              </CollapsibleContent>
+                            </Collapsible>
+                          </Card>
+                        ))}
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
+              );
+            } else {
+              // Single property selected - no collapsible wrapper needed
+              return (
+                <div key={propertyKey} className="space-y-4">
+                  {/* Templates within Property */}
+                  {Object.entries(propertyGroup.templates).map(([templateName, records]) => (
+                    <Card key={templateName} className="ml-0">
+                      <Collapsible
+                        open={expandedGroups[`${propertyKey}-${templateName}`]}
+                        onOpenChange={() => toggleGroup(`${propertyKey}-${templateName}`)}
+                      >
+                        <CollapsibleTrigger asChild>
+                          <CardHeader className="cursor-pointer hover:bg-muted/50">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                {expandedGroups[`${propertyKey}-${templateName}`] ? (
+                                  <ChevronDown className="h-4 w-4" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4" />
+                                )}
+                                <CardTitle className="text-lg">{templateName}</CardTitle>
+                                <Badge variant="secondary">{records.length} record{records.length !== 1 ? 's' : ''}</Badge>
+                              </div>
+                            </div>
+                          </CardHeader>
+                        </CollapsibleTrigger>
+                    
+                        <CollapsibleContent>
+                          <CardContent className="space-y-4">
+                            {records.map(record => {
+                              const isEditing = editingRecord === record.id;
+                          
+                              return (
+                                <Card key={record.id} className="border-l-4 border-l-primary">
+                                  <CardHeader className="pb-3">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-3">
+                                        <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                                      {isEditing ? (
+                                        <Popover>
+                                          <PopoverTrigger asChild>
+                                            <Button
+                                              variant="outline"
+                                              className={cn(
+                                                "justify-start text-left font-normal",
+                                                !editingDate && "text-muted-foreground"
+                                              )}
+                                            >
+                                              <CalendarIcon className="mr-2 h-4 w-4" />
+                                              {editingDate ? format(editingDate, "PPP") : <span>Pick a date</span>}
+                                            </Button>
+                                          </PopoverTrigger>
+                                          <PopoverContent className="w-auto p-0" align="start">
+                                            <Calendar
+                                              mode="single"
+                                              selected={editingDate}
+                                              onSelect={(date) => handleDateChange(record.id, date)}
+                                              initialFocus
+                                              className="p-3 pointer-events-auto"
+                                            />
+                                          </PopoverContent>
+                                        </Popover>
+                                      ) : (
+                                        <span className="font-medium">{format(new Date(record.date + 'T00:00:00'), 'PPP')}</span>
+                                      )}
+                                        <Badge 
+                                          variant={getCompletionPercentage(record.items) === 100 ? 'default' : 'secondary'}
+                                        >
+                                          {getCompletedCount(record.items)}/{record.items.length} completed
+                                        </Badge>
+                                        {record.nextDueDate && (
+                                          <Badge variant="outline" className="text-xs">
+                                            Next: {format(new Date(record.nextDueDate + 'T00:00:00'), 'MMM d, yyyy')}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-sm text-muted-foreground">
+                                          Created: {format(new Date(record.createdAt), 'PPp')}
+                                        </span>
+                                        {!isEditing ? (
+                                          <div className="flex gap-1">
+                                            <Button size="sm" variant="outline" onClick={() => startEditingRecord(record.id)}>
+                                              <Edit className="h-4 w-4" />
+                                            </Button>
+                                            {isOwner() && (
+                                              <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                  <Button size="sm" variant="outline">
+                                                    <Trash2 className="h-4 w-4" />
+                                                  </Button>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent>
+                                                  <AlertDialogHeader>
+                                                    <AlertDialogTitle>Delete Inspection</AlertDialogTitle>
+                                                    <AlertDialogDescription>
+                                                      Are you sure you want to delete this inspection record from {format(new Date(record.date + 'T00:00:00'), 'PPP')}? This action cannot be undone.
+                                                    </AlertDialogDescription>
+                                                  </AlertDialogHeader>
+                                                  <AlertDialogFooter>
+                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={() => deleteInspectionRecord(record.id)}>Delete</AlertDialogAction>
+                                                  </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                              </AlertDialog>
+                                            )}
+                                          </div>
+                                        ) : (
+                                          <div className="flex gap-1">
+                                            <Button size="sm" onClick={() => saveEditedRecord(record.id)}>
+                                              <Save className="h-4 w-4" />
+                                            </Button>
+                                            <Button size="sm" variant="outline" onClick={cancelEditing}>
+                                              <X className="h-4 w-4" />
+                                            </Button>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </CardHeader>
+                                  
+                                  <CardContent>
+                                    <div className="space-y-2">
+                                      {record.items.map(item => (
+                                        <div key={item.id} className="flex items-center gap-3 p-2 bg-muted/20 rounded">
+                                          {isEditing ? (
+                                            <>
+                                              <Checkbox
+                                                checked={item.completed}
+                                                onCheckedChange={(checked) => 
+                                                  updateInspectionItem(record.id, item.id, { completed: checked as boolean })
+                                                }
+                                              />
+                                              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                <span className={cn(
+                                                  "text-sm font-medium flex items-center",
+                                                  item.completed && "line-through text-muted-foreground"
+                                                )}>
+                                                  {item.description}
+                                                </span>
+                                                <Input
+                                                  placeholder="Add notes..."
+                                                  value={item.notes}
+                                                  onChange={(e) => updateInspectionItem(record.id, item.id, { notes: e.target.value })}
+                                                  className="text-sm h-8"
+                                                />
+                                              </div>
+                                            </>
+                                          ) : (
+                                            <>
+                                              <div className="mt-1">
+                                                {item.completed ? (
+                                                  <CheckCircle className="h-4 w-4 text-green-600" />
+                                                ) : (
+                                                  <X className="h-4 w-4 text-muted-foreground" />
+                                                )}
+                                              </div>
+                                              
+                                              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                <div className={`text-sm font-medium ${item.completed ? 'line-through text-muted-foreground' : ''}`}>
+                                                  {item.description}
+                                                </div>
+                                                {item.notes && (
+                                                  <div className="text-sm text-muted-foreground">
+                                                    <strong>Notes:</strong> {item.notes}
+                                                  </div>
+                                                )}
+                                              </div>
+                                            </>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              );
+                            })}
+                          </CardContent>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    </Card>
+                  ))}
+                </div>
+              );
+            }
+          })}
                     <CollapsibleTrigger asChild>
                       <CardHeader className="cursor-pointer hover:bg-muted/50">
                         <div className="flex items-center justify-between">
@@ -431,7 +812,9 @@ export const EditableInspectionHistoryView = () => {
                 </Card>
               ))}
             </div>
-          ))}
+          );
+        }
+      })}
         </div>
       )}
     </div>

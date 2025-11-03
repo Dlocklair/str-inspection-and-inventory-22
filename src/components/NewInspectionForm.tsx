@@ -26,7 +26,8 @@ interface InspectionTemplate {
   name: string;
   items: ChecklistItem[];
   isPredefined: boolean;
-  propertyId?: string;
+  propertyIds?: string[];
+  propertyId?: string;     // Keep for backward compatibility
   propertyName?: string;
   frequencyType?: string;
   frequencyDays?: number;
@@ -57,7 +58,7 @@ interface NewInspectionFormProps {
 
 export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspectionFormProps) => {
   const { toast } = useToast();
-  const { selectedProperty } = usePropertyContext();
+  const { selectedProperty, propertyMode } = usePropertyContext();
   
   const [templates, setTemplates] = useState<InspectionTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
@@ -67,21 +68,21 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
 
   // Load templates when property context changes
   useEffect(() => {
-    if (selectedProperty) {
+    if (selectedProperty && propertyMode === 'property') {
       loadTemplatesForProperty(selectedProperty.id);
     } else {
       setTemplates([]);
       setSelectedTemplateId('');
     }
-  }, [selectedProperty]);
+  }, [selectedProperty, propertyMode]);
 
   const loadTemplatesForProperty = (propertyId: string) => {
     const savedTemplates = localStorage.getItem('inspection-templates');
     if (savedTemplates) {
       const allTemplates = JSON.parse(savedTemplates);
-      // Include templates assigned to this property AND unassigned templates
+      // Only show templates assigned to THIS specific property (not unassigned)
       const propertyTemplates = allTemplates.filter((t: InspectionTemplate) => 
-        t.propertyId === propertyId || !t.propertyId
+        t.propertyIds && t.propertyIds.includes(propertyId)
       );
       setTemplates(propertyTemplates);
     }

@@ -1,4 +1,4 @@
-import { Building2 } from 'lucide-react';
+import { Building2, FileText } from 'lucide-react';
 import { usePropertyContext } from '@/contexts/PropertyContext';
 import {
   Select,
@@ -11,7 +11,7 @@ import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export function PropertySelector() {
-  const { selectedProperty, setSelectedProperty, userProperties, isLoading } = usePropertyContext();
+  const { selectedProperty, propertyMode, setSelectedProperty, setPropertyMode, userProperties, isLoading } = usePropertyContext();
 
   if (isLoading) {
     return (
@@ -58,15 +58,39 @@ export function PropertySelector() {
         <div className="flex-1">
           <label className="text-sm font-medium mb-2 block">Current Property</label>
           <Select
-            value={selectedProperty?.id || ''}
+            value={
+              propertyMode === 'all' ? '__show_all__' 
+              : propertyMode === 'unassigned' ? '__unassigned__' 
+              : selectedProperty?.id || ''
+            }
             onValueChange={(value) => {
-              const property = userProperties.find(p => p.id === value);
-              setSelectedProperty(property || null);
+              if (value === '__show_all__') {
+                setPropertyMode('all');
+              } else if (value === '__unassigned__') {
+                setPropertyMode('unassigned');
+              } else {
+                const property = userProperties.find(p => p.id === value);
+                if (property) {
+                  setSelectedProperty(property);
+                }
+              }
             }}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select a property">
-                {selectedProperty && (
+                {propertyMode === 'all' && (
+                  <span className="font-medium flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Show All Properties
+                  </span>
+                )}
+                {propertyMode === 'unassigned' && (
+                  <span className="font-medium flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Unassigned Templates
+                  </span>
+                )}
+                {propertyMode === 'property' && selectedProperty && (
                   <span className="font-medium">
                     {selectedProperty.name} - {selectedProperty.address}
                   </span>
@@ -74,6 +98,19 @@ export function PropertySelector() {
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="__show_all__">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  <span className="font-medium">Show All Properties</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="__unassigned__">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  <span className="font-medium">Unassigned Templates</span>
+                </div>
+              </SelectItem>
+              <div className="border-t my-1" />
               {userProperties.map((property) => (
                 <SelectItem key={property.id} value={property.id}>
                   <div className="flex flex-col">

@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Plus, Edit, Save, X, Trash2, GripVertical, Copy, Bell, CalendarIcon, Building2 } from 'lucide-react';
+import { Plus, Edit, Save, X, Trash2, GripVertical, Copy, Bell, CalendarIcon, Building2, ChevronRight, ChevronDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -19,6 +19,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePropertyContext } from '@/contexts/PropertyContext';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { FileText } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   DndContext,
   closestCenter,
@@ -64,8 +66,9 @@ interface InspectionTemplate {
   notificationMethod?: string;
   notificationDaysAhead?: number;
   nextOccurrence?: string;
-  propertyId?: string;
-  propertyName?: string;
+  propertyIds?: string[];  // Array of assigned property IDs
+  propertyId?: string;     // Keep for backward compatibility
+  propertyName?: string;   // Keep for backward compatibility
 }
 
 interface SortableItemProps {
@@ -136,7 +139,7 @@ const SortableItem = ({ item, templateId, isEditing, editingText, onEdit, onSave
 export const ImprovedInspectionTemplateManager = () => {
   const { toast } = useToast();
   const { profile } = useAuth();
-  const { selectedProperty } = usePropertyContext();
+  const { selectedProperty, propertyMode } = usePropertyContext();
   
   const [properties, setProperties] = useState<Property[]>([]);
   const [templates, setTemplates] = useState<InspectionTemplate[]>([]);
@@ -148,9 +151,10 @@ export const ImprovedInspectionTemplateManager = () => {
   const [newTemplatePropertyId, setNewTemplatePropertyId] = useState('');
   const [editingTemplateName, setEditingTemplateName] = useState('');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [isDuplicateDialogOpen, setIsDuplicateDialogOpen] = useState(false);
-  const [duplicateTargetPropertyId, setDuplicateTargetPropertyId] = useState('');
-  const [templateToDuplicate, setTemplateToDuplicate] = useState<InspectionTemplate | null>(null);
+  const [isAssignPropertyDialogOpen, setIsAssignPropertyDialogOpen] = useState(false);
+  const [templateToAssign, setTemplateToAssign] = useState<InspectionTemplate | null>(null);
+  const [selectedPropertyIdsForAssignment, setSelectedPropertyIdsForAssignment] = useState<string[]>([]);
+  const [collapsedGroups, setCollapsedGroups] = useState<{[key: string]: boolean}>({});
   
   // Frequency and notification settings
   const [editingFrequency, setEditingFrequency] = useState(false);
@@ -187,12 +191,25 @@ export const ImprovedInspectionTemplateManager = () => {
     fetchProperties();
   }, []);
 
-  // Load templates on mount
+  // Load templates on mount with migration
   useEffect(() => {
     const savedTemplates = localStorage.getItem('inspection-templates');
     if (savedTemplates) {
       const loadedTemplates = JSON.parse(savedTemplates);
-      setTemplates(loadedTemplates);
+      
+      // Migrate old single propertyId to propertyIds array
+      const migratedTemplates = loadedTemplates.map((template: any) => {
+        if (template.propertyId && !template.propertyIds) {
+          return {
+            ...template,
+            propertyIds: [template.propertyId]
+          };
+        }
+        return template;
+      });
+      
+      setTemplates(migratedTemplates);
+      localStorage.setItem('inspection-templates', JSON.stringify(migratedTemplates));
       if (loadedTemplates.length > 0) {
         setSelectedTemplateId(loadedTemplates[0].id);
       }
@@ -255,22 +272,56 @@ export const ImprovedInspectionTemplateManager = () => {
 
   const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
 
-  // Filter templates based on selected property
-  const filteredTemplates = selectedProperty 
-    ? templates.filter(t => t.propertyId === selectedProperty.id || !t.propertyId)
-    : templates;
+  // Filter templates based on property mode and selection
+  const filteredTemplates = (() => {
+    if (propertyMode === 'all') {
+      return templates;
+    } else if (propertyMode === 'unassigned') {
+      return templates.filter(t => !t.propertyIds || t.propertyIds.length === 0);
+    } else if (selectedProperty) {
+      return templates.filter(t => 
+        !t.propertyIds || 
+        t.propertyIds.length === 0 || 
+        t.propertyIds.includes(selectedProperty.id)
+      );
+    }
+    return templates;
+  })();
 
   // Group templates by property
   const groupedTemplates = filteredTemplates.reduce((groups, template) => {
-    const key = template.propertyId || 'unassigned';
-    const propertyName = template.propertyName || 'Unassigned Templates';
-    
-    if (!groups[key]) {
-      groups[key] = { propertyName, templates: [] };
+    // A template can belong to multiple properties
+    if (!template.propertyIds || template.propertyIds.length === 0) {
+      // Unassigned template
+      const key = 'unassigned';
+      if (!groups[key]) {
+        groups[key] = { propertyName: 'Unassigned Templates', templates: [] };
+      }
+      groups[key].templates.push(template);
+    } else {
+      // Assigned to one or more properties
+      template.propertyIds.forEach(propId => {
+        const property = properties.find(p => p.id === propId);
+        if (property) {
+          if (!groups[propId]) {
+            groups[propId] = { propertyName: property.name, templates: [] };
+          }
+          // Only add if not already in this group
+          if (!groups[propId].templates.find(t => t.id === template.id)) {
+            groups[propId].templates.push(template);
+          }
+        }
+      });
     }
-    groups[key].templates.push(template);
     return groups;
   }, {} as Record<string, { propertyName: string; templates: InspectionTemplate[] }>);
+
+  const toggleGroupCollapse = (groupKey: string) => {
+    setCollapsedGroups(prev => ({
+      ...prev,
+      [groupKey]: !prev[groupKey]
+    }));
+  };
 
   const addNewItem = () => {
     const text = newItemText?.trim();
@@ -371,20 +422,17 @@ export const ImprovedInspectionTemplateManager = () => {
     if (!newTemplatePropertyId) {
       toast({
         title: "Property required",
-        description: "Please select a property for this template.",
+        description: "Please select a property or 'Unassigned'.",
         variant: "destructive"
       });
       return;
     }
 
-    const property = properties.find(p => p.id === newTemplatePropertyId);
-
     const newTemplate: InspectionTemplate = {
       id: Date.now().toString(),
       name: newTemplateName,
       isPredefined: false,
-      propertyId: newTemplatePropertyId,
-      propertyName: property?.name,
+      propertyIds: newTemplatePropertyId === 'unassigned' ? [] : [newTemplatePropertyId],
       items: []
     };
 
@@ -394,53 +442,51 @@ export const ImprovedInspectionTemplateManager = () => {
     setNewTemplatePropertyId('');
     setIsCreateDialogOpen(false);
     
+    const property = properties.find(p => p.id === newTemplatePropertyId);
     toast({
       title: "Template created",
-      description: `Custom template "${newTemplate.name}" has been created for ${property?.name}.`,
+      description: `Custom template "${newTemplate.name}" has been created${property ? ` for ${property.name}` : ' as unassigned'}.`,
     });
   };
 
-  const duplicateTemplate = (templateId: string) => {
+  const openAssignPropertyDialog = (templateId: string) => {
     const template = templates.find(t => t.id === templateId);
     if (!template) return;
 
-    setTemplateToDuplicate(template);
-    setIsDuplicateDialogOpen(true);
+    setTemplateToAssign(template);
+    setSelectedPropertyIdsForAssignment([]);
+    setIsAssignPropertyDialogOpen(true);
   };
 
-  const handleDuplicateToProperty = () => {
-    if (!templateToDuplicate || !duplicateTargetPropertyId) return;
+  const closeAssignPropertyDialog = () => {
+    setIsAssignPropertyDialogOpen(false);
+    setTemplateToAssign(null);
+    setSelectedPropertyIdsForAssignment([]);
+  };
 
-    const targetProperty = properties.find(p => p.id === duplicateTargetPropertyId);
+  const handleAssignToProperties = () => {
+    if (!templateToAssign || selectedPropertyIdsForAssignment.length === 0) return;
 
-    const newTemplate: InspectionTemplate = {
-      id: Date.now().toString(),
-      name: `${templateToDuplicate.name} (Copy)`,
-      isPredefined: false,
-      propertyId: duplicateTargetPropertyId,
-      propertyName: targetProperty?.name,
-      frequencyType: templateToDuplicate.frequencyType,
-      frequencyDays: templateToDuplicate.frequencyDays,
-      notificationsEnabled: templateToDuplicate.notificationsEnabled,
-      notificationMethod: templateToDuplicate.notificationMethod,
-      notificationDaysAhead: templateToDuplicate.notificationDaysAhead,
-      nextOccurrence: templateToDuplicate.nextOccurrence,
-      items: templateToDuplicate.items.map(item => ({
-        ...item,
-        id: `${Date.now()}-${item.id}`
-      }))
-    };
+    setTemplates(prev => prev.map(template => 
+      template.id === templateToAssign.id
+        ? {
+            ...template,
+            propertyIds: [
+              ...(template.propertyIds || []),
+              ...selectedPropertyIdsForAssignment.filter(id => 
+                !(template.propertyIds || []).includes(id)
+              )
+            ]
+          }
+        : template
+    ));
 
-    setTemplates(prev => [...prev, newTemplate]);
-    setSelectedTemplateId(newTemplate.id);
-    setDuplicateTargetPropertyId('');
-    setTemplateToDuplicate(null);
-    setIsDuplicateDialogOpen(false);
-    
     toast({
-      title: "Template duplicated",
-      description: `Template "${newTemplate.name}" has been created for ${targetProperty?.name}.`,
+      title: "Template assigned",
+      description: `Template assigned to ${selectedPropertyIdsForAssignment.length} properties.`,
     });
+
+    closeAssignPropertyDialog();
   };
 
 
@@ -587,9 +633,15 @@ export const ImprovedInspectionTemplateManager = () => {
                 <Label>Property *</Label>
                 <Select value={newTemplatePropertyId} onValueChange={setNewTemplatePropertyId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a property first" />
+                    <SelectValue placeholder="Select a property or unassigned" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="unassigned">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        Unassigned (available to all properties)
+                      </div>
+                    </SelectItem>
                     {properties.map(property => (
                       <SelectItem key={property.id} value={property.id}>
                         <div className="flex items-center gap-2">
@@ -600,7 +652,7 @@ export const ImprovedInspectionTemplateManager = () => {
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">Select the property this template will be used for</p>
+                <p className="text-xs text-muted-foreground">Select a property or leave as unassigned</p>
               </div>
               <div className="space-y-2">
                 <Label>Template Name *</Label>
@@ -629,34 +681,47 @@ export const ImprovedInspectionTemplateManager = () => {
           <ScrollArea className="flex-1">
             <div className="space-y-1 p-4">
               {Object.entries(groupedTemplates).map(([key, group]) => (
-                <div key={key} className="mb-4">
-                  <div className="flex items-center gap-2 px-2 py-1 mb-1">
+                <Collapsible
+                  key={key}
+                  open={!collapsedGroups[key]}
+                  onOpenChange={() => toggleGroupCollapse(key)}
+                  className="mb-4"
+                >
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full px-2 py-1 mb-1 hover:bg-muted/50 rounded">
+                    {collapsedGroups[key] ? (
+                      <ChevronRight className="h-3 w-3" />
+                    ) : (
+                      <ChevronDown className="h-3 w-3" />
+                    )}
                     {key !== 'unassigned' && <Building2 className="h-3 w-3 text-muted-foreground" />}
                     <span className="text-xs font-semibold text-muted-foreground uppercase">
                       {group.propertyName}
                     </span>
                     <Badge variant="secondary" className="ml-auto text-xs">{group.templates.length}</Badge>
-                  </div>
-                  {group.templates.map((template) => (
-                    <Button
-                      key={template.id}
-                      variant={selectedTemplateId === template.id ? 'secondary' : 'ghost'}
-                      className="w-full justify-start pl-6 mb-1"
-                      onClick={() => setSelectedTemplateId(template.id)}
-                    >
-                      <FileText className="mr-2 h-4 w-4" />
-                      <div className="flex-1 text-left">
-                        <div className="text-sm font-medium">{template.name}</div>
-                        <div className="text-xs opacity-70">
-                          {template.items.length} item{template.items.length !== 1 ? 's' : ''}
+                  </CollapsibleTrigger>
+                  
+                  <CollapsibleContent>
+                    {group.templates.map((template) => (
+                      <Button
+                        key={template.id}
+                        variant={selectedTemplateId === template.id ? 'secondary' : 'ghost'}
+                        className="w-full justify-start pl-6 mb-1"
+                        onClick={() => setSelectedTemplateId(template.id)}
+                      >
+                        <FileText className="mr-2 h-4 w-4" />
+                        <div className="flex-1 text-left">
+                          <div className="text-sm font-medium">{template.name}</div>
+                          <div className="text-xs opacity-70">
+                            {template.items.length} item{template.items.length !== 1 ? 's' : ''}
+                          </div>
                         </div>
-                      </div>
-                      {template.isPredefined && (
-                        <Badge variant="outline" className="text-xs">Built-in</Badge>
-                      )}
-                    </Button>
-                  ))}
-                </div>
+                        {template.isPredefined && (
+                          <Badge variant="outline" className="text-xs">Built-in</Badge>
+                        )}
+                      </Button>
+                    ))}
+                  </CollapsibleContent>
+                </Collapsible>
               ))}
             </div>
           </ScrollArea>
@@ -703,10 +768,10 @@ export const ImprovedInspectionTemplateManager = () => {
                     <Button 
                       size="sm" 
                       variant="outline" 
-                      onClick={() => duplicateTemplate(selectedTemplate.id)}
+                      onClick={() => openAssignPropertyDialog(selectedTemplate.id)}
                     >
                       <Copy className="h-4 w-4 mr-1" />
-                      Duplicate Inspection for another property
+                      Assign to Property
                     </Button>
                     {!selectedTemplate.isPredefined && (
                       <Button 
@@ -962,40 +1027,63 @@ export const ImprovedInspectionTemplateManager = () => {
         </Card>
       </div>
 
-      {/* Duplicate to Property Dialog */}
-      <Dialog open={isDuplicateDialogOpen} onOpenChange={setIsDuplicateDialogOpen}>
-        <DialogContent>
+      {/* Assign to Property Dialog */}
+      <Dialog open={isAssignPropertyDialogOpen} onOpenChange={setIsAssignPropertyDialogOpen}>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Duplicate Inspection for another property</DialogTitle>
+            <DialogTitle>Assign Template to Properties</DialogTitle>
             <DialogDescription>
-              Select a property to copy this inspection template to
+              Select one or more properties to assign this template to
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Target Property</Label>
-              <Select value={duplicateTargetPropertyId} onValueChange={setDuplicateTargetPropertyId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a property" />
-                </SelectTrigger>
-                <SelectContent>
-                  {properties.map(property => (
-                    <SelectItem key={property.id} value={property.id}>
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4" />
-                        {property.name} - {property.address}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">This will create a copy of the template for the selected property</p>
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              {properties.map(property => {
+                const isAlreadyAssigned = templateToAssign?.propertyIds?.includes(property.id);
+                const isSelected = selectedPropertyIdsForAssignment.includes(property.id);
+                
+                return (
+                  <div 
+                    key={property.id} 
+                    className={cn(
+                      "flex items-center gap-3 p-3 border rounded-lg",
+                      isAlreadyAssigned && "bg-muted/50 opacity-60"
+                    )}
+                  >
+                    <Checkbox
+                      checked={isSelected}
+                      disabled={isAlreadyAssigned}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedPropertyIdsForAssignment(prev => [...prev, property.id]);
+                        } else {
+                          setSelectedPropertyIdsForAssignment(prev => 
+                            prev.filter(id => id !== property.id)
+                          );
+                        }
+                      }}
+                    />
+                    <Building2 className="h-4 w-4" />
+                    <div className="flex-1">
+                      <div className="font-medium">{property.name}</div>
+                      <div className="text-sm text-muted-foreground">{property.address}</div>
+                    </div>
+                    {isAlreadyAssigned && (
+                      <Badge variant="secondary">Already Assigned</Badge>
+                    )}
+                  </div>
+                );
+              })}
             </div>
+            
             <div className="flex gap-2">
-              <Button onClick={handleDuplicateToProperty} disabled={!duplicateTargetPropertyId}>
-                Duplicate Template
+              <Button 
+                onClick={handleAssignToProperties}
+                disabled={selectedPropertyIdsForAssignment.length === 0}
+              >
+                Assign to {selectedPropertyIdsForAssignment.length} {selectedPropertyIdsForAssignment.length === 1 ? 'Property' : 'Properties'}
               </Button>
-              <Button variant="outline" onClick={() => setIsDuplicateDialogOpen(false)}>
+              <Button variant="outline" onClick={closeAssignPropertyDialog}>
                 Cancel
               </Button>
             </div>

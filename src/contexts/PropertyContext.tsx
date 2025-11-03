@@ -11,9 +11,13 @@ interface Property {
   zip: string;
 }
 
+export type PropertyMode = 'property' | 'all' | 'unassigned';
+
 interface PropertyContextType {
   selectedProperty: Property | null;
+  propertyMode: PropertyMode;
   setSelectedProperty: (property: Property | null) => void;
+  setPropertyMode: (mode: PropertyMode, property?: Property | null) => void;
   userProperties: Property[];
   isLoading: boolean;
   refreshProperties: () => Promise<void>;
@@ -25,6 +29,7 @@ const STORAGE_KEY = 'selected_property_id';
 
 export function PropertyProvider({ children }: { children: ReactNode }) {
   const [selectedProperty, setSelectedPropertyState] = useState<Property | null>(null);
+  const [propertyMode, setPropertyModeState] = useState<PropertyMode>('property');
   const [userProperties, setUserProperties] = useState<Property[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
@@ -81,9 +86,21 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
 
   const setSelectedProperty = (property: Property | null) => {
     setSelectedPropertyState(property);
+    setPropertyModeState('property');
     if (property) {
       localStorage.setItem(STORAGE_KEY, property.id);
     } else {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  };
+
+  const setPropertyMode = (mode: PropertyMode, property?: Property | null) => {
+    setPropertyModeState(mode);
+    if (mode === 'property' && property) {
+      setSelectedPropertyState(property);
+      localStorage.setItem(STORAGE_KEY, property.id);
+    } else {
+      setSelectedPropertyState(null);
       localStorage.removeItem(STORAGE_KEY);
     }
   };
@@ -97,7 +114,9 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
     <PropertyContext.Provider
       value={{
         selectedProperty,
+        propertyMode,
         setSelectedProperty,
+        setPropertyMode,
         userProperties,
         isLoading,
         refreshProperties,
