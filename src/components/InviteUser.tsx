@@ -7,13 +7,20 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { Send, Loader2 } from 'lucide-react';
+import { Send, Loader2, Building2 } from 'lucide-react';
 
 type AppRole = 'owner' | 'manager' | 'inspector';
 
-interface InspectionType {
+interface Property {
   id: string;
   name: string;
+  address: string;
+}
+
+interface InspectionTemplate {
+  id: string;
+  name: string;
+  propertyIds?: string[];
 }
 
 export const InviteUser = () => {
@@ -22,25 +29,55 @@ export const InviteUser = () => {
   const [inviteFullName, setInviteFullName] = useState('');
   const [inviteRole, setInviteRole] = useState<AppRole>('inspector');
   const [inviteSending, setInviteSending] = useState(false);
-  const [inspectionTypes, setInspectionTypes] = useState<InspectionType[]>([]);
-  const [selectedInspectionTypes, setSelectedInspectionTypes] = useState<string[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [templates, setTemplates] = useState<InspectionTemplate[]>([]);
+  const [selectedProperties, setSelectedProperties] = useState<string[]>([]);
+  const [selectedTemplates, setSelectedTemplates] = useState<string[]>([]);
 
   useEffect(() => {
-    fetchInspectionTypes();
+    fetchProperties();
+    loadTemplatesFromLocalStorage();
   }, []);
 
-  const fetchInspectionTypes = async () => {
+  useEffect(() => {
+    // Reset selections when role changes
+    setSelectedProperties([]);
+    setSelectedTemplates([]);
+  }, [inviteRole]);
+
+  const fetchProperties = async () => {
     try {
       const { data, error } = await supabase
-        .from('inspection_types')
-        .select('id, name')
+        .from('properties')
+        .select('id, name, address')
         .order('name');
 
       if (error) throw error;
-      setInspectionTypes(data || []);
+      setProperties(data || []);
     } catch (error: any) {
-      console.error('Error fetching inspection types:', error);
+      console.error('Error fetching properties:', error);
     }
+  };
+
+  const loadTemplatesFromLocalStorage = () => {
+    try {
+      const savedTemplates = localStorage.getItem('inspection-templates');
+      if (savedTemplates) {
+        const parsedTemplates = JSON.parse(savedTemplates);
+        setTemplates(parsedTemplates);
+      }
+    } catch (error) {
+      console.error('Error loading templates from localStorage:', error);
+    }
+  };
+
+  const getTemplatesForSelectedProperties = () => {
+    if (selectedProperties.length === 0) return [];
+    
+    return templates.filter(template => {
+      // Include templates assigned to any of the selected properties
+      return template.propertyIds?.some(propId => selectedProperties.includes(propId));
+    });
   };
 
   const handleSendInvitation = async (e: React.FormEvent) => {
@@ -55,10 +92,19 @@ export const InviteUser = () => {
       return;
     }
 
-    if (inviteRole === 'inspector' && selectedInspectionTypes.length === 0) {
+    if ((inviteRole === 'manager' || inviteRole === 'inspector') && selectedProperties.length === 0) {
       toast({
         title: 'Error',
-        description: 'Please select at least one inspection type for the inspector',
+        description: `Please select at least one property for ${inviteRole}s`,
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (inviteRole === 'inspector' && selectedTemplates.length === 0) {
+      toast({
+        title: 'Error',
+        description: 'Please select at least one inspection template for the inspector',
         variant: 'destructive'
       });
       return;
@@ -72,7 +118,8 @@ export const InviteUser = () => {
           email: inviteEmail,
           fullName: inviteFullName,
           role: inviteRole,
-          inspectionTypeIds: inviteRole === 'inspector' ? selectedInspectionTypes : undefined
+          propertyIds: inviteRole !== 'owner' ? selectedProperties : undefined,
+          inspectionTypeIds: inviteRole === 'inspector' ? selectedTemplates : undefined
         }
       });
 
@@ -87,7 +134,8 @@ export const InviteUser = () => {
       setInviteEmail('');
       setInviteFullName('');
       setInviteRole('inspector');
-      setSelectedInspectionTypes([]);
+      setSelectedProperties([]);
+      setSelectedTemplates([]);
     } catch (error: any) {
       console.error('Error sending invitation:', error);
       toast({
@@ -100,13 +148,25 @@ export const InviteUser = () => {
     }
   };
 
-  const toggleInspectionType = (typeId: string) => {
-    setSelectedInspectionTypes(prev =>
-      prev.includes(typeId)
-        ? prev.filter(id => id !== typeId)
-        : [...prev, typeId]
+  const toggleProperty = (propertyId: string) => {
+    setSelectedProperties(prev =>
+      prev.includes(propertyId)
+        ? prev.filter(id => id !== propertyId)
+        : [...prev, propertyId]
+    );
+    // Reset template selection when properties change
+    setSelectedTemplates([]);
+  };
+
+  const toggleTemplate = (templateId: string) => {
+    setSelectedTemplates(prev =>
+      prev.includes(templateId)
+        ? prev.filter(id => id !== templateId)
+        : [...prev, templateId]
     );
   };
+
+  const availableTemplates = getTemplatesForSelectedProperties();
 
   return (
     <Card>
@@ -153,25 +213,55 @@ export const InviteUser = () => {
             </Select>
           </div>
 
-          {inviteRole === 'inspector' && (
+          {(inviteRole === 'manager' || inviteRole === 'inspector') && (
             <div>
-              <Label className="mb-2 block">Inspection Types *</Label>
+              <Label className="mb-2 block">Select Properties *</Label>
               <div className="space-y-2 max-h-60 overflow-y-auto border rounded-md p-3">
-                {inspectionTypes.map(type => (
-                  <div key={type.id} className="flex items-center space-x-2">
+                {properties.map(property => (
+                  <div key={property.id} className="flex items-center space-x-2">
                     <Checkbox
-                      id={`invite-${type.id}`}
-                      checked={selectedInspectionTypes.includes(type.id)}
-                      onCheckedChange={() => toggleInspectionType(type.id)}
+                      id={`property-${property.id}`}
+                      checked={selectedProperties.includes(property.id)}
+                      onCheckedChange={() => toggleProperty(property.id)}
                     />
-                    <label htmlFor={`invite-${type.id}`} className="text-sm cursor-pointer">
-                      {type.name}
+                    <label htmlFor={`property-${property.id}`} className="text-sm cursor-pointer flex items-center gap-2">
+                      <Building2 className="h-3 w-3" />
+                      {property.name} - {property.address}
                     </label>
                   </div>
                 ))}
+                {properties.length === 0 && (
+                  <p className="text-sm text-muted-foreground">No properties available</p>
+                )}
               </div>
               <p className="text-xs text-muted-foreground mt-2">
-                Select the inspection types this inspector will be authorized to perform
+                Select the properties this {inviteRole} will have access to
+              </p>
+            </div>
+          )}
+
+          {inviteRole === 'inspector' && selectedProperties.length > 0 && (
+            <div>
+              <Label className="mb-2 block">Select Inspection Templates *</Label>
+              <div className="space-y-2 max-h-60 overflow-y-auto border rounded-md p-3">
+                {availableTemplates.map(template => (
+                  <div key={template.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`template-${template.id}`}
+                      checked={selectedTemplates.includes(template.id)}
+                      onCheckedChange={() => toggleTemplate(template.id)}
+                    />
+                    <label htmlFor={`template-${template.id}`} className="text-sm cursor-pointer">
+                      {template.name}
+                    </label>
+                  </div>
+                ))}
+                {availableTemplates.length === 0 && (
+                  <p className="text-sm text-muted-foreground">No templates for selected properties</p>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Select the inspection templates this inspector will be authorized to perform
               </p>
             </div>
           )}

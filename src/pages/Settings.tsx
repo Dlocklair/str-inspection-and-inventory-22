@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { LogOut, Users, UserPlus, Clock, Shield } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { ManageUsers } from '@/components/ManageUsers';
 import { InviteUser } from '@/components/InviteUser';
@@ -13,7 +13,19 @@ const Settings = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { user, signOut, loading, isOwner, rolesLoaded } = useAuth();
-  const [activeView, setActiveView] = useState<'users' | 'invite' | 'invitations' | 'owner'>('users');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const viewFromUrl = searchParams.get('view') || 'users';
+  const [activeView, setActiveView] = useState<'users' | 'invite' | 'invitations' | 'owner'>(viewFromUrl as any);
+
+  useEffect(() => {
+    const view = searchParams.get('view') || 'users';
+    setActiveView(view as 'users' | 'invite' | 'invitations' | 'owner');
+  }, [searchParams]);
+
+  const handleViewChange = (newView: 'users' | 'invite' | 'invitations' | 'owner') => {
+    setActiveView(newView);
+    setSearchParams({ view: newView });
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -70,7 +82,7 @@ const Settings = () => {
           <>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
               <Button
-                onClick={() => setActiveView('users')}
+                onClick={() => handleViewChange('users')}
                 variant={activeView === 'users' ? 'default' : 'outline'}
                 className="h-auto py-4 flex-col items-start"
               >
@@ -80,7 +92,7 @@ const Settings = () => {
               </Button>
 
               <Button
-                onClick={() => setActiveView('invite')}
+                onClick={() => handleViewChange('invite')}
                 variant={activeView === 'invite' ? 'default' : 'outline'}
                 className="h-auto py-4 flex-col items-start"
               >
@@ -90,7 +102,7 @@ const Settings = () => {
               </Button>
 
               <Button
-                onClick={() => setActiveView('invitations')}
+                onClick={() => handleViewChange('invitations')}
                 variant={activeView === 'invitations' ? 'default' : 'outline'}
                 className="h-auto py-4 flex-col items-start"
               >
@@ -100,7 +112,7 @@ const Settings = () => {
               </Button>
 
               <Button
-                onClick={() => setActiveView('owner')}
+                onClick={() => handleViewChange('owner')}
                 variant={activeView === 'owner' ? 'default' : 'outline'}
                 className="h-auto py-4 flex-col items-start"
               >

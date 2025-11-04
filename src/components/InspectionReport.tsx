@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Home, Package, AlertTriangle, Settings, FileText, History, Settings as TemplateIcon } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { NewInspectionForm } from './NewInspectionForm';
 import { EditableInspectionHistoryView } from './EditableInspectionHistoryView';
@@ -13,7 +13,19 @@ import { PropertySelector } from './PropertySelector';
 export const InspectionReport = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
-  const [selectedView, setSelectedView] = useState<string>('new-inspection');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const viewFromUrl = searchParams.get('view') || 'new-inspection';
+  const [selectedView, setSelectedView] = useState<string>(viewFromUrl);
+
+  useEffect(() => {
+    const view = searchParams.get('view') || 'new-inspection';
+    setSelectedView(view);
+  }, [searchParams]);
+
+  const handleViewChange = (newView: string) => {
+    setSelectedView(newView);
+    setSearchParams({ view: newView });
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -69,7 +81,7 @@ export const InspectionReport = () => {
 
           {/* Main Navigation */}
           <div className="flex justify-center">
-            <Select value={selectedView} onValueChange={setSelectedView}>
+            <Select value={selectedView} onValueChange={handleViewChange}>
               <SelectTrigger className="w-64">
                 <SelectValue placeholder="Select inspection view" />
               </SelectTrigger>
@@ -99,7 +111,7 @@ export const InspectionReport = () => {
           {/* Content based on selected view */}
           {selectedView === 'new-inspection' && (
             <NewInspectionForm 
-              onNavigateToTemplateManager={() => setSelectedView('manage-templates')}
+              onNavigateToTemplateManager={() => handleViewChange('manage-templates')}
             />
           )}
           {selectedView === 'inspection-history' && <EditableInspectionHistoryView />}

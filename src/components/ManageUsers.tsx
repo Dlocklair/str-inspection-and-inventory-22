@@ -30,7 +30,8 @@ interface Property {
 interface InspectionTemplate {
   id: string;
   name: string;
-  property_id: string | null;
+  propertyIds?: string[];
+  isPredefined?: boolean;
 }
 
 const roleIcons = {
@@ -64,14 +65,26 @@ export const ManageUsers = () => {
 
   useEffect(() => {
     fetchData();
+    loadTemplatesFromLocalStorage();
   }, []);
+
+  const loadTemplatesFromLocalStorage = () => {
+    try {
+      const savedTemplates = localStorage.getItem('inspection-templates');
+      if (savedTemplates) {
+        const parsedTemplates = JSON.parse(savedTemplates);
+        setTemplates(parsedTemplates);
+      }
+    } catch (error) {
+      console.error('Error loading templates from localStorage:', error);
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
     await Promise.all([
       fetchUsersAndRoles(),
       fetchProperties(),
-      fetchTemplates(),
       fetchUserProperties(),
       fetchUserTemplates()
     ]);
@@ -126,19 +139,6 @@ export const ManageUsers = () => {
     }
   };
 
-  const fetchTemplates = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('inspection_types')
-        .select('id, name, property_id')
-        .order('name');
-
-      if (error) throw error;
-      setTemplates(data || []);
-    } catch (error: any) {
-      console.error('Error fetching templates:', error);
-    }
-  };
 
   const fetchUserProperties = async () => {
     try {
@@ -328,7 +328,7 @@ export const ManageUsers = () => {
   };
 
   const getPropertyTemplates = (propertyId: string) => {
-    return templates.filter(t => t.property_id === propertyId);
+    return templates.filter(t => t.propertyIds?.includes(propertyId));
   };
 
   if (loading) {
@@ -347,8 +347,14 @@ export const ManageUsers = () => {
           <CardDescription>Manage user roles, properties, and inspection templates</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-6">
-            {users.map((user) => {
+          {users.length === 0 ? (
+            <div className="py-12 text-center">
+              <p className="text-muted-foreground mb-2">No users found</p>
+              <p className="text-sm text-muted-foreground">Invite your first team member to get started!</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {users.map((user) => {
               const RoleIcon = user.roles[0] ? roleIcons[user.roles[0]] : Shield;
               const isEditing = editingUserId === user.profile_id;
               const hasManagerRole = user.roles.includes('manager');
@@ -498,7 +504,8 @@ export const ManageUsers = () => {
                 </div>
               );
             })}
-          </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

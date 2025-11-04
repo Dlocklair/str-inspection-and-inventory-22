@@ -446,7 +446,7 @@ export const ImprovedInspectionTemplateManager = () => {
     const property = properties.find(p => p.id === newTemplatePropertyId);
     toast({
       title: "Template created",
-      description: `Custom template "${newTemplate.name}" has been created${property ? ` for ${property.name}` : ' as unassigned'}.`,
+      description: `Custom template "${newTemplate.name}" has been created${property ? ` for ${property.name}` : ' as unassigned'}. Add at least one checklist item.`,
     });
   };
 
@@ -468,23 +468,39 @@ export const ImprovedInspectionTemplateManager = () => {
   const handleAssignToProperties = () => {
     if (!templateToAssign || selectedPropertyIdsForAssignment.length === 0) return;
 
-    setTemplates(prev => prev.map(template => 
-      template.id === templateToAssign.id
-        ? {
-            ...template,
-            propertyIds: [
-              ...(template.propertyIds || []),
-              ...selectedPropertyIdsForAssignment.filter(id => 
-                !(template.propertyIds || []).includes(id)
-              )
-            ]
-          }
-        : template
-    ));
+    // Create independent copies of the template for each selected property
+    const newTemplates: InspectionTemplate[] = selectedPropertyIdsForAssignment.map((propertyId, index) => {
+      // Check if this property already has this template
+      const existingAssignment = templateToAssign.propertyIds?.includes(propertyId);
+      if (existingAssignment) return null;
+
+      // Create a unique copy with new ID
+      const newId = `${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`;
+      return {
+        ...templateToAssign,
+        id: newId,
+        propertyIds: [propertyId],
+        // Mark as not predefined anymore since it's a copy
+        isPredefined: false
+      };
+    }).filter(Boolean) as InspectionTemplate[];
+
+    if (newTemplates.length === 0) {
+      toast({
+        title: "Already assigned",
+        description: "Template is already assigned to selected properties.",
+        variant: "destructive"
+      });
+      closeAssignPropertyDialog();
+      return;
+    }
+
+    // Add the new independent templates to the list
+    setTemplates(prev => [...prev, ...newTemplates]);
 
     toast({
-      title: "Template assigned",
-      description: `Template assigned to ${selectedPropertyIdsForAssignment.length} properties.`,
+      title: "Templates created",
+      description: `Created ${newTemplates.length} independent template${newTemplates.length > 1 ? 's' : ''} for selected properties.`,
     });
 
     closeAssignPropertyDialog();
@@ -584,10 +600,14 @@ export const ImprovedInspectionTemplateManager = () => {
     if (!templateToDelete) return;
     
     const template = templates.find(t => t.id === templateToDelete);
-    if (template?.isPredefined) {
+    
+    // Only block deletion of unassigned predefined templates (the "masters")
+    const isUnassignedMaster = template?.isPredefined && (!template?.propertyIds || template.propertyIds.length === 0);
+    
+    if (isUnassignedMaster) {
       toast({
         title: "Cannot delete",
-        description: "Predefined templates cannot be deleted.",
+        description: "Unassigned predefined templates cannot be deleted.",
         variant: "destructive"
       });
       setDeleteConfirmOpen(false);
@@ -607,7 +627,7 @@ export const ImprovedInspectionTemplateManager = () => {
     
     toast({
       title: "Template deleted",
-      description: "Custom template has been deleted.",
+      description: "Template has been deleted.",
     });
     
     setDeleteConfirmOpen(false);
@@ -772,15 +792,17 @@ export const ImprovedInspectionTemplateManager = () => {
                     )}
                   </div>
                   <div className="flex gap-2">
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      onClick={() => openAssignPropertyDialog(selectedTemplate.id)}
-                    >
-                      <Copy className="h-4 w-4 mr-1" />
-                      Assign to Property
-                    </Button>
-                    {!selectedTemplate.isPredefined && (
+                    {(!selectedTemplate.propertyIds || selectedTemplate.propertyIds.length === 0) && (
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => openAssignPropertyDialog(selectedTemplate.id)}
+                      >
+                        <Copy className="h-4 w-4 mr-1" />
+                        Assign to Property
+                      </Button>
+                    )}
+                    {(!selectedTemplate.isPredefined || (selectedTemplate.propertyIds && selectedTemplate.propertyIds.length > 0)) && (
                       <Button 
                         size="sm" 
                         variant="outline" 
