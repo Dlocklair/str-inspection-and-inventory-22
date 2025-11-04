@@ -539,16 +539,19 @@ export const ImprovedInspectionTemplateManager = () => {
       nextOccurrenceString = `${year}-${month}-${day}`;
     }
 
+    // If frequency is per_visit, disable notifications
+    const shouldDisableNotifications = tempFrequencyType === 'per_visit';
+
     setTemplates(prev => prev.map(template =>
       template.id === selectedTemplateId
         ? {
             ...template,
             frequencyType: tempFrequencyType !== 'none' ? tempFrequencyType : undefined,
             frequencyDays: tempFrequencyType === 'custom' ? tempFrequencyDays : undefined,
-            notificationsEnabled: tempFrequencyType !== 'none' ? tempNotificationsEnabled : undefined,
-            notificationMethod: tempFrequencyType !== 'none' && tempNotificationsEnabled ? tempNotificationMethod : undefined,
-            notificationDaysAhead: tempFrequencyType !== 'none' && tempNotificationsEnabled ? tempNotificationDaysAhead : undefined,
-            nextOccurrence: tempFrequencyType !== 'none' ? nextOccurrenceString : undefined,
+            notificationsEnabled: tempFrequencyType !== 'none' && !shouldDisableNotifications ? tempNotificationsEnabled : false,
+            notificationMethod: tempFrequencyType !== 'none' && !shouldDisableNotifications && tempNotificationsEnabled ? tempNotificationMethod : undefined,
+            notificationDaysAhead: tempFrequencyType !== 'none' && !shouldDisableNotifications && tempNotificationsEnabled ? tempNotificationDaysAhead : undefined,
+            nextOccurrence: tempFrequencyType !== 'none' && !shouldDisableNotifications ? nextOccurrenceString : undefined,
           }
         : template
     ));
@@ -980,12 +983,13 @@ export const ImprovedInspectionTemplateManager = () => {
                                   id="notifications-enabled"
                                   checked={tempNotificationsEnabled}
                                   onCheckedChange={setTempNotificationsEnabled}
+                                  disabled={tempFrequencyType === 'per_visit'}
                                 />
                                 <Label htmlFor="notifications-enabled">Enable Notifications</Label>
                               </div>
                             </div>
 
-                            {tempNotificationsEnabled && (
+                            {tempNotificationsEnabled && tempFrequencyType !== 'per_visit' && (
                               <>
                                  <div className="space-y-2">
                                   <Label>Notification Method</Label>
@@ -1018,9 +1022,15 @@ export const ImprovedInspectionTemplateManager = () => {
                                     min="1"
                                     value={tempNotificationDaysAhead}
                                     onChange={(e) => setTempNotificationDaysAhead(parseInt(e.target.value) || 7)}
+                                    onFocus={(e) => e.target.select()}
                                   />
                                 </div>
                               </>
+                            )}
+                            {tempFrequencyType === 'per_visit' && (
+                              <p className="text-xs text-muted-foreground">
+                                Notifications are not applicable for "Per Visit" frequency.
+                              </p>
                             )}
                           </>
                         )}

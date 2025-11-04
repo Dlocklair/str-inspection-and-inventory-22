@@ -228,8 +228,10 @@ export const EditableInspectionHistoryView = () => {
         </div>
       </div>
 
-      {/* Property Selector */}
-      <PropertySelector />
+      {/* Property Selector with Highlight */}
+      <div className="p-4 bg-primary/5 border-2 border-primary/20 rounded-lg">
+        <PropertySelector />
+      </div>
 
       {Object.keys(groupedByProperty).length === 0 ? (
         <Card>
@@ -338,13 +340,8 @@ export const EditableInspectionHistoryView = () => {
                                               <Badge 
                                                 variant={getCompletionPercentage(record.items) === 100 ? 'default' : 'secondary'}
                                               >
-                                                {getCompletedCount(record.items)}/{record.items.length} completed
+                                               {getCompletedCount(record.items)}/{record.items.length} completed
                                               </Badge>
-                                              {record.nextDueDate && (
-                                                <Badge variant="outline" className="text-xs">
-                                                  Next: {format(new Date(record.nextDueDate + 'T00:00:00'), 'MMM d, yyyy')}
-                                                </Badge>
-                                              )}
                                             </div>
                                             <div className="flex items-center gap-2">
                                               <span className="text-sm text-muted-foreground">

@@ -50,6 +50,7 @@ interface InspectionRecord {
   items: InspectionItem[];
   createdAt: string;
   nextDueDate?: string;
+  performedBy?: string;
 }
 
 interface NewInspectionFormProps {
@@ -94,7 +95,7 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
     frequencyType?: string,
     frequencyDays?: number
   ): Date | undefined => {
-    if (!frequencyType || frequencyType === 'none') return undefined;
+    if (!frequencyType || frequencyType === 'none' || frequencyType === 'per_visit') return undefined;
     
     const nextDate = new Date(inspectionDate);
     
@@ -107,6 +108,12 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
         break;
       case 'quarterly':
         nextDate.setMonth(nextDate.getMonth() + 3);
+        break;
+      case 'semi-annual':
+        nextDate.setMonth(nextDate.getMonth() + 6);
+        break;
+      case 'annually':
+        nextDate.setFullYear(nextDate.getFullYear() + 1);
         break;
       case 'yearly':
         nextDate.setFullYear(nextDate.getFullYear() + 1);
@@ -179,7 +186,7 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
   };
 
   // Save inspection
-  const saveInspection = () => {
+  const saveInspection = async () => {
     if (!selectedDate) {
       toast({
         title: "Date required",
@@ -224,6 +231,10 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
       nextDueDateString = `${dueYear}-${dueMonth}-${dueDay}`;
     }
     
+    // Get current user's profile ID
+    const { data: { user } } = await supabase.auth.getUser();
+    const profileId = user?.id;
+    
     const newRecord: InspectionRecord = {
       id: Date.now().toString(),
       templateId: selectedTemplateId,
@@ -233,6 +244,7 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
       date: dateString,
       items: currentInspection,
       createdAt: new Date().toISOString(),
+      performedBy: profileId,
       ...(nextDueDateString && { nextDueDate: nextDueDateString })
     };
 
@@ -241,6 +253,17 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
     const records = savedRecords ? JSON.parse(savedRecords) : [];
     records.push(newRecord);
     localStorage.setItem('inspection-records', JSON.stringify(records));
+
+    // Update the template's next occurrence date if we have one
+    if (nextDueDateString && template) {
+      const updatedTemplates = templates.map(t => 
+        t.id === selectedTemplateId 
+          ? { ...t, nextOccurrence: nextDueDateString }
+          : t
+      );
+      setTemplates(updatedTemplates);
+      localStorage.setItem('inspection-templates', JSON.stringify(updatedTemplates));
+    }
 
     // Reset form
     setCurrentInspection([]);
@@ -259,8 +282,10 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
 
   return (
     <div className="space-y-6">
-      {/* Property Selector */}
-      <PropertySelector />
+      {/* Property Selector with Highlight */}
+      <div className="p-4 bg-primary/5 border-2 border-primary/20 rounded-lg">
+        <PropertySelector />
+      </div>
       
       <Card>
         <CardHeader>
@@ -281,18 +306,6 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Property Info Display */}
-          {selectedProperty && (
-            <div className="p-3 bg-muted/50 rounded-lg">
-              <div className="flex items-center gap-2 text-sm">
-                <Building2 className="h-4 w-4 text-primary" />
-                <div>
-                  <div className="font-medium">{selectedProperty.name}</div>
-                  <div className="text-xs text-muted-foreground">{selectedProperty.address}</div>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Template Selection, Date, and Next Due Date */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -358,9 +371,15 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
                 <label className="text-sm font-medium">
                   Next Occurrence Date
                 </label>
-                {selectedTemplate?.frequencyType && selectedTemplate.frequencyType !== 'none' && (
+                {selectedTemplate?.frequencyType && selectedTemplate.frequencyType !== 'none' && selectedTemplate.frequencyType !== 'per_visit' && (
                   <Badge variant="secondary" className="text-xs">
-                    Auto: {selectedTemplate.frequencyType}
+                    {selectedTemplate.frequencyType === 'monthly' ? 'Monthly' :
+                     selectedTemplate.frequencyType === 'quarterly' ? 'Quarterly' :
+                     selectedTemplate.frequencyType === 'semi-annual' ? 'Semi-Annual' :
+                     selectedTemplate.frequencyType === 'annually' ? 'Annually' :
+                     selectedTemplate.frequencyType === 'weekly' ? 'Weekly' :
+                     selectedTemplate.frequencyType === 'custom' ? `Every ${selectedTemplate.frequencyDays} days` :
+                     selectedTemplate.frequencyType}
                   </Badge>
                 )}
               </div>
@@ -389,9 +408,9 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
                   />
                 </PopoverContent>
               </Popover>
-              {selectedTemplate?.frequencyType && selectedTemplate.frequencyType !== 'none' ? (
+              {selectedTemplate?.frequencyType && selectedTemplate.frequencyType !== 'none' && selectedTemplate.frequencyType !== 'per_visit' ? (
                 <p className="text-xs text-muted-foreground">
-                  Auto-calculated based on {selectedTemplate.frequencyType} frequency. You can override if needed.
+                  Auto-calculated based on frequency. You can override if needed.
                 </p>
               ) : (
                 <p className="text-xs text-muted-foreground">
