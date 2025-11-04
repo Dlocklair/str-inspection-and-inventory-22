@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { usePropertyContext } from '@/contexts/PropertyContext';
+import { PropertySelector } from './PropertySelector';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { FileText } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -615,6 +616,9 @@ export const ImprovedInspectionTemplateManager = () => {
 
   return (
     <div className="space-y-6">
+      {/* Property Selector */}
+      <PropertySelector />
+      
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Manage Inspection Templates</h2>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>

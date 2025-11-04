@@ -18,6 +18,7 @@ const InventorySetup = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { rolesLoaded, hasAnyRole } = useAuth();
+  const [searchTerm, setSearchTerm] = useState('');
   
   // Only enable queries when roles are loaded
   const queriesEnabled = rolesLoaded && hasAnyRole();
@@ -306,6 +307,17 @@ const InventorySetup = () => {
     items: items.filter(item => item.category_id === cat.id)
   }));
 
+  // Filter items based on search term
+  const filteredCategoriesWithItems = categoriesWithItems.map(cat => ({
+    ...cat,
+    items: cat.items.filter(item => 
+      searchTerm === '' || 
+      item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.supplier?.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  })).filter(cat => cat.items.length > 0 || searchTerm === '');
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="container mx-auto max-w-4xl">
@@ -340,9 +352,20 @@ const InventorySetup = () => {
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
+            {/* Search Box */}
+            <div className="space-y-2">
+              <Label>Search Inventory Items</Label>
+              <Input
+                placeholder="Search by name, description, or supplier..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full"
+              />
+            </div>
+
             {/* Collapse/Expand All */}
             <div className="flex items-center justify-between">
-              <Label>Categories and Items ({categoriesWithItems.length} categories, {items.length} items)</Label>
+              <Label>Categories and Items ({filteredCategoriesWithItems.length} categories visible, {items.length} total items)</Label>
               <div className="flex gap-2">
                 <Button onClick={collapseAll} variant="ghost" size="sm">
                   <ChevronsUpDown className="h-4 w-4 mr-2" />
@@ -357,7 +380,7 @@ const InventorySetup = () => {
 
             {/* Categories with Items */}
             <div className="space-y-3">
-              {categoriesWithItems.map((category) => {
+              {filteredCategoriesWithItems.map((category) => {
                 const isExpanded = expandedCategories.has(category.name);
 
                 return (
@@ -379,7 +402,7 @@ const InventorySetup = () => {
                               )}
                             </Button>
                           </CollapsibleTrigger>
-                          <span className="font-semibold text-base">
+                          <span className="font-semibold text-base text-cyan-600 dark:text-cyan-400">
                             {category.name} ({category.items.length})
                           </span>
                           {category.description && (

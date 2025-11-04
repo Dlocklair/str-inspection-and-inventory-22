@@ -1,4 +1,4 @@
-import { Home, Package, ClipboardList, AlertTriangle, Settings, Settings2, Building2 } from 'lucide-react';
+import { Home, Package, ClipboardList, AlertTriangle, Settings, Settings2, Building2, UserCog, UserPlus, Clock, User, FileEdit, History, FilePlus, AlertCircle, ClipboardCheck } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import {
   Sidebar,
@@ -12,11 +12,21 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const menuItems = [
   { title: 'Dashboard', url: '/', icon: Home },
   { title: 'Properties', url: '/properties', icon: Building2 },
-  { title: 'Inspections', url: '/inspections', icon: ClipboardList },
+  { 
+    title: 'Inspections', 
+    url: '/inspections', 
+    icon: ClipboardList,
+    subItems: [
+      { title: 'New Inspection', url: '/inspections?view=new-inspection', icon: FilePlus },
+      { title: 'Manage Inspection Templates', url: '/inspections?view=manage-templates', icon: FileEdit },
+      { title: 'Inspection History', url: '/inspections?view=inspection-history', icon: History },
+    ]
+  },
   { 
     title: 'Inventory', 
     icon: Package,
@@ -27,13 +37,33 @@ const menuItems = [
       { title: 'Inventory Setup and Updates', url: '/inventory-setup', icon: Settings2 },
     ]
   },
-  { title: 'Damage Reports', url: '/damage', icon: AlertTriangle },
-  { title: 'Settings', url: '/settings', icon: Settings },
+  { 
+    title: 'Damage Reports', 
+    url: '/damage', 
+    icon: AlertTriangle,
+    subItems: [
+      { title: 'New Damage Report', url: '/damage?view=new', icon: AlertCircle },
+      { title: 'Pending Damage Reports', url: '/damage?view=pending', icon: Clock },
+      { title: 'Damage Report History', url: '/damage?view=history', icon: ClipboardCheck },
+    ]
+  },
+  { 
+    title: 'Settings', 
+    url: '/settings', 
+    icon: Settings,
+    subItems: [
+      { title: 'Manage Current Users', url: '/settings?view=manage-users', icon: UserCog },
+      { title: 'Invite New User', url: '/settings?view=invite-user', icon: UserPlus },
+      { title: 'Pending Invitations', url: '/settings?view=pending-invitations', icon: Clock },
+      { title: 'Owner Profile', url: '/settings?view=owner-profile', icon: User },
+    ]
+  },
 ];
 
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
+  const isMobile = useIsMobile();
 
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
     isActive ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted/50';
@@ -46,7 +76,7 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {menuItems.map((item) => (
-                item.subItems ? (
+                item.subItems && !isMobile ? (
                   <SidebarMenuItem key={item.title}>
                     <HoverCard openDelay={200} closeDelay={100}>
                       <HoverCardTrigger asChild>
@@ -55,7 +85,7 @@ export function AppSidebar() {
                           {!collapsed && <span>{item.title}</span>}
                         </SidebarMenuButton>
                       </HoverCardTrigger>
-                      <HoverCardContent side="right" align="start" className="w-48 p-2">
+                      <HoverCardContent side="right" align="start" className="w-56 p-2 z-50 bg-background">
                         <div className="space-y-1">
                           {item.subItems.map((subItem) => (
                             <NavLink

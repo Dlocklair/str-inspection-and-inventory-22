@@ -286,8 +286,10 @@ export const InventorySection = () => {
 
   return (
     <div className="space-y-6">
-      {/* Property Selector */}
-      <PropertySelector />
+      {/* Property Selector with Highlight */}
+      <div className="p-4 bg-cyan-500/10 border-2 border-cyan-500/30 rounded-lg">
+        <PropertySelector />
+      </div>
       
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
