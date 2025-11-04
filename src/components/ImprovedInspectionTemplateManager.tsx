@@ -280,10 +280,9 @@ export const ImprovedInspectionTemplateManager = () => {
     } else if (propertyMode === 'unassigned') {
       return templates.filter(t => !t.propertyIds || t.propertyIds.length === 0);
     } else if (selectedProperty) {
+      // When a specific property is selected, only show templates assigned to that property
       return templates.filter(t => 
-        !t.propertyIds || 
-        t.propertyIds.length === 0 || 
-        t.propertyIds.includes(selectedProperty.id)
+        t.propertyIds && t.propertyIds.includes(selectedProperty.id)
       );
     }
     return templates;
@@ -792,16 +791,14 @@ export const ImprovedInspectionTemplateManager = () => {
                     )}
                   </div>
                   <div className="flex gap-2">
-                    {(!selectedTemplate.propertyIds || selectedTemplate.propertyIds.length === 0) && (
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        onClick={() => openAssignPropertyDialog(selectedTemplate.id)}
-                      >
-                        <Copy className="h-4 w-4 mr-1" />
-                        Assign to Property
-                      </Button>
-                    )}
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => openAssignPropertyDialog(selectedTemplate.id)}
+                    >
+                      <Copy className="h-4 w-4 mr-1" />
+                      Copy to Property
+                    </Button>
                     {(!selectedTemplate.isPredefined || (selectedTemplate.propertyIds && selectedTemplate.propertyIds.length > 0)) && (
                       <Button 
                         size="sm" 
@@ -1078,9 +1075,9 @@ export const ImprovedInspectionTemplateManager = () => {
       <Dialog open={isAssignPropertyDialogOpen} onOpenChange={setIsAssignPropertyDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Assign Template to Properties</DialogTitle>
+            <DialogTitle>Copy Template to Properties</DialogTitle>
             <DialogDescription>
-              Select one or more properties to assign this template to
+              Select one or more properties to copy this template to. Each property will get an independent copy that can be modified separately.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">

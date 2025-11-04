@@ -112,7 +112,7 @@ export const InventoryTable = ({ items, onEditItem, onUpdateStock, expandAll, co
           <div key={categoryName} className="border rounded-lg overflow-hidden">
             {/* Category Header */}
             <div 
-              className="flex items-center gap-2 p-3 bg-muted/50 cursor-pointer hover:bg-muted/70 transition-colors"
+              className="flex items-center gap-2 p-2 bg-muted/50 cursor-pointer hover:bg-muted/70 transition-colors"
               onClick={() => toggleCategory(categoryName)}
             >
               {isExpanded ? (
@@ -120,7 +120,7 @@ export const InventoryTable = ({ items, onEditItem, onUpdateStock, expandAll, co
               ) : (
                 <ChevronRight className="h-4 w-4" />
               )}
-              <span className="font-semibold">{categoryName}</span>
+              <span className="font-semibold text-cyan-400">{categoryName}</span>
               <span className="text-sm text-muted-foreground">({categoryItems.length})</span>
             </div>
 
@@ -130,12 +130,12 @@ export const InventoryTable = ({ items, onEditItem, onUpdateStock, expandAll, co
                 <table className="w-full">
                   <thead className="border-b bg-muted/30">
                     <tr>
-                      <th className="text-left p-4 font-medium">Item</th>
-                      <th className="text-center p-4 font-medium">Stock</th>
-                      <th className="text-center p-4 font-medium">Restock Level</th>
-                      <th className="text-center p-4 font-medium">Status</th>
-                      <th className="text-center p-4 font-medium">Supplier</th>
-                      <th className="text-center p-4 font-medium">Actions</th>
+                      <th className="text-left p-3 font-medium">Item</th>
+                      <th className="text-center p-3 font-medium">Stock</th>
+                      <th className="text-center p-3 font-medium">Restock Level</th>
+                      <th className="text-center p-3 font-medium">Status</th>
+                      <th className="text-center p-3 font-medium">Supplier</th>
+                      <th className="text-center p-3 font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -146,13 +146,13 @@ export const InventoryTable = ({ items, onEditItem, onUpdateStock, expandAll, co
 
                       return (
                         <tr key={item.id} className="border-b hover:bg-muted/30">
-                          <td className="p-4">
+                          <td className="p-3">
                             <div className="flex items-center gap-3">
                               {item.amazon_image_url && (
                                 <img
                                   src={item.amazon_image_url}
                                   alt={item.name}
-                                  className="w-12 h-12 object-cover rounded"
+                                  className="w-10 h-10 object-cover rounded"
                                 />
                               )}
                               <div>
@@ -163,7 +163,7 @@ export const InventoryTable = ({ items, onEditItem, onUpdateStock, expandAll, co
                               </div>
                             </div>
                           </td>
-                          <td className="p-4">
+                          <td className="p-3">
                             <div className="flex justify-center">
                               {isEditing ? (
                                 <Input
@@ -191,8 +191,8 @@ export const InventoryTable = ({ items, onEditItem, onUpdateStock, expandAll, co
                               )}
                             </div>
                           </td>
-                          <td className="p-4 text-center">{formatNumber(item.restock_threshold)}</td>
-                          <td className="p-4">
+                          <td className="p-3 text-center">{formatNumber(item.restock_threshold)}</td>
+                          <td className="p-3">
                             <div className="flex justify-center">
                               <Badge variant={status.color as any} className="flex items-center gap-1 w-fit">
                                 <StatusIcon className="h-3 w-3" />
@@ -200,8 +200,8 @@ export const InventoryTable = ({ items, onEditItem, onUpdateStock, expandAll, co
                               </Badge>
                             </div>
                           </td>
-                          <td className="p-4 text-center">{item.supplier || '-'}</td>
-                          <td className="p-4">
+                          <td className="p-3 text-center">{item.supplier || '-'}</td>
+                          <td className="p-3">
                             <div className="flex justify-center">
                               <Button
                                 size="sm"
