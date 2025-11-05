@@ -60,7 +60,7 @@ interface NewInspectionFormProps {
 
 export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspectionFormProps) => {
   const { toast } = useToast();
-  const { selectedProperty, propertyMode, userProperties } = usePropertyContext();
+  const { selectedProperty, propertyMode, userProperties, setSelectedProperty } = usePropertyContext();
   
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<Date>();
@@ -279,29 +279,17 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
                 onValueChange={(value) => {
                   const property = userProperties.find(p => p.id === value);
                   if (property) {
-                    const { setSelectedProperty } = usePropertyContext();
                     setSelectedProperty(property);
                   }
                 }}
               >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a property">
-                    {selectedProperty && (
-                      <span className="font-medium">
-                        {selectedProperty.name} - {selectedProperty.address}
-                      </span>
-                    )}
-                  </SelectValue>
+                <SelectTrigger className="w-full bg-background">
+                  <SelectValue placeholder="Select a property" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-popover z-50">
                   {userProperties.map((property) => (
-                    <SelectItem key={property.id} value={property.id}>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{property.name}</span>
-                        <span className="text-sm text-muted-foreground">
-                          {property.address}, {property.city}, {property.state} {property.zip}
-                        </span>
-                      </div>
+                    <SelectItem key={property.id} value={property.id} className="cursor-pointer">
+                      {property.name}
                     </SelectItem>
                   ))}
                 </SelectContent>

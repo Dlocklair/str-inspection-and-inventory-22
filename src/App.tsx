@@ -21,6 +21,7 @@ import NotFound from "./pages/NotFound";
 import { useMigrateInventory } from "./hooks/useMigrateInventory";
 import { DataMigrationWizard } from '@/components/DataMigrationWizard';
 import { OneTimeDataMigration } from '@/components/OneTimeDataMigration';
+import { SyncStatusIndicator } from '@/components/SyncStatusIndicator';
 
 const queryClient = new QueryClient();
 
@@ -82,6 +83,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <SyncStatusIndicator />
         <BrowserRouter>
           <LayoutWrapper />
         </BrowserRouter>

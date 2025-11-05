@@ -30,13 +30,22 @@ export const OneTimeDataMigration = () => {
         if (recordsError) throw recordsError;
 
         // Update inventory items
-        setProgress(70);
+        setProgress(60);
         const { error: inventoryError } = await supabase
           .from('inventory_items')
           .update({ property_id: elkMountainEscapeId })
           .is('property_id', null);
 
         if (inventoryError) throw inventoryError;
+
+        // Update damage reports
+        setProgress(80);
+        const { error: damageError } = await supabase
+          .from('damage_reports')
+          .update({ property_id: elkMountainEscapeId })
+          .is('property_id', null);
+
+        if (damageError) throw damageError;
 
         setProgress(100);
         localStorage.setItem('sample-data-migration-complete', 'true');
