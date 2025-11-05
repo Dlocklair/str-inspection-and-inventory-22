@@ -84,8 +84,8 @@ export const EditableInspectionHistoryView = () => {
     const year = new Date(record.inspection_date).getFullYear().toString();
     const propertyId = record.property_id || 'unassigned-property';
     const propertyName = userProperties.find(p => p.id === record.property_id)?.name || 'Unassigned Property';
-    const templateKey = record.template_id || 'legacy';
-    const templateName = templates.find(t => t.id === record.template_id)?.name || 'Legacy Inspections';
+    const templateKey = record.template_id || 'no-template';
+    const templateName = templates.find(t => t.id === record.template_id)?.name || 'No Template';
     
     if (!selectedProperty) {
       // All Properties mode: Property -> Year -> Template

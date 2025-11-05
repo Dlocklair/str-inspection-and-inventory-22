@@ -20,6 +20,8 @@ import DamageReportHistoryEnhanced from './DamageReportHistoryEnhanced';
 import CameraCapture from './CameraCapture';
 import { usePropertyContext } from '@/contexts/PropertyContext';
 import { DamagePropertySelector } from './DamagePropertySelector';
+import { DamageReportCard } from './DamageReportCard';
+import { Building2 } from 'lucide-react';
 
 interface DamageItem {
   id: string;
@@ -772,8 +774,42 @@ export const DamageReport = () => {
                   {/* Reports List - Only show when not adding new report */}
                   {!showAddForm && (
                     <div className="space-y-4">
-                      {filteredReports.filter(report => report.status !== 'completed').map(report => (
-                        <Card key={report.id}>
+                      {(() => {
+                        const activeReports = filteredReports.filter(report => report.status !== 'completed');
+                        if (propertyMode === 'all') {
+                          // Group by property and year
+                          const grouped: Record<string, Record<string, DamageItem[]>> = {};
+                          activeReports.forEach(report => {
+                            const propertyKey = report.propertyId || 'unassigned';
+                            const year = new Date(report.reportDate).getFullYear().toString();
+                            if (!grouped[propertyKey]) grouped[propertyKey] = {};
+                            if (!grouped[propertyKey][year]) grouped[propertyKey][year] = [];
+                            grouped[propertyKey][year].push(report);
+                          });
+                          
+                          return Object.entries(grouped).map(([propertyKey, yearGroups]) => {
+                            const propertyName = userProperties.find(p => p.id === propertyKey)?.name || 'Unassigned Property';
+                            return (
+                              <Card key={propertyKey}>
+                                <CardHeader className="bg-muted">
+                                  <CardTitle className="flex items-center gap-2">
+                                    <Building2 className="h-5 w-5" />
+                                    {propertyName}
+                                    <Badge variant="secondary">
+                                      {Object.values(yearGroups).flat().length} reports
+                                    </Badge>
+                                  </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4 pt-6">
+                                  {Object.entries(yearGroups).sort((a, b) => parseInt(b[0]) - parseInt(a[0])).map(([year, reports]) => (
+                                    <div key={year} className="space-y-3">
+                                      <div className="flex items-center gap-2 pb-2 border-b">
+                                        <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                                        <h4 className="font-semibold">{year}</h4>
+                                        <Badge variant="outline">{reports.length}</Badge>
+                                      </div>
+                                      {reports.map(report => (
+                                        <Card key={report.id}>
                           <CardContent className="p-6">
                             {editingReport === report.id ? (
                               <div className="space-y-4">
