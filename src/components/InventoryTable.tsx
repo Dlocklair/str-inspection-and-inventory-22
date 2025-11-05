@@ -130,12 +130,12 @@ export const InventoryTable = ({ items, onEditItem, onUpdateStock, expandAll, co
                 <table className="w-full">
                   <thead className="border-b bg-muted/30">
                     <tr>
-                      <th className="text-left p-3 font-medium">Item</th>
-                      <th className="text-center p-3 font-medium">Stock</th>
-                      <th className="text-center p-3 font-medium">Restock Level</th>
-                      <th className="text-center p-3 font-medium">Status</th>
-                      <th className="text-center p-3 font-medium">Supplier</th>
-                      <th className="text-center p-3 font-medium">Actions</th>
+                      <th className="text-left p-2 font-medium">Item</th>
+                      <th className="text-center p-2 font-medium">Stock</th>
+                      <th className="text-center p-2 font-medium">Restock Level</th>
+                      <th className="text-center p-2 font-medium">Status</th>
+                      <th className="text-center p-2 font-medium">Supplier</th>
+                      <th className="text-center p-2 font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -146,7 +146,7 @@ export const InventoryTable = ({ items, onEditItem, onUpdateStock, expandAll, co
 
                       return (
                         <tr key={item.id} className="border-b hover:bg-muted/30">
-                          <td className="p-3">
+                          <td className="p-2">
                             <div className="flex items-center gap-3">
                               {item.amazon_image_url && (
                                 <img
@@ -163,7 +163,7 @@ export const InventoryTable = ({ items, onEditItem, onUpdateStock, expandAll, co
                               </div>
                             </div>
                           </td>
-                          <td className="p-3">
+                          <td className="p-2">
                             <div className="flex justify-center">
                               {isEditing ? (
                                 <Input
@@ -191,8 +191,8 @@ export const InventoryTable = ({ items, onEditItem, onUpdateStock, expandAll, co
                               )}
                             </div>
                           </td>
-                          <td className="p-3 text-center">{formatNumber(item.restock_threshold)}</td>
-                          <td className="p-3">
+                          <td className="p-2 text-center">{formatNumber(item.restock_threshold)}</td>
+                          <td className="p-2">
                             <div className="flex justify-center">
                               <Badge variant={status.color as any} className="flex items-center gap-1 w-fit">
                                 <StatusIcon className="h-3 w-3" />
@@ -200,8 +200,8 @@ export const InventoryTable = ({ items, onEditItem, onUpdateStock, expandAll, co
                               </Badge>
                             </div>
                           </td>
-                          <td className="p-3 text-center">{item.supplier || '-'}</td>
-                          <td className="p-3">
+                          <td className="p-2 text-center">{item.supplier || '-'}</td>
+                          <td className="p-2">
                             <div className="flex justify-center">
                               <Button
                                 size="sm"
