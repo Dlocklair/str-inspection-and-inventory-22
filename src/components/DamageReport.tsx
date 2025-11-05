@@ -19,7 +19,7 @@ import { LocationManagerModal } from './LocationManagerModal';
 import DamageReportHistoryEnhanced from './DamageReportHistoryEnhanced';
 import CameraCapture from './CameraCapture';
 import { usePropertyContext } from '@/contexts/PropertyContext';
-import { PropertySelector } from './PropertySelector';
+import { DamagePropertySelector } from './DamagePropertySelector';
 
 interface DamageItem {
   id: string;
@@ -313,9 +313,6 @@ export const DamageReport = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
-        {/* Property Selector */}
-        <PropertySelector />
-        
         {/* Navigation Header */}
         <div className="flex justify-between items-center mb-8">
           <div className="flex items-center gap-4">
@@ -536,6 +533,9 @@ export const DamageReport = () => {
                   )}
                 </div>
                 
+                {/* Property Selector - Only shows properties, required for damage reports */}
+                <DamagePropertySelector />
+                
                 {/* Search Box */}
                 {!showAddForm && (
                   <div className="relative max-w-md">
@@ -550,8 +550,13 @@ export const DamageReport = () => {
                 )}
               </div>
               
-              <Tabs defaultValue="reports" className="w-full">
-                <TabsContent value="reports" className="space-y-6 mt-0">{/* No additional tabs content header */}
+              <Tabs defaultValue="active" className="w-full">
+                <TabsList className="grid w-full max-w-md grid-cols-2">
+                  <TabsTrigger value="active">Active Reports</TabsTrigger>
+                  <TabsTrigger value="pending">Pending Reports</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="active" className="space-y-6 mt-6">
 
                 {/* Add New Report Form */}
                 {showAddForm && (
@@ -896,6 +901,179 @@ export const DamageReport = () => {
                 </TabsContent>
 
                 <TabsContent value="analytics" className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Total Reports</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-3xl font-bold">{damageReports.length}</div>
+                      </CardContent>
+                    </Card>
+                    
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Total Estimated Cost</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-3xl font-bold">
+                          ${damageReports.reduce((sum, report) => sum + report.estimatedCost, 0).toFixed(2)}
+                        </div>
+                      </CardContent>
+                    </Card>
+                    
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Open Reports</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-3xl font-bold">
+                          {damageReports.filter(report => report.status !== 'completed').length}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </TabsContent>
+                
+                {/* Pending Reports Tab */}
+                <TabsContent value="pending" className="space-y-6 mt-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Pending Damage Reports</CardTitle>
+                      <p className="text-sm text-muted-foreground">
+                        Reports that have not been closed or resolved
+                      </p>
+                    </CardHeader>
+                    <CardContent>
+                      {filteredReports.filter(report => 
+                        report.status !== 'completed' && report.status !== 'approved'
+                      ).length > 0 ? (
+                        <div className="space-y-4">
+                          {filteredReports
+                            .filter(report => report.status !== 'completed' && report.status !== 'approved')
+                            .map(report => (
+                              <Card key={report.id} className="border-l-4 border-l-warning">
+                                <CardContent className="p-6">
+                                  <div className="space-y-4">
+                                    <div className="flex items-start justify-between">
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-3 mb-2">
+                                          <h4 className="font-semibold text-lg">{report.title}</h4>
+                                          <Badge 
+                                            variant={
+                                              report.severity === 'minor' ? 'default' :
+                                              report.severity === 'moderate' ? 'secondary' : 
+                                              'destructive'
+                                            }
+                                          >
+                                            {report.severity}
+                                          </Badge>
+                                          <Badge variant="outline">
+                                            {report.status}
+                                          </Badge>
+                                        </div>
+                                        <p className="text-muted-foreground mb-3">{report.description}</p>
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                          <div className="flex items-center gap-2">
+                                            <MapPin className="h-4 w-4 text-muted-foreground" />
+                                            <span>{report.location}</span>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                                            <span>{format(new Date(report.reportDate + 'T12:00:00'), 'MMM d, yyyy')}</span>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            <DollarSign className="h-4 w-4 text-muted-foreground" />
+                                            <span>${report.estimatedCost.toFixed(2)}</span>
+                                          </div>
+                                          <div className="text-muted-foreground">
+                                            Responsible: {report.responsibleParty === 'no-fault' ? 'No Fault' :
+                                              report.responsibleParty.charAt(0).toUpperCase() + report.responsibleParty.slice(1)}
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="flex gap-2">
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => startEditing(report)}
+                                        >
+                                          <Edit className="h-4 w-4 mr-1" />
+                                          Edit
+                                        </Button>
+                                        <AlertDialog>
+                                          <AlertDialogTrigger asChild>
+                                            <Button variant="outline" size="sm">
+                                              <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                          </AlertDialogTrigger>
+                                          <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                              <AlertDialogTitle>Delete Report</AlertDialogTitle>
+                                              <AlertDialogDescription>
+                                                Are you sure you want to delete this damage report? This action cannot be undone.
+                                              </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                              <AlertDialogAction onClick={() => deleteReport(report.id)}>
+                                                Delete
+                                              </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                          </AlertDialogContent>
+                                        </AlertDialog>
+                                      </div>
+                                    </div>
+                                    
+                                    {/* Status Update Buttons */}
+                                    <div className="flex gap-2 pt-2 border-t">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => updateStatus(report.id, 'assessed')}
+                                        disabled={report.status === 'assessed'}
+                                      >
+                                        Mark as Assessed
+                                      </Button>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => updateStatus(report.id, 'approved')}
+                                        disabled={report.status === 'approved'}
+                                      >
+                                        Approve
+                                      </Button>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => updateStatus(report.id, 'in-repair')}
+                                        disabled={report.status === 'in-repair'}
+                                      >
+                                        In Repair
+                                      </Button>
+                                      <Button
+                                        variant="default"
+                                        size="sm"
+                                        onClick={() => markAsComplete(report.id)}
+                                      >
+                                        Mark Complete
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                        </div>
+                      ) : (
+                        <p className="text-muted-foreground text-center py-8">
+                          No pending damage reports for this property.
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="analytics" className="space-y-6 mt-0">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <Card>
                       <CardHeader>

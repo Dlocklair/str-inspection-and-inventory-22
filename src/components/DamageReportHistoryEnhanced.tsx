@@ -3,9 +3,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Eye, Calendar, AlertTriangle, DollarSign, ChevronDown, ChevronRight, Search, Building2 } from 'lucide-react';
+import { Eye, Calendar, AlertTriangle, DollarSign, ChevronDown, ChevronRight, Search, Building2, CalendarIcon, X, Filter } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { startOfYear, subMonths, isAfter, isBefore, startOfDay, endOfDay } from 'date-fns';
+import { format } from 'date-fns';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 interface DamageItem {
   id: string;
@@ -35,11 +41,15 @@ interface DamageReportHistoryEnhancedProps {
 const DamageReportHistoryEnhanced: React.FC<DamageReportHistoryEnhancedProps> = ({ 
   reports, 
   onViewReport, 
-  propertyMode,
+  propertyMode: initialPropertyMode,
   properties 
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+  const [dateFilter, setDateFilter] = useState<'all' | 'this-year' | 'past-12' | 'custom'>('all');
+  const [customStartDate, setCustomStartDate] = useState<Date>();
+  const [customEndDate, setCustomEndDate] = useState<Date>();
+  const [viewMode, setViewMode] = useState<'current' | 'all'>(initialPropertyMode === 'all' ? 'all' : 'current');
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
@@ -79,8 +89,38 @@ const DamageReportHistoryEnhanced: React.FC<DamageReportHistoryEnhancedProps> = 
     }));
   };
 
+  // Apply date filtering
+  const getDateFilteredReports = () => {
+    let filtered = reports;
+
+    // Apply date filter
+    if (dateFilter !== 'all') {
+      const now = new Date();
+      let startDate: Date;
+      let endDate: Date = endOfDay(now);
+
+      if (dateFilter === 'this-year') {
+        startDate = startOfYear(now);
+      } else if (dateFilter === 'past-12') {
+        startDate = subMonths(now, 12);
+      } else if (dateFilter === 'custom' && customStartDate && customEndDate) {
+        startDate = startOfDay(customStartDate);
+        endDate = endOfDay(customEndDate);
+      } else {
+        startDate = new Date(0); // Beginning of time
+      }
+
+      filtered = filtered.filter(report => {
+        const reportDate = new Date(report.createdAt);
+        return isAfter(reportDate, startDate) && isBefore(reportDate, endDate);
+      });
+    }
+
+    return filtered;
+  };
+
   // Filter reports by search
-  const filteredReports = reports.filter(report => {
+  const filteredReports = getDateFilteredReports().filter(report => {
     if (!searchTerm) return true;
     const search = searchTerm.toLowerCase();
     return (
@@ -94,7 +134,7 @@ const DamageReportHistoryEnhanced: React.FC<DamageReportHistoryEnhancedProps> = 
   // Group by property and year if "all" mode
   const groupedByProperty: Record<string, Record<string, DamageItem[]>> = {};
   
-  if (propertyMode === 'all') {
+  if (viewMode === 'all') {
     filteredReports.forEach(report => {
       const propertyKey = report.propertyId || 'unassigned';
       const year = new Date(report.createdAt).getFullYear().toString();
@@ -183,19 +223,96 @@ const DamageReportHistoryEnhanced: React.FC<DamageReportHistoryEnhancedProps> = 
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-4">
           <CardTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5" />
             Damage Report History
           </CardTitle>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* View Mode Toggle */}
+            <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value as 'current' | 'all')}>
+              <ToggleGroupItem value="current" aria-label="Current property">
+                <Building2 className="h-4 w-4 mr-1" />
+                Current Property
+              </ToggleGroupItem>
+              <ToggleGroupItem value="all" aria-label="All properties">
+                <Filter className="h-4 w-4 mr-1" />
+                All Properties
+              </ToggleGroupItem>
+            </ToggleGroup>
+
+            {/* Date Range Filter */}
+            <Select value={dateFilter} onValueChange={(value: any) => setDateFilter(value)}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Time</SelectItem>
+                <SelectItem value="this-year">This Year</SelectItem>
+                <SelectItem value="past-12">Past 12 Months</SelectItem>
+                <SelectItem value="custom">Custom Period</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Custom Date Range Picker */}
+            {dateFilter === 'custom' && (
+              <div className="flex items-center gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-[140px] justify-start text-left font-normal">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {customStartDate ? format(customStartDate, 'MMM d, yyyy') : 'Start date'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={customStartDate}
+                      onSelect={setCustomStartDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                <span className="text-muted-foreground">to</span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-[140px] justify-start text-left font-normal">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {customEndDate ? format(customEndDate, 'MMM d, yyyy') : 'End date'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={customEndDate}
+                      onSelect={setCustomEndDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                {(customStartDate || customEndDate) && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setCustomStartDate(undefined);
+                      setCustomEndDate(undefined);
+                    }}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {/* Search Input */}
             <div className="relative">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search reports..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8 w-[250px]"
+                className="pl-8 w-[200px]"
               />
             </div>
           </div>
@@ -204,7 +321,7 @@ const DamageReportHistoryEnhanced: React.FC<DamageReportHistoryEnhancedProps> = 
       <CardContent>
         {filteredReports.length > 0 ? (
           <div className="space-y-4">
-            {propertyMode === 'all' ? (
+            {viewMode === 'all' ? (
               // Grouped view by property and year
               Object.entries(groupedByProperty).map(([propertyId, yearGroups]) => {
                 const property = properties.find(p => p.id === propertyId);
