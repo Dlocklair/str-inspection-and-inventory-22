@@ -22,6 +22,13 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { FileText } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Checkbox } from '@/components/ui/checkbox';
+import { 
+  useAllInspectionTemplates,
+  useCreateInspectionTemplate,
+  useUpdateInspectionTemplate,
+  useDeleteInspectionTemplate,
+  InspectionTemplate as DBInspectionTemplate
+} from '@/hooks/useInspectionTemplates';
 import {
   DndContext,
   closestCenter,
@@ -56,21 +63,8 @@ interface ChecklistItem {
   notes: string;
 }
 
-interface InspectionTemplate {
-  id: string;
-  name: string;
-  items: ChecklistItem[];
-  isPredefined: boolean;
-  frequencyType?: string;
-  frequencyDays?: number;
-  notificationsEnabled?: boolean;
-  notificationMethod?: string;
-  notificationDaysAhead?: number;
-  nextOccurrence?: string;
-  propertyIds?: string[];  // Array of assigned property IDs
-  propertyId?: string;     // Keep for backward compatibility
-  propertyName?: string;   // Keep for backward compatibility
-}
+// Use the database type from hooks
+type InspectionTemplate = DBInspectionTemplate;
 
 interface SortableItemProps {
   item: ChecklistItem;
@@ -142,8 +136,13 @@ export const ImprovedInspectionTemplateManager = () => {
   const { profile } = useAuth();
   const { selectedProperty, propertyMode } = usePropertyContext();
   
+  // Database hooks
+  const { data: templates = [], isLoading: templatesLoading } = useAllInspectionTemplates();
+  const createTemplate = useCreateInspectionTemplate();
+  const updateTemplate = useUpdateInspectionTemplate();
+  const deleteTemplate = useDeleteInspectionTemplate();
+  
   const [properties, setProperties] = useState<Property[]>([]);
-  const [templates, setTemplates] = useState<InspectionTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [newItemText, setNewItemText] = useState('');
   const [editingItem, setEditingItem] = useState<string | null>(null);
@@ -192,84 +191,12 @@ export const ImprovedInspectionTemplateManager = () => {
     fetchProperties();
   }, []);
 
-  // Load templates on mount with migration
+  // Set initial selected template when templates load
   useEffect(() => {
-    const savedTemplates = localStorage.getItem('inspection-templates');
-    if (savedTemplates) {
-      const loadedTemplates = JSON.parse(savedTemplates);
-      
-      // Migrate old single propertyId to propertyIds array
-      const migratedTemplates = loadedTemplates.map((template: any) => {
-        if (template.propertyId && !template.propertyIds) {
-          return {
-            ...template,
-            propertyIds: [template.propertyId]
-          };
-        }
-        return template;
-      });
-      
-      setTemplates(migratedTemplates);
-      localStorage.setItem('inspection-templates', JSON.stringify(migratedTemplates));
-      if (loadedTemplates.length > 0) {
-        setSelectedTemplateId(loadedTemplates[0].id);
-      }
-    } else {
-      // Initialize with predefined templates
-      const defaultTemplates: InspectionTemplate[] = [
-        {
-          id: 'per-visit',
-          name: 'Per Visit',
-          isPredefined: true,
-          items: [
-            { id: '1', description: 'Check cleanliness of all rooms', notes: '' },
-            { id: '2', description: 'Verify all appliances working', notes: '' },
-            { id: '3', description: 'Check for any visible damage', notes: '' }
-          ]
-        },
-        {
-          id: 'monthly',
-          name: 'Monthly',
-          isPredefined: true,
-          items: [
-            { id: '4', description: 'Deep clean all surfaces', notes: '' },
-            { id: '5', description: 'Check and replace air fresheners', notes: '' },
-            { id: '6', description: 'Inspect and clean appliances', notes: '' }
-          ]
-        },
-        {
-          id: 'quarterly',
-          name: 'Quarterly',
-          isPredefined: true,
-          items: [
-            { id: '7', description: 'Deep clean carpets and upholstery', notes: '' },
-            { id: '8', description: 'Clean windows inside and out', notes: '' },
-            { id: '9', description: 'Check HVAC filters', notes: '' }
-          ]
-        },
-        {
-          id: 'yearly',
-          name: 'Yearly',
-          isPredefined: true,
-          items: [
-            { id: '10', description: 'Professional HVAC system cleaning', notes: '' },
-            { id: '11', description: 'Deep clean and organize storage areas', notes: '' },
-            { id: '12', description: 'Inspect roof and gutters', notes: '' }
-          ]
-        }
-      ];
-      setTemplates(defaultTemplates);
-      setSelectedTemplateId(defaultTemplates[0].id);
-      localStorage.setItem('inspection-templates', JSON.stringify(defaultTemplates));
+    if (templates.length > 0 && !selectedTemplateId) {
+      setSelectedTemplateId(templates[0].id);
     }
-  }, []);
-
-  // Save templates when they change
-  useEffect(() => {
-    if (templates.length > 0) {
-      localStorage.setItem('inspection-templates', JSON.stringify(templates));
-    }
-  }, [templates]);
+  }, [templates, selectedTemplateId]);
 
   const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
 
@@ -278,20 +205,17 @@ export const ImprovedInspectionTemplateManager = () => {
     if (propertyMode === 'all') {
       return templates;
     } else if (propertyMode === 'unassigned') {
-      return templates.filter(t => !t.propertyIds || t.propertyIds.length === 0);
+      return templates.filter(t => !t.property_id);
     } else if (selectedProperty) {
       // When a specific property is selected, only show templates assigned to that property
-      return templates.filter(t => 
-        t.propertyIds && t.propertyIds.includes(selectedProperty.id)
-      );
+      return templates.filter(t => t.property_id === selectedProperty.id);
     }
     return templates;
   })();
 
   // Group templates by property
   const groupedTemplates = filteredTemplates.reduce((groups, template) => {
-    // A template can belong to multiple properties
-    if (!template.propertyIds || template.propertyIds.length === 0) {
+    if (!template.property_id) {
       // Unassigned template
       const key = 'unassigned';
       if (!groups[key]) {
@@ -299,19 +223,15 @@ export const ImprovedInspectionTemplateManager = () => {
       }
       groups[key].templates.push(template);
     } else {
-      // Assigned to one or more properties
-      template.propertyIds.forEach(propId => {
-        const property = properties.find(p => p.id === propId);
-        if (property) {
-          if (!groups[propId]) {
-            groups[propId] = { propertyName: property.name, templates: [] };
-          }
-          // Only add if not already in this group
-          if (!groups[propId].templates.find(t => t.id === template.id)) {
-            groups[propId].templates.push(template);
-          }
+      // Assigned to a property
+      const property = properties.find(p => p.id === template.property_id);
+      if (property) {
+        const key = template.property_id;
+        if (!groups[key]) {
+          groups[key] = { propertyName: property.name, templates: [] };
         }
-      });
+        groups[key].templates.push(template);
+      }
     }
     return groups;
   }, {} as Record<string, { propertyName: string; templates: InspectionTemplate[] }>);
@@ -327,36 +247,30 @@ export const ImprovedInspectionTemplateManager = () => {
     const text = newItemText?.trim();
     if (!text || !selectedTemplateId) return;
 
+    const template = templates.find(t => t.id === selectedTemplateId);
+    if (!template) return;
+
     const newItem: ChecklistItem = {
       id: Date.now().toString(),
       description: text,
       notes: ''
     };
 
-    setTemplates(prev => prev.map(template => 
-      template.id === selectedTemplateId
-        ? { ...template, items: [...template.items, newItem] }
-        : template
-    ));
+    updateTemplate.mutate({
+      id: selectedTemplateId,
+      items: [...template.items, newItem]
+    });
 
     setNewItemText('');
-    
-    toast({
-      title: "Item added",
-      description: "New inspection item has been added to the template.",
-    });
   };
 
   const deleteItem = (templateId: string, itemId: string) => {
-    setTemplates(prev => prev.map(template => 
-      template.id === templateId
-        ? { ...template, items: template.items.filter(item => item.id !== itemId) }
-        : template
-    ));
-    
-    toast({
-      title: "Item deleted",
-      description: "Inspection item has been removed from the template.",
+    const template = templates.find(t => t.id === templateId);
+    if (!template) return;
+
+    updateTemplate.mutate({
+      id: templateId,
+      items: template.items.filter(item => item.id !== itemId)
     });
   };
 
@@ -366,26 +280,20 @@ export const ImprovedInspectionTemplateManager = () => {
   };
 
   const saveEdit = (templateId: string, itemId: string) => {
-    setTemplates(prev => prev.map(template => 
-      template.id === templateId
-        ? {
-            ...template,
-            items: template.items.map(item =>
-              item.id === itemId
-                ? { ...item, description: editingText }
-                : item
-            )
-          }
-        : template
-    ));
+    const template = templates.find(t => t.id === templateId);
+    if (!template) return;
+
+    updateTemplate.mutate({
+      id: templateId,
+      items: template.items.map(item =>
+        item.id === itemId
+          ? { ...item, description: editingText }
+          : item
+      )
+    });
     
     setEditingItem(null);
     setEditingText('');
-    
-    toast({
-      title: "Item updated",
-      description: "Inspection item has been updated.",
-    });
   };
 
   const cancelEdit = () => {
@@ -401,11 +309,10 @@ export const ImprovedInspectionTemplateManager = () => {
       const oldIndex = items.findIndex(item => item.id === active.id);
       const newIndex = items.findIndex(item => item.id === over.id);
       
-      setTemplates(prev => prev.map(template => 
-        template.id === selectedTemplateId
-          ? { ...template, items: arrayMove(items, oldIndex, newIndex) }
-          : template
-      ));
+      updateTemplate.mutate({
+        id: selectedTemplateId,
+        items: arrayMove(items, oldIndex, newIndex)
+      });
     }
   };
 
@@ -428,24 +335,18 @@ export const ImprovedInspectionTemplateManager = () => {
       return;
     }
 
-    const newTemplate: InspectionTemplate = {
-      id: Date.now().toString(),
+    createTemplate.mutate({
       name: newTemplateName,
-      isPredefined: false,
-      propertyIds: newTemplatePropertyId === 'unassigned' ? [] : [newTemplatePropertyId],
+      property_id: newTemplatePropertyId === 'unassigned' ? undefined : newTemplatePropertyId,
+      is_predefined: false,
       items: []
-    };
-
-    setTemplates(prev => [...prev, newTemplate]);
-    setSelectedTemplateId(newTemplate.id);
-    setNewTemplateName('');
-    setNewTemplatePropertyId('');
-    setIsCreateDialogOpen(false);
-    
-    const property = properties.find(p => p.id === newTemplatePropertyId);
-    toast({
-      title: "Template created",
-      description: `Custom template "${newTemplate.name}" has been created${property ? ` for ${property.name}` : ' as unassigned'}. Add at least one checklist item.`,
+    }, {
+      onSuccess: (data) => {
+        setSelectedTemplateId(data.id);
+        setNewTemplateName('');
+        setNewTemplatePropertyId('');
+        setIsCreateDialogOpen(false);
+      }
     });
   };
 
@@ -468,48 +369,57 @@ export const ImprovedInspectionTemplateManager = () => {
     if (!templateToAssign || selectedPropertyIdsForAssignment.length === 0) return;
 
     // Create independent copies of the template for each selected property
-    const newTemplates: InspectionTemplate[] = selectedPropertyIdsForAssignment.map((propertyId, index) => {
-      // Check if this property already has this template
-      const existingAssignment = templateToAssign.propertyIds?.includes(propertyId);
-      if (existingAssignment) return null;
+    const copyPromises = selectedPropertyIdsForAssignment.map((propertyId) => {
+      // Check if this property already has this template name
+      const existingWithSameName = templates.find(
+        t => t.property_id === propertyId && t.name === templateToAssign.name
+      );
+      if (existingWithSameName) return null;
 
-      // Create a unique copy with new ID
-      const newId = `${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`;
-      return {
-        ...templateToAssign,
-        id: newId,
-        propertyIds: [propertyId],
-        // Mark as not predefined anymore since it's a copy
-        isPredefined: false
-      };
-    }).filter(Boolean) as InspectionTemplate[];
-
-    if (newTemplates.length === 0) {
-      toast({
-        title: "Already assigned",
-        description: "Template is already assigned to selected properties.",
-        variant: "destructive"
+      // Create a copy in the database
+      return createTemplate.mutateAsync({
+        name: templateToAssign.name,
+        property_id: propertyId,
+        is_predefined: false,
+        items: templateToAssign.items,
+        frequency_type: templateToAssign.frequency_type,
+        frequency_days: templateToAssign.frequency_days,
+        notifications_enabled: templateToAssign.notifications_enabled,
+        notification_method: templateToAssign.notification_method,
+        notification_days_ahead: templateToAssign.notification_days_ahead,
+        next_occurrence: templateToAssign.next_occurrence
       });
-      closeAssignPropertyDialog();
-      return;
-    }
-
-    // Add the new independent templates to the list
-    setTemplates(prev => [...prev, ...newTemplates]);
-
-    toast({
-      title: "Templates created",
-      description: `Created ${newTemplates.length} independent template${newTemplates.length > 1 ? 's' : ''} for selected properties.`,
     });
 
-    closeAssignPropertyDialog();
+    Promise.all(copyPromises)
+      .then((results) => {
+        const successCount = results.filter(Boolean).length;
+        if (successCount > 0) {
+          toast({
+            title: "Templates copied",
+            description: `Created ${successCount} template copy/copies for selected properties.`,
+          });
+        } else {
+          toast({
+            title: "Already exists",
+            description: "Templates with this name already exist for selected properties.",
+            variant: "destructive"
+          });
+        }
+      })
+      .catch((error) => {
+        console.error('Error copying templates:', error);
+      })
+      .finally(() => {
+        closeAssignPropertyDialog();
+      });
   };
 
 
   const updateTemplateName = () => {
     if (!editingTemplateName.trim() || !selectedTemplate) return;
 
-    if (selectedTemplate.isPredefined) {
+    if (selectedTemplate.is_predefined) {
       toast({
         title: "Cannot rename",
         description: "Predefined templates cannot be renamed.",
@@ -518,28 +428,24 @@ export const ImprovedInspectionTemplateManager = () => {
       return;
     }
 
-    setTemplates(prev => prev.map(template =>
-      template.id === selectedTemplateId
-        ? { ...template, name: editingTemplateName }
-        : template
-    ));
-
-    setEditingTemplateName('');
-    
-    toast({
-      title: "Template renamed",
-      description: "Template name has been updated.",
+    updateTemplate.mutate({
+      id: selectedTemplateId,
+      name: editingTemplateName
+    }, {
+      onSuccess: () => {
+        setEditingTemplateName('');
+      }
     });
   };
 
   const startEditingFrequency = () => {
     if (!selectedTemplate) return;
-    setTempFrequencyType(selectedTemplate.frequencyType || 'none');
-    setTempFrequencyDays(selectedTemplate.frequencyDays || 30);
-    setTempNotificationsEnabled(selectedTemplate.notificationsEnabled ?? true);
-    setTempNotificationMethod(selectedTemplate.notificationMethod || 'email');
-    setTempNotificationDaysAhead(selectedTemplate.notificationDaysAhead || 7);
-    setTempNextOccurrence(selectedTemplate.nextOccurrence ? new Date(selectedTemplate.nextOccurrence) : undefined);
+    setTempFrequencyType(selectedTemplate.frequency_type || 'none');
+    setTempFrequencyDays(selectedTemplate.frequency_days || 30);
+    setTempNotificationsEnabled(selectedTemplate.notifications_enabled ?? true);
+    setTempNotificationMethod(selectedTemplate.notification_method || 'email');
+    setTempNotificationDaysAhead(selectedTemplate.notification_days_ahead || 7);
+    setTempNextOccurrence(selectedTemplate.next_occurrence ? new Date(selectedTemplate.next_occurrence) : undefined);
     setEditingFrequency(true);
   };
 
@@ -558,25 +464,18 @@ export const ImprovedInspectionTemplateManager = () => {
     // If frequency is per_visit, disable notifications
     const shouldDisableNotifications = tempFrequencyType === 'per_visit';
 
-    setTemplates(prev => prev.map(template =>
-      template.id === selectedTemplateId
-        ? {
-            ...template,
-            frequencyType: tempFrequencyType !== 'none' ? tempFrequencyType : undefined,
-            frequencyDays: tempFrequencyType === 'custom' ? tempFrequencyDays : undefined,
-            notificationsEnabled: tempFrequencyType !== 'none' && !shouldDisableNotifications ? tempNotificationsEnabled : false,
-            notificationMethod: tempFrequencyType !== 'none' && !shouldDisableNotifications && tempNotificationsEnabled ? tempNotificationMethod : undefined,
-            notificationDaysAhead: tempFrequencyType !== 'none' && !shouldDisableNotifications && tempNotificationsEnabled ? tempNotificationDaysAhead : undefined,
-            nextOccurrence: tempFrequencyType !== 'none' && !shouldDisableNotifications ? nextOccurrenceString : undefined,
-          }
-        : template
-    ));
-
-    setEditingFrequency(false);
-    
-    toast({
-      title: "Settings saved",
-      description: "Frequency and notification settings have been updated.",
+    updateTemplate.mutate({
+      id: selectedTemplateId,
+      frequency_type: tempFrequencyType !== 'none' ? tempFrequencyType : undefined,
+      frequency_days: tempFrequencyType === 'custom' ? tempFrequencyDays : undefined,
+      notifications_enabled: tempFrequencyType !== 'none' && !shouldDisableNotifications ? tempNotificationsEnabled : false,
+      notification_method: tempFrequencyType !== 'none' && !shouldDisableNotifications && tempNotificationsEnabled ? tempNotificationMethod : undefined,
+      notification_days_ahead: tempFrequencyType !== 'none' && !shouldDisableNotifications && tempNotificationsEnabled ? tempNotificationDaysAhead : undefined,
+      next_occurrence: tempFrequencyType !== 'none' && !shouldDisableNotifications ? nextOccurrenceString : undefined,
+    }, {
+      onSuccess: () => {
+        setEditingFrequency(false);
+      }
     });
   };
 
@@ -601,7 +500,7 @@ export const ImprovedInspectionTemplateManager = () => {
     const template = templates.find(t => t.id === templateToDelete);
     
     // Only block deletion of unassigned predefined templates (the "masters")
-    const isUnassignedMaster = template?.isPredefined && (!template?.propertyIds || template.propertyIds.length === 0);
+    const isUnassignedMaster = template?.is_predefined && !template?.property_id;
     
     if (isUnassignedMaster) {
       toast({
@@ -614,23 +513,19 @@ export const ImprovedInspectionTemplateManager = () => {
       return;
     }
 
-    setTemplates(prev => prev.filter(t => t.id !== templateToDelete));
-    
-    // Select first template if current one was deleted
-    if (selectedTemplateId === templateToDelete) {
-      const remainingTemplates = templates.filter(t => t.id !== templateToDelete);
-      if (remainingTemplates.length > 0) {
-        setSelectedTemplateId(remainingTemplates[0].id);
+    deleteTemplate.mutate(templateToDelete, {
+      onSuccess: () => {
+        // Select first template if current one was deleted
+        if (selectedTemplateId === templateToDelete) {
+          const remainingTemplates = templates.filter(t => t.id !== templateToDelete);
+          if (remainingTemplates.length > 0) {
+            setSelectedTemplateId(remainingTemplates[0].id);
+          }
+        }
+        setDeleteConfirmOpen(false);
+        setTemplateToDelete(null);
       }
-    }
-    
-    toast({
-      title: "Template deleted",
-      description: "Template has been deleted.",
     });
-    
-    setDeleteConfirmOpen(false);
-    setTemplateToDelete(null);
   };
 
   return (
@@ -741,7 +636,7 @@ export const ImprovedInspectionTemplateManager = () => {
                             {template.items.length} item{template.items.length !== 1 ? 's' : ''}
                           </div>
                         </div>
-                        {template.isPredefined && (
+                        {template.is_predefined && (
                           <Badge variant="outline" className="text-xs">Built-in</Badge>
                         )}
                       </Button>
@@ -778,7 +673,7 @@ export const ImprovedInspectionTemplateManager = () => {
                     ) : (
                       <>
                         <CardTitle className="text-xl">{selectedTemplate.name}</CardTitle>
-                        {!selectedTemplate.isPredefined && (
+                        {!selectedTemplate.is_predefined && (
                           <Button 
                             size="sm" 
                             variant="ghost" 
@@ -799,7 +694,7 @@ export const ImprovedInspectionTemplateManager = () => {
                       <Copy className="h-4 w-4 mr-1" />
                       Copy to Property
                     </Button>
-                    {(!selectedTemplate.isPredefined || (selectedTemplate.propertyIds && selectedTemplate.propertyIds.length > 0)) && (
+                    {(!selectedTemplate.is_predefined || selectedTemplate.property_id) && (
                       <Button 
                         size="sm" 
                         variant="outline" 
@@ -886,39 +781,39 @@ export const ImprovedInspectionTemplateManager = () => {
                       <div className="flex items-center gap-2">
                         <span className="font-medium">Frequency:</span>
                         <span className="text-muted-foreground">
-                          {selectedTemplate.frequencyType 
-                            ? selectedTemplate.frequencyType === 'per_visit' 
+                          {selectedTemplate.frequency_type 
+                            ? selectedTemplate.frequency_type === 'per_visit' 
                               ? 'Per Visit'
-                              : selectedTemplate.frequencyType === 'custom'
-                              ? `Every ${selectedTemplate.frequencyDays} days`
-                              : selectedTemplate.frequencyType.charAt(0).toUpperCase() + selectedTemplate.frequencyType.slice(1)
+                              : selectedTemplate.frequency_type === 'custom'
+                              ? `Every ${selectedTemplate.frequency_days} days`
+                              : selectedTemplate.frequency_type.charAt(0).toUpperCase() + selectedTemplate.frequency_type.slice(1)
                             : 'Not set'}
                         </span>
                       </div>
-                      {selectedTemplate.frequencyType && selectedTemplate.frequencyType !== 'none' && (
+                      {selectedTemplate.frequency_type && selectedTemplate.frequency_type !== 'none' && (
                         <>
                           <div className="flex items-center gap-2">
                             <span className="font-medium">Next Occurrence:</span>
                             <span className="text-muted-foreground">
-                              {selectedTemplate.nextOccurrence 
-                                ? format(new Date(selectedTemplate.nextOccurrence), 'PPP')
+                              {selectedTemplate.next_occurrence 
+                                ? format(new Date(selectedTemplate.next_occurrence), 'PPP')
                                 : 'Not set'}
                             </span>
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="font-medium">Notifications:</span>
                             <span className="text-muted-foreground">
-                              {selectedTemplate.notificationsEnabled ? 'Enabled' : 'Disabled'}
+                              {selectedTemplate.notifications_enabled ? 'Enabled' : 'Disabled'}
                             </span>
                           </div>
-                          {selectedTemplate.notificationsEnabled && (
+                          {selectedTemplate.notifications_enabled && (
                             <>
                               <div className="flex items-center gap-2">
                                 <span className="font-medium">Method:</span>
                                 <span className="text-muted-foreground">
-                                  {selectedTemplate.notificationMethod === 'both' 
+                                  {selectedTemplate.notification_method === 'both' 
                                     ? 'Both (Email & Phone)'
-                                    : selectedTemplate.notificationMethod === 'phone'
+                                    : selectedTemplate.notification_method === 'phone'
                                     ? 'Phone/SMS'
                                     : 'Email'}
                                 </span>
@@ -926,7 +821,7 @@ export const ImprovedInspectionTemplateManager = () => {
                               <div className="flex items-center gap-2">
                                 <span className="font-medium">Notify Days Ahead:</span>
                                 <span className="text-muted-foreground">
-                                  {selectedTemplate.notificationDaysAhead || 7} days
+                                  {selectedTemplate.notification_days_ahead || 7} days
                                 </span>
                               </div>
                             </>
@@ -1083,7 +978,7 @@ export const ImprovedInspectionTemplateManager = () => {
           <div className="space-y-4">
             <div className="space-y-2 max-h-[400px] overflow-y-auto">
               {properties.map(property => {
-                const isAlreadyAssigned = templateToAssign?.propertyIds?.includes(property.id);
+                const isAlreadyAssigned = templateToAssign?.property_id === property.id;
                 const isSelected = selectedPropertyIdsForAssignment.includes(property.id);
                 
                 return (

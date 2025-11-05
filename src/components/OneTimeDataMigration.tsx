@@ -11,23 +11,52 @@ export const OneTimeDataMigration = () => {
 
   useEffect(() => {
     const updateSampleData = async () => {
-      const migrationDone = localStorage.getItem('sample-data-migration-complete');
+      const migrationDone = localStorage.getItem('sample-data-migration-complete-v2');
       if (migrationDone) return;
 
       setIsUpdating(true);
-      setProgress(20);
+      setProgress(10);
 
       try {
         const elkMountainEscapeId = '79280fbd-5476-47f5-bcc0-1fada823d922';
 
-        // Update inspection records
+        // Get all templates
+        setProgress(20);
+        const { data: templates } = await supabase
+          .from('inspection_templates')
+          .select('id, name, property_id');
+
+        // Update inspection records - assign property_id and try to link template_id
         setProgress(40);
-        const { error: recordsError } = await supabase
+        const { data: unassignedRecords } = await supabase
           .from('inspection_records')
-          .update({ property_id: elkMountainEscapeId })
+          .select('*')
           .is('property_id', null);
 
-        if (recordsError) throw recordsError;
+        if (unassignedRecords) {
+          for (const record of unassignedRecords) {
+            // Try to match template by name or items similarity
+            let matchedTemplateId = record.template_id;
+            
+            if (!matchedTemplateId && templates) {
+              // Simple matching: if we find a template with matching name, use it
+              const elkTemplate = templates.find(t => 
+                t.property_id === elkMountainEscapeId || !t.property_id
+              );
+              if (elkTemplate) {
+                matchedTemplateId = elkTemplate.id;
+              }
+            }
+
+            await supabase
+              .from('inspection_records')
+              .update({ 
+                property_id: elkMountainEscapeId,
+                template_id: matchedTemplateId
+              })
+              .eq('id', record.id);
+          }
+        }
 
         // Update inventory items
         setProgress(60);
@@ -47,12 +76,29 @@ export const OneTimeDataMigration = () => {
 
         if (damageError) throw damageError;
 
+        // Ensure all templates are assigned to the property or marked as unassigned
+        setProgress(90);
+        const { data: unassignedTemplates } = await supabase
+          .from('inspection_templates')
+          .select('*')
+          .is('property_id', null)
+          .eq('is_predefined', false);
+
+        if (unassignedTemplates && unassignedTemplates.length > 0) {
+          for (const template of unassignedTemplates) {
+            await supabase
+              .from('inspection_templates')
+              .update({ property_id: elkMountainEscapeId })
+              .eq('id', template.id);
+          }
+        }
+
         setProgress(100);
-        localStorage.setItem('sample-data-migration-complete', 'true');
+        localStorage.setItem('sample-data-migration-complete-v2', 'true');
         
         toast({
           title: 'Data Updated',
-          description: 'All sample data has been assigned to Elk Mountain Escape.',
+          description: 'All sample data has been assigned to Elk Mountain Escape with template linking.',
         });
       } catch (error: any) {
         console.error('Migration error:', error);
