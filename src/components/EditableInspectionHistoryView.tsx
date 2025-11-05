@@ -330,8 +330,8 @@ export const EditableInspectionHistoryView = () => {
       ) : (
         <div className="space-y-6">
           {!selectedProperty ? (
-            // All Properties mode: Property -> Year -> Template
-            (Object.entries(groupedRecords) as [string, any][]).map(([propertyId, propertyGroup]): JSX.Element => (
+            <>
+              {(Object.entries(groupedRecords) as [string, any][]).map(([propertyId, propertyGroup]) => (
               <Card key={propertyId}>
                 <CardHeader 
                   className="cursor-pointer hover:bg-accent/50 transition-colors bg-muted"
@@ -345,8 +345,9 @@ export const EditableInspectionHistoryView = () => {
                 
                 {expandedGroups[`property-${propertyId}`] && (
                   <CardContent className="space-y-4 pt-6">
-                    {Object.entries(propertyGroup.years).sort((a, b) => parseInt(b[0]) - parseInt(a[0])).map(([year, templateGroups]: [string, any]) => (
-                      <Card key={`${propertyId}-${year}`} className="border-2">
+                    {(Object.entries(propertyGroup.years) as Array<[string, any]>).sort((a, b) => parseInt(b[0]) - parseInt(a[0])).map(([year, templateGroups]): JSX.Element => {
+                      return (
+                        <Card key={`${propertyId}-${year}`} className="border-2">
                         <CardHeader 
                           className="cursor-pointer hover:bg-accent/30 transition-colors"
                           onClick={() => toggleGroup(`${propertyId}-${year}`)}
@@ -355,7 +356,7 @@ export const EditableInspectionHistoryView = () => {
                             {expandedGroups[`${propertyId}-${year}`] ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
                             <CardTitle className="text-lg">{year}</CardTitle>
                             <Badge variant="secondary">
-                              {Object.values(templateGroups).reduce((sum: number, g: any) => sum + g.records.length, 0)} records
+                              {(Object.values(templateGroups) as any[]).reduce((sum: number, g: any) => sum + g.records.length, 0)} records
                             </Badge>
                           </div>
                         </CardHeader>
@@ -487,14 +488,16 @@ export const EditableInspectionHistoryView = () => {
                           </CardContent>
                         )}
                       </Card>
-                    ))}
+                      );
+                    })}
                   </CardContent>
                 )}
               </Card>
-            ))
+              ))}
+            </>
           ) : (
-            // Single Property mode: Year -> Template
-            (Object.entries(groupedRecords) as [string, any][]).sort((a, b) => parseInt(b[0]) - parseInt(a[0])).map(([year, templateGroups]): JSX.Element => (
+            <>
+              {(Object.entries(groupedRecords) as [string, any][]).sort((a, b) => parseInt(b[0]) - parseInt(a[0])).map(([year, templateGroups]) => (
               <Card key={year}>
                 <CardHeader 
                   className="cursor-pointer hover:bg-accent/50 transition-colors bg-muted"
@@ -504,15 +507,16 @@ export const EditableInspectionHistoryView = () => {
                     {expandedGroups[year] ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
                     <CardTitle>{year}</CardTitle>
                     <Badge variant="secondary">
-                      {Object.values(templateGroups).reduce((sum: number, g: any) => sum + g.records.length, 0)} records
+                      {(Object.values(templateGroups) as any[]).reduce((sum: number, g: any) => sum + g.records.length, 0)} records
                     </Badge>
                   </div>
                 </CardHeader>
                 
                 {expandedGroups[year] && (
                   <CardContent className="space-y-4 pt-6">
-                    {Object.entries(templateGroups).map(([templateKey, group]: [string, any]) => (
-                      <Card key={templateKey} className="border-2">
+                    {(Object.entries(templateGroups) as Array<[string, any]>).map(([templateKey, group]): JSX.Element => {
+                      return (
+                        <Card key={templateKey} className="border-2">
                         <CardHeader 
                           className="cursor-pointer hover:bg-accent/30 transition-colors"
                           onClick={() => toggleGroup(`${year}-${templateKey}`)}
@@ -632,11 +636,13 @@ export const EditableInspectionHistoryView = () => {
                           </CardContent>
                         )}
                       </Card>
-                    ))}
+                      );
+                    })}
                   </CardContent>
                 )}
               </Card>
-            ))
+              ))}
+            </>
           )}
         </div>
       )}
