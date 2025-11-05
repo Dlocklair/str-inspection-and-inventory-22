@@ -13,7 +13,8 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { usePropertyContext } from '@/contexts/PropertyContext';
-import { PropertySelector } from './PropertySelector';
+import { useInspectionTemplates } from '@/hooks/useInspectionTemplates';
+import { useCreateInspectionRecord } from '@/hooks/useInspectionRecords';
 
 interface ChecklistItem {
   id: string;
@@ -59,35 +60,24 @@ interface NewInspectionFormProps {
 
 export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspectionFormProps) => {
   const { toast } = useToast();
-  const { selectedProperty, propertyMode } = usePropertyContext();
+  const { selectedProperty, propertyMode, userProperties } = usePropertyContext();
   
-  const [templates, setTemplates] = useState<InspectionTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [currentInspection, setCurrentInspection] = useState<InspectionItem[]>([]);
   const [nextDueDate, setNextDueDate] = useState<Date>();
 
-  // Load templates when property context changes
-  useEffect(() => {
-    if (selectedProperty && propertyMode === 'property') {
-      loadTemplatesForProperty(selectedProperty.id);
-    } else {
-      setTemplates([]);
-      setSelectedTemplateId('');
-    }
-  }, [selectedProperty, propertyMode]);
+  // Fetch templates from database for the selected property
+  const { data: templates = [], isLoading: templatesLoading } = useInspectionTemplates(
+    selectedProperty?.id
+  );
+  const createRecord = useCreateInspectionRecord();
 
-  const loadTemplatesForProperty = (propertyId: string) => {
-    const savedTemplates = localStorage.getItem('inspection-templates');
-    if (savedTemplates) {
-      const allTemplates = JSON.parse(savedTemplates);
-      // Only show templates assigned to THIS specific property (not unassigned)
-      const propertyTemplates = allTemplates.filter((t: InspectionTemplate) => 
-        t.propertyIds && t.propertyIds.includes(propertyId)
-      );
-      setTemplates(propertyTemplates);
-    }
-  };
+  // Reset form when property changes
+  useEffect(() => {
+    setSelectedTemplateId('');
+    setCurrentInspection([]);
+  }, [selectedProperty]);
 
   // Calculate next occurrence based on frequency
   const calculateNextOccurrence = (
@@ -131,11 +121,11 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
   // Auto-calculate next occurrence when date and template with frequency are selected
   useEffect(() => {
     const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
-    if (selectedDate && selectedTemplate?.frequencyType) {
+    if (selectedDate && selectedTemplate?.frequency_type) {
       const calculatedNext = calculateNextOccurrence(
         selectedDate,
-        selectedTemplate.frequencyType,
-        selectedTemplate.frequencyDays
+        selectedTemplate.frequency_type,
+        selectedTemplate.frequency_days
       );
       if (calculatedNext) {
         setNextDueDate(calculatedNext);
@@ -205,6 +195,15 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
       return;
     }
 
+    if (!selectedProperty?.id) {
+      toast({
+        title: "Property required",
+        description: "Please select a property.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (currentInspection.length === 0) {
       toast({
         title: "No items",
@@ -231,49 +230,35 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
       nextDueDateString = `${dueYear}-${dueMonth}-${dueDay}`;
     }
     
-    // Get current user's profile ID
+    // Get current user's profile
     const { data: { user } } = await supabase.auth.getUser();
-    const profileId = user?.id;
+    if (!user) return;
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('user_id', user.id)
+      .single();
+
+    if (!profile) return;
     
-    const newRecord: InspectionRecord = {
-      id: Date.now().toString(),
-      templateId: selectedTemplateId,
-      templateName: template?.name || '',
-      propertyId: selectedProperty?.id,
-      propertyName: selectedProperty?.name,
-      date: dateString,
+    // Save to database
+    createRecord.mutate({
+      template_id: selectedTemplateId,
+      property_id: selectedProperty.id,
+      inspection_date: dateString,
+      next_due_date: nextDueDateString,
       items: currentInspection,
-      createdAt: new Date().toISOString(),
-      performedBy: profileId,
-      ...(nextDueDateString && { nextDueDate: nextDueDateString })
-    };
-
-    // Save to localStorage
-    const savedRecords = localStorage.getItem('inspection-records');
-    const records = savedRecords ? JSON.parse(savedRecords) : [];
-    records.push(newRecord);
-    localStorage.setItem('inspection-records', JSON.stringify(records));
-
-    // Update the template's next occurrence date if we have one
-    if (nextDueDateString && template) {
-      const updatedTemplates = templates.map(t => 
-        t.id === selectedTemplateId 
-          ? { ...t, nextOccurrence: nextDueDateString }
-          : t
-      );
-      setTemplates(updatedTemplates);
-      localStorage.setItem('inspection-templates', JSON.stringify(updatedTemplates));
-    }
-
-    // Reset form
-    setCurrentInspection([]);
-    setSelectedTemplateId('');
-    setSelectedDate(undefined);
-    setNextDueDate(undefined);
-
-    toast({
-      title: "Inspection saved successfully!",
-      description: `${template?.name} inspection for ${format(selectedDate, 'PPP')} has been saved.${nextDueDate ? ` Next inspection due: ${format(nextDueDate, 'PPP')}` : ''}`,
+      performed_by: profile.id,
+      entered_by: profile.id
+    }, {
+      onSuccess: () => {
+        // Reset form
+        setCurrentInspection([]);
+        setSelectedTemplateId('');
+        setSelectedDate(undefined);
+        setNextDueDate(undefined);
+      }
     });
   };
 
@@ -282,10 +267,62 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
 
   return (
     <div className="space-y-6">
-      {/* Property Selector with Highlight */}
-      <div className="p-4 bg-primary/5 border-2 border-primary/20 rounded-lg">
-        <PropertySelector />
-      </div>
+      {/* Simple Property Selector - Only show actual properties */}
+      {userProperties.length > 1 && (
+        <Card className="p-4">
+          <div className="flex items-center gap-3">
+            <Building2 className="h-5 w-5 text-primary" />
+            <div className="flex-1">
+              <label className="text-sm font-medium mb-2 block">Select Property</label>
+              <Select
+                value={selectedProperty?.id || ''}
+                onValueChange={(value) => {
+                  const property = userProperties.find(p => p.id === value);
+                  if (property) {
+                    const { setSelectedProperty } = usePropertyContext();
+                    setSelectedProperty(property);
+                  }
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a property">
+                    {selectedProperty && (
+                      <span className="font-medium">
+                        {selectedProperty.name} - {selectedProperty.address}
+                      </span>
+                    )}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {userProperties.map((property) => (
+                    <SelectItem key={property.id} value={property.id}>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{property.name}</span>
+                        <span className="text-sm text-muted-foreground">
+                          {property.address}, {property.city}, {property.state} {property.zip}
+                        </span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </Card>
+      )}
+      {userProperties.length === 1 && selectedProperty && (
+        <Card className="p-4 bg-primary/5 border-primary/20">
+          <div className="flex items-center gap-3">
+            <Building2 className="h-5 w-5 text-primary" />
+            <div className="flex-1">
+              <p className="font-semibold text-lg">{selectedProperty.name}</p>
+              <p className="text-sm text-muted-foreground">
+                {selectedProperty.address}, {selectedProperty.city}, {selectedProperty.state} {selectedProperty.zip}
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
       
       <Card>
         <CardHeader>
@@ -371,15 +408,15 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
                 <label className="text-sm font-medium">
                   Next Occurrence Date
                 </label>
-                {selectedTemplate?.frequencyType && selectedTemplate.frequencyType !== 'none' && selectedTemplate.frequencyType !== 'per_visit' && (
+                {selectedTemplate?.frequency_type && selectedTemplate.frequency_type !== 'none' && selectedTemplate.frequency_type !== 'per_visit' && (
                   <Badge variant="secondary" className="text-xs">
-                    {selectedTemplate.frequencyType === 'monthly' ? 'Monthly' :
-                     selectedTemplate.frequencyType === 'quarterly' ? 'Quarterly' :
-                     selectedTemplate.frequencyType === 'semi-annual' ? 'Semi-Annual' :
-                     selectedTemplate.frequencyType === 'annually' ? 'Annually' :
-                     selectedTemplate.frequencyType === 'weekly' ? 'Weekly' :
-                     selectedTemplate.frequencyType === 'custom' ? `Every ${selectedTemplate.frequencyDays} days` :
-                     selectedTemplate.frequencyType}
+                    {selectedTemplate.frequency_type === 'monthly' ? 'Monthly' :
+                     selectedTemplate.frequency_type === 'quarterly' ? 'Quarterly' :
+                     selectedTemplate.frequency_type === 'semi-annual' ? 'Semi-Annual' :
+                     selectedTemplate.frequency_type === 'annually' ? 'Annually' :
+                     selectedTemplate.frequency_type === 'weekly' ? 'Weekly' :
+                     selectedTemplate.frequency_type === 'custom' ? `Every ${selectedTemplate.frequency_days} days` :
+                     selectedTemplate.frequency_type}
                   </Badge>
                 )}
               </div>
@@ -408,7 +445,7 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
                   />
                 </PopoverContent>
               </Popover>
-              {selectedTemplate?.frequencyType && selectedTemplate.frequencyType !== 'none' && selectedTemplate.frequencyType !== 'per_visit' ? (
+              {selectedTemplate?.frequency_type && selectedTemplate.frequency_type !== 'none' && selectedTemplate.frequency_type !== 'per_visit' ? (
                 <p className="text-xs text-muted-foreground">
                   Auto-calculated based on frequency. You can override if needed.
                 </p>

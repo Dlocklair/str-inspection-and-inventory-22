@@ -19,7 +19,8 @@ import { PropertyManager } from "./components/PropertyManager";
 import AcceptInvitation from "./pages/AcceptInvitation";
 import NotFound from "./pages/NotFound";
 import { useMigrateInventory } from "./hooks/useMigrateInventory";
-import { DataMigrationWizard } from "./components/DataMigrationWizard";
+import { DataMigrationWizard } from '@/components/DataMigrationWizard';
+import { OneTimeDataMigration } from '@/components/OneTimeDataMigration';
 
 const queryClient = new QueryClient();
 
@@ -47,6 +48,7 @@ const LayoutWrapper = () => {
     <SidebarProvider>
       <FirstTimeSetup />
       <DataMigrationWizard />
+      <OneTimeDataMigration />
       <div className="min-h-screen flex w-full">
         {showMenu && <AppSidebar />}
         <main className="flex-1 relative">
