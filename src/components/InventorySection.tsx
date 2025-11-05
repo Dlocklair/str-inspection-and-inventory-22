@@ -505,7 +505,7 @@ export const InventorySection = () => {
                   <p className="text-sm text-muted-foreground italic">All inventory levels are sufficient</p>
                 ) : (
                   lowStockItems.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between p-2.5 border rounded">
+                    <div key={item.id} className="flex items-center justify-between p-1.5 border rounded">
                       <div>
                         <div className="font-medium">{item.name}</div>
                         <div className="text-sm text-muted-foreground">
