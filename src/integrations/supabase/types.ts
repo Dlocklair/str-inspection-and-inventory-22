@@ -184,6 +184,74 @@ export type Database = {
           },
         ]
       }
+      inspection_records: {
+        Row: {
+          created_at: string
+          entered_by: string
+          id: string
+          inspection_date: string
+          items: Json
+          next_due_date: string | null
+          performed_by: string | null
+          property_id: string | null
+          template_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          entered_by: string
+          id?: string
+          inspection_date?: string
+          items?: Json
+          next_due_date?: string | null
+          performed_by?: string | null
+          property_id?: string | null
+          template_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          entered_by?: string
+          id?: string
+          inspection_date?: string
+          items?: Json
+          next_due_date?: string | null
+          performed_by?: string | null
+          property_id?: string | null
+          template_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inspection_records_entered_by_fkey"
+            columns: ["entered_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inspection_records_performed_by_fkey"
+            columns: ["performed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inspection_records_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inspection_records_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "inspection_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inspection_results: {
         Row: {
           created_at: string
@@ -261,6 +329,72 @@ export type Database = {
             columns: ["template_id"]
             isOneToOne: false
             referencedRelation: "inspection_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inspection_templates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          frequency_days: number | null
+          frequency_type: string | null
+          id: string
+          is_predefined: boolean | null
+          items: Json
+          name: string
+          next_occurrence: string | null
+          notification_days_ahead: number | null
+          notification_method: string | null
+          notifications_enabled: boolean | null
+          property_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          frequency_days?: number | null
+          frequency_type?: string | null
+          id?: string
+          is_predefined?: boolean | null
+          items?: Json
+          name: string
+          next_occurrence?: string | null
+          notification_days_ahead?: number | null
+          notification_method?: string | null
+          notifications_enabled?: boolean | null
+          property_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          frequency_days?: number | null
+          frequency_type?: string | null
+          id?: string
+          is_predefined?: boolean | null
+          items?: Json
+          name?: string
+          next_occurrence?: string | null
+          notification_days_ahead?: number | null
+          notification_method?: string | null
+          notifications_enabled?: boolean | null
+          property_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inspection_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inspection_templates_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
             referencedColumns: ["id"]
           },
         ]

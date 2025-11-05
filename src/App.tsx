@@ -19,6 +19,7 @@ import { PropertyManager } from "./components/PropertyManager";
 import AcceptInvitation from "./pages/AcceptInvitation";
 import NotFound from "./pages/NotFound";
 import { useMigrateInventory } from "./hooks/useMigrateInventory";
+import { DataMigrationWizard } from "./components/DataMigrationWizard";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +46,7 @@ const LayoutWrapper = () => {
   return (
     <SidebarProvider>
       <FirstTimeSetup />
+      <DataMigrationWizard />
       <div className="min-h-screen flex w-full">
         {showMenu && <AppSidebar />}
         <main className="flex-1 relative">

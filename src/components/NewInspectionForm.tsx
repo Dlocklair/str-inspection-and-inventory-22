@@ -363,17 +363,6 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
                   />
                 </PopoverContent>
               </Popover>
-              <Input
-                type="date"
-                value={selectedDate ? format(selectedDate, "yyyy-MM-dd") : ""}
-                onChange={(e) => {
-                  if (e.target.value) {
-                    handleDateChange(new Date(e.target.value));
-                  }
-                }}
-                disabled={!selectedTemplateId}
-                className="text-sm"
-              />
             </div>
 
             {/* Next Due Date (Optional) */}
@@ -419,21 +408,6 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
                   />
                 </PopoverContent>
               </Popover>
-              <Input
-                type="date"
-                value={nextDueDate ? format(nextDueDate, "yyyy-MM-dd") : ""}
-                onChange={(e) => {
-                  if (e.target.value) {
-                    const newDate = new Date(e.target.value);
-                    if (newDate >= new Date()) {
-                      setNextDueDate(newDate);
-                    }
-                  }
-                }}
-                disabled={!selectedTemplateId}
-                className="text-sm"
-                min={format(new Date(), "yyyy-MM-dd")}
-              />
               {selectedTemplate?.frequencyType && selectedTemplate.frequencyType !== 'none' && selectedTemplate.frequencyType !== 'per_visit' ? (
                 <p className="text-xs text-muted-foreground">
                   Auto-calculated based on frequency. You can override if needed.
