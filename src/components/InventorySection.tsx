@@ -16,6 +16,8 @@ import { InventoryTable } from './InventoryTable';
 import { useAuth } from '@/hooks/useAuth';
 import { usePropertyContext } from '@/contexts/PropertyContext';
 import { PropertySelector } from './PropertySelector';
+import { InventoryPropertyAssignment } from './InventoryPropertyAssignment';
+import { cn } from '@/lib/utils';
 
 export const InventorySection = () => {
   const { toast } = useToast();
@@ -48,8 +50,10 @@ export const InventorySection = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [expandAll, setExpandAll] = useState(false);
   const [collapseAll, setCollapseAll] = useState(false);
+  const [stockFilter, setStockFilter] = useState<'all' | 'low' | 'out'>('all');
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showPropertyAssignment, setShowPropertyAssignment] = useState(false);
   const [newItem, setNewItem] = useState({
     name: '',
     category_id: '',
@@ -89,13 +93,22 @@ export const InventorySection = () => {
     );
   }
 
-  // Filter items based on search and selected property
+  // Filter items based on search, selected property, and stock filter
   const filteredItems = items.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.category_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.supplier?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesProperty = !selectedProperty || item.property_id === selectedProperty.id;
-    return matchesSearch && matchesProperty;
+    
+    // Apply stock filter
+    let matchesStockFilter = true;
+    if (stockFilter === 'low') {
+      matchesStockFilter = item.current_quantity <= item.restock_threshold && item.current_quantity > 0;
+    } else if (stockFilter === 'out') {
+      matchesStockFilter = item.current_quantity === 0;
+    }
+    
+    return matchesSearch && matchesProperty && matchesStockFilter;
   });
 
   const getStockStatus = (item: InventoryItem) => {
@@ -280,6 +293,34 @@ export const InventorySection = () => {
     }
   };
 
+  const handleAssignToProperties = async (item: InventoryItem, propertyIds: string[]) => {
+    try {
+      // Create a copy for each selected property
+      for (const propertyId of propertyIds) {
+        const { category_id, category_name, ...itemData } = item;
+        await addItem({
+          ...itemData,
+          property_id: propertyId,
+          id: undefined, // Remove ID to create new item
+          created_at: undefined,
+          updated_at: undefined,
+        } as any);
+      }
+      
+      toast({
+        title: 'Success',
+        description: `Created ${propertyIds.length} cop${propertyIds.length === 1 ? 'y' : 'ies'} of "${item.name}"`,
+      });
+    } catch (error: any) {
+      console.error('Error assigning to properties:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to assign item to properties',
+        variant: 'destructive',
+      });
+    }
+  };
+
   // Use filteredItems for property-specific counts
   const lowStockItems = filteredItems.filter(item => item.current_quantity <= item.restock_threshold);
   const outOfStockItems = filteredItems.filter(item => item.current_quantity === 0);
@@ -291,18 +332,30 @@ export const InventorySection = () => {
         <PropertySelector />
       </div>
       
-      {/* Summary Cards */}
+      {/* Summary Cards - Now clickable filters */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
+        <Card 
+          className={cn(
+            "cursor-pointer transition-all hover:shadow-md",
+            stockFilter === 'all' && "ring-2 ring-primary"
+          )}
+          onClick={() => setStockFilter('all')}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Items</CardTitle>
             <Package2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{filteredItems.length}</div>
+            <div className="text-2xl font-bold">{items.filter(item => !selectedProperty || item.property_id === selectedProperty.id).length}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card 
+          className={cn(
+            "cursor-pointer transition-all hover:shadow-md",
+            stockFilter === 'low' && "ring-2 ring-primary"
+          )}
+          onClick={() => setStockFilter('low')}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Low Stock</CardTitle>
             <AlertTriangle className="h-4 w-4 text-yellow-500" />
@@ -311,7 +364,13 @@ export const InventorySection = () => {
             <div className="text-2xl font-bold">{lowStockItems.length}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card 
+          className={cn(
+            "cursor-pointer transition-all hover:shadow-md",
+            stockFilter === 'out' && "ring-2 ring-primary"
+          )}
+          onClick={() => setStockFilter('out')}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Out of Stock</CardTitle>
             <AlertTriangle className="h-4 w-4 text-destructive" />
@@ -459,22 +518,33 @@ export const InventorySection = () => {
 
           {/* Editing Form */}
           {editingItem && (
-            <InventoryEditForm
-              item={{
-                ...editingItem,
-                category: editingItem.category_name || 'Other',
-                currentStock: editingItem.current_quantity,
-                restockLevel: editingItem.restock_threshold,
-                cost: editingItem.unit_price || 0,
-                unit: editingItem.unit || '',
-                notes: editingItem.notes || '',
-                lastUpdated: editingItem.updated_at,
-                restockRequested: editingItem.restock_requested
-              }}
-              onSave={handleEditSave}
-              onCancel={() => setEditingItem(null)}
-              categories={categories.map(c => c.name)}
-            />
+            <>
+              <InventoryEditForm
+                item={{
+                  ...editingItem,
+                  category: editingItem.category_name || 'Other',
+                  currentStock: editingItem.current_quantity,
+                  restockLevel: editingItem.restock_threshold,
+                  cost: editingItem.unit_price || 0,
+                  unit: editingItem.unit || '',
+                  notes: editingItem.notes || '',
+                  lastUpdated: editingItem.updated_at,
+                  restockRequested: editingItem.restock_requested
+                }}
+                onSave={handleEditSave}
+                onCancel={() => setEditingItem(null)}
+                categories={categories.map(c => c.name)}
+                onAssignToProperty={() => setShowPropertyAssignment(true)}
+              />
+              
+              {/* Property Assignment Dialog */}
+              <InventoryPropertyAssignment
+                item={editingItem}
+                open={showPropertyAssignment}
+                onOpenChange={setShowPropertyAssignment}
+                onAssign={handleAssignToProperties}
+              />
+            </>
           )}
 
           {/* Inventory Table */}

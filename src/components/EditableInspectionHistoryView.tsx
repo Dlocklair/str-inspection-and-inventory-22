@@ -78,70 +78,58 @@ export const EditableInspectionHistoryView = () => {
     );
   });
 
-  // Group records: Property -> Year -> Template (when "All Properties")
-  // or Year -> Template (when single property selected)
+  // Group records: Property -> Template -> Sort by date (newest first)
   const groupedRecords = filteredRecords.reduce((groups, record) => {
-    const year = new Date(record.inspection_date).getFullYear().toString();
     const propertyId = record.property_id || 'unassigned-property';
     const propertyName = userProperties.find(p => p.id === record.property_id)?.name || 'Unassigned Property';
     const templateKey = record.template_id || 'no-template';
     const templateName = templates.find(t => t.id === record.template_id)?.name || 'No Template';
     
     if (!selectedProperty) {
-      // All Properties mode: Property -> Year -> Template
+      // All Properties mode: Property -> Template
       if (!groups[propertyId]) {
         groups[propertyId] = { 
           propertyName, 
-          years: {} 
+          templates: {} 
         };
       }
-      if (!groups[propertyId].years[year]) {
-        groups[propertyId].years[year] = {};
-      }
-      if (!groups[propertyId].years[year][templateKey]) {
-        groups[propertyId].years[year][templateKey] = {
+      if (!groups[propertyId].templates[templateKey]) {
+        groups[propertyId].templates[templateKey] = {
           templateId: record.template_id,
           templateName,
           records: []
         };
       }
-      groups[propertyId].years[year][templateKey].records.push(record);
+      groups[propertyId].templates[templateKey].records.push(record);
     } else {
-      // Single Property mode: Year -> Template
-      if (!groups[year]) {
-        groups[year] = {};
-      }
-      if (!groups[year][templateKey]) {
-        groups[year][templateKey] = {
+      // Single Property mode: Template only
+      if (!groups[templateKey]) {
+        groups[templateKey] = {
           templateId: record.template_id,
           templateName,
           records: []
         };
       }
-      groups[year][templateKey].records.push(record);
+      groups[templateKey].records.push(record);
     }
     
     return groups;
   }, {} as any);
 
-  // Sort records within each group
+  // Sort records within each group by date (newest first)
   Object.values(groupedRecords).forEach((outerGroup: any) => {
-    if (outerGroup.years) {
-      // All Properties mode
-      Object.values(outerGroup.years).forEach((yearGroup: any) => {
-        Object.values(yearGroup).forEach((templateGroup: any) => {
-          templateGroup.records.sort((a: InspectionRecord, b: InspectionRecord) => 
-            new Date(b.inspection_date).getTime() - new Date(a.inspection_date).getTime()
-          );
-        });
-      });
-    } else {
-      // Single Property mode
-      Object.values(outerGroup).forEach((templateGroup: any) => {
+    if (outerGroup.templates) {
+      // All Properties mode: Property -> Template
+      Object.values(outerGroup.templates).forEach((templateGroup: any) => {
         templateGroup.records.sort((a: InspectionRecord, b: InspectionRecord) => 
           new Date(b.inspection_date).getTime() - new Date(a.inspection_date).getTime()
         );
       });
+    } else {
+      // Single Property mode: Template only
+      outerGroup.records?.sort((a: InspectionRecord, b: InspectionRecord) => 
+        new Date(b.inspection_date).getTime() - new Date(a.inspection_date).getTime()
+      );
     }
   });
 
@@ -331,6 +319,7 @@ export const EditableInspectionHistoryView = () => {
         <div className="space-y-6">
           {!selectedProperty ? (
             <>
+              {/* All Properties mode: Property -> Template -> Records */}
               {(Object.entries(groupedRecords) as [string, any][]).map(([propertyId, propertyGroup]) => (
               <Card key={propertyId}>
                 <CardHeader 
@@ -345,190 +334,21 @@ export const EditableInspectionHistoryView = () => {
                 
                 {expandedGroups[`property-${propertyId}`] && (
                   <CardContent className="space-y-4 pt-6">
-                    {(Object.entries(propertyGroup.years) as Array<[string, any]>).sort((a, b) => parseInt(b[0]) - parseInt(a[0])).map(([year, templateGroups]): JSX.Element => {
+                    {(Object.entries(propertyGroup.templates) as Array<[string, any]>).map(([templateKey, group]): JSX.Element => {
                       return (
-                        <Card key={`${propertyId}-${year}`} className="border-2">
+                        <Card key={`${propertyId}-${templateKey}`} className="border-2">
                         <CardHeader 
                           className="cursor-pointer hover:bg-accent/30 transition-colors"
-                          onClick={() => toggleGroup(`${propertyId}-${year}`)}
+                          onClick={() => toggleGroup(`${propertyId}-${templateKey}`)}
                         >
                           <div className="flex items-center gap-2">
-                            {expandedGroups[`${propertyId}-${year}`] ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
-                            <CardTitle className="text-lg">{year}</CardTitle>
-                            <Badge variant="secondary">
-                              {(Object.values(templateGroups) as any[]).reduce((sum: number, g: any) => sum + g.records.length, 0)} records
-                            </Badge>
-                          </div>
-                        </CardHeader>
-                        
-                        {expandedGroups[`${propertyId}-${year}`] && (
-                          <CardContent className="space-y-3">
-                            {Object.entries(templateGroups).map(([templateKey, group]: [string, any]) => (
-                              <Card key={`${propertyId}-${year}-${templateKey}`} className="border">
-                                <CardHeader 
-                                  className="cursor-pointer hover:bg-accent/20 transition-colors py-3"
-                                  onClick={() => toggleGroup(`${propertyId}-${year}-${templateKey}`)}
-                                >
-                                  <div className="flex items-center gap-2">
-                                    {expandedGroups[`${propertyId}-${year}-${templateKey}`] ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                                    <CardTitle className="text-base">{group.templateName}</CardTitle>
-                                    <Badge variant="outline" className="text-xs">{group.records.length}</Badge>
-                                  </div>
-                                </CardHeader>
-                                
-                                {expandedGroups[`${propertyId}-${year}-${templateKey}`] && (
-                                  <CardContent className="space-y-2 pb-3">
-                                    {group.records.map((record: InspectionRecord) => (
-                                      <div key={record.id} className="border rounded-lg">
-                                        <div 
-                                          className="p-3 cursor-pointer hover:bg-accent/20 transition-colors"
-                                          onClick={() => toggleRecord(record.id)}
-                                        >
-                                          <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3 flex-1">
-                                              {expandedRecords[record.id] ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                                              <div className="flex-1">
-                                                <div className="flex items-center gap-3 flex-wrap">
-                                                  <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                                                  <span className="font-medium">
-                                                    {format(new Date(record.inspection_date + 'T12:00:00'), 'MMM d, yyyy')}
-                                                  </span>
-                                                  <Badge variant="outline" className="text-xs">
-                                                    {getCompletedCount(record)}/{record.items.length}
-                                                  </Badge>
-                                                  <span className="text-xs text-muted-foreground">
-                                                    {getCompletionPercentage(record)}%
-                                                  </span>
-                                                </div>
-                                              </div>
-                                            </div>
-                                            
-                                            {editingRecordId !== record.id && (
-                                              <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                                                <Button
-                                                  size="sm"
-                                                  variant="ghost"
-                                                  onClick={() => startEditingRecord(record)}
-                                                >
-                                                  <Edit className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                  size="sm"
-                                                  variant="ghost"
-                                                  onClick={() => deleteInspectionRecord(record.id)}
-                                                >
-                                                  <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                              </div>
-                                            )}
-                                          </div>
-                                        </div>
-
-                                        {expandedRecords[record.id] && (
-                                          <div className="border-t p-3 space-y-2 bg-muted/20">
-                                            {editingRecordId === record.id ? (
-                                              <>
-                                                {editedRecord?.items.map((item) => (
-                                                  <div key={item.id} className="flex items-start gap-3 p-2 bg-background rounded border">
-                                                    <Checkbox
-                                                      checked={item.completed}
-                                                      onCheckedChange={(checked) => 
-                                                        updateInspectionItem(item.id, { completed: checked as boolean })
-                                                      }
-                                                      className="mt-1"
-                                                    />
-                                                    <div className="flex-1 min-w-0 space-y-1">
-                                                      <div className="text-sm font-medium">{item.description}</div>
-                                                      <Textarea
-                                                        value={item.notes || ''}
-                                                        onChange={(e) => updateInspectionItem(item.id, { notes: e.target.value })}
-                                                        placeholder="Notes..."
-                                                        className="text-sm min-h-[50px] max-h-[100px] overflow-y-auto"
-                                                      />
-                                                    </div>
-                                                  </div>
-                                                ))}
-                                                <div className="flex gap-2 pt-2">
-                                                  <Button size="sm" onClick={saveEditedRecord}>
-                                                    <Save className="h-4 w-4 mr-1" />
-                                                    Save
-                                                  </Button>
-                                                  <Button size="sm" variant="outline" onClick={() => setEditingRecordId(null)}>
-                                                    <X className="h-4 w-4 mr-1" />
-                                                    Cancel
-                                                  </Button>
-                                                </div>
-                                              </>
-                                            ) : (
-                                              <>
-                                                {record.items.map((item) => (
-                                                  <div key={item.id} className="flex items-start gap-2 p-2 bg-background rounded text-sm">
-                                                    <Checkbox checked={item.completed} disabled className="mt-0.5" />
-                                                    <div className="flex-1 min-w-0 flex items-start gap-2">
-                                                      <span className="font-medium">{item.description}</span>
-                                                      {item.notes && (
-                                                        <span className="text-muted-foreground">- <span className="inline-block max-h-[60px] overflow-y-auto align-top">{item.notes}</span></span>
-                                                      )}
-                                                    </div>
-                                                  </div>
-                                                ))}
-                                                <div className="text-xs text-muted-foreground pt-1">
-                                                  Created: {format(new Date(record.created_at || ''), 'MMM d, yyyy h:mm a')}
-                                                </div>
-                                              </>
-                                            )}
-                                          </div>
-                                        )}
-                                      </div>
-                                    ))}
-                                  </CardContent>
-                                )}
-                              </Card>
-                            ))}
-                          </CardContent>
-                        )}
-                      </Card>
-                      );
-                    })}
-                  </CardContent>
-                )}
-              </Card>
-              ))}
-            </>
-          ) : (
-            <>
-              {(Object.entries(groupedRecords) as [string, any][]).sort((a, b) => parseInt(b[0]) - parseInt(a[0])).map(([year, templateGroups]) => (
-              <Card key={year}>
-                <CardHeader 
-                  className="cursor-pointer hover:bg-accent/50 transition-colors bg-muted"
-                  onClick={() => toggleGroup(year)}
-                >
-                  <div className="flex items-center gap-2">
-                    {expandedGroups[year] ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
-                    <CardTitle>{year}</CardTitle>
-                    <Badge variant="secondary">
-                      {(Object.values(templateGroups) as any[]).reduce((sum: number, g: any) => sum + g.records.length, 0)} records
-                    </Badge>
-                  </div>
-                </CardHeader>
-                
-                {expandedGroups[year] && (
-                  <CardContent className="space-y-4 pt-6">
-                    {(Object.entries(templateGroups) as Array<[string, any]>).map(([templateKey, group]): JSX.Element => {
-                      return (
-                        <Card key={templateKey} className="border-2">
-                        <CardHeader 
-                          className="cursor-pointer hover:bg-accent/30 transition-colors"
-                          onClick={() => toggleGroup(`${year}-${templateKey}`)}
-                        >
-                          <div className="flex items-center gap-2">
-                            {expandedGroups[`${year}-${templateKey}`] ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+                            {expandedGroups[`${propertyId}-${templateKey}`] ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
                             <CardTitle className="text-lg">{group.templateName}</CardTitle>
                             <Badge variant="outline">{group.records.length}</Badge>
                           </div>
                         </CardHeader>
                         
-                        {expandedGroups[`${year}-${templateKey}`] && (
+                        {expandedGroups[`${propertyId}-${templateKey}`] && (
                           <CardContent className="space-y-3">
                             {group.records.map((record: InspectionRecord) => (
                               <div key={record.id} className="border rounded-lg">
@@ -638,6 +458,132 @@ export const EditableInspectionHistoryView = () => {
                       </Card>
                       );
                     })}
+                  </CardContent>
+                )}
+              </Card>
+              ))}
+            </>
+          ) : (
+            <>
+              {/* Single Property mode: Template -> Records */}
+              {(Object.entries(groupedRecords) as [string, any][]).map(([templateKey, group]) => (
+              <Card key={templateKey}>
+                <CardHeader 
+                  className="cursor-pointer hover:bg-accent/50 transition-colors bg-muted"
+                  onClick={() => toggleGroup(templateKey)}
+                >
+                  <div className="flex items-center gap-2">
+                    {expandedGroups[templateKey] ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+                    <CardTitle>{group.templateName}</CardTitle>
+                    <Badge variant="secondary">{group.records.length} records</Badge>
+                  </div>
+                </CardHeader>
+                
+                {expandedGroups[templateKey] && (
+                  <CardContent className="space-y-3 pt-6">
+                    {group.records.map((record: InspectionRecord) => (
+                      <div key={record.id} className="border rounded-lg">
+                        <div 
+                          className="p-3 cursor-pointer hover:bg-accent/20 transition-colors"
+                          onClick={() => toggleRecord(record.id)}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3 flex-1">
+                              {expandedRecords[record.id] ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                              <div className="flex-1">
+                                <div className="flex items-center gap-3 flex-wrap">
+                                  <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                                  <span className="font-medium">
+                                    {format(new Date(record.inspection_date + 'T12:00:00'), 'MMM d, yyyy')}
+                                  </span>
+                                  <Badge variant="outline" className="text-xs">
+                                    {getCompletedCount(record)}/{record.items.length}
+                                  </Badge>
+                                  <span className="text-xs text-muted-foreground">
+                                    {getCompletionPercentage(record)}%
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {editingRecordId !== record.id && (
+                              <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => startEditingRecord(record)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => deleteInspectionRecord(record.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {expandedRecords[record.id] && (
+                          <div className="border-t p-3 space-y-2 bg-muted/20">
+                            {editingRecordId === record.id ? (
+                              <>
+                                {editedRecord?.items.map((item) => (
+                                  <div key={item.id} className="flex items-start gap-3 p-2 bg-background rounded border">
+                                    <Checkbox
+                                      checked={item.completed}
+                                      onCheckedChange={(checked) => 
+                                        updateInspectionItem(item.id, { completed: checked as boolean })
+                                      }
+                                      className="mt-1"
+                                    />
+                                    <div className="flex-1 min-w-0 space-y-1">
+                                      <div className="text-sm font-medium">{item.description}</div>
+                                      <Textarea
+                                        value={item.notes || ''}
+                                        onChange={(e) => updateInspectionItem(item.id, { notes: e.target.value })}
+                                        placeholder="Notes..."
+                                        className="text-sm min-h-[50px] max-h-[100px] overflow-y-auto"
+                                      />
+                                    </div>
+                                  </div>
+                                ))}
+                                <div className="flex gap-2 pt-2">
+                                  <Button size="sm" onClick={saveEditedRecord}>
+                                    <Save className="h-4 w-4 mr-1" />
+                                    Save
+                                  </Button>
+                                  <Button size="sm" variant="outline" onClick={() => setEditingRecordId(null)}>
+                                    <X className="h-4 w-4 mr-1" />
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                {record.items.map((item) => (
+                                  <div key={item.id} className="flex items-start gap-2 p-2 bg-background rounded text-sm">
+                                    <Checkbox checked={item.completed} disabled className="mt-0.5" />
+                                    <div className="flex-1 min-w-0 flex items-start gap-2">
+                                      <span className="font-medium">{item.description}</span>
+                                      {item.notes && (
+                                        <span className="text-muted-foreground">- <span className="inline-block max-h-[60px] overflow-y-auto align-top">{item.notes}</span></span>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                                <div className="text-xs text-muted-foreground pt-1">
+                                  Created: {format(new Date(record.created_at || ''), 'MMM d, yyyy h:mm a')}
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </CardContent>
                 )}
               </Card>

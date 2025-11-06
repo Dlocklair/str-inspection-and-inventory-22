@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Save, X, Plus } from 'lucide-react';
+import { Save, X, Plus, Copy } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { extractAsin } from '@/lib/amazon';
@@ -33,12 +33,14 @@ interface InventoryEditFormProps {
   onSave: (updatedItem: InventoryItem) => void;
   onCancel: () => void;
   categories: string[];
+  onAssignToProperty?: () => void;
 }
 export const InventoryEditForm = ({
   item,
   onSave,
   onCancel,
-  categories
+  categories,
+  onAssignToProperty
 }: InventoryEditFormProps) => {
   const {
     toast
@@ -383,7 +385,7 @@ export const InventoryEditForm = ({
         }))} rows={2} className="mt-2" />
         </div>
         
-        <div className="flex gap-2 mt-6">
+        <div className="flex gap-2 mt-6 flex-wrap">
           <Button onClick={handleSave} className="flex items-center gap-2">
             <Save className="h-4 w-4" />
             Save Changes
@@ -392,6 +394,12 @@ export const InventoryEditForm = ({
             <X className="h-4 w-4" />
             Return to Current Inventory
           </Button>
+          {onAssignToProperty && (
+            <Button onClick={onAssignToProperty} variant="secondary" className="flex items-center gap-2 ml-auto">
+              <Copy className="h-4 w-4" />
+              Assign to Properties
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>;

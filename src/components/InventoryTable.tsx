@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -19,14 +19,18 @@ export const InventoryTable = ({ items, onEditItem, onUpdateStock, expandAll, co
   const [stockValue, setStockValue] = useState<string>('');
 
   // Handle expand/collapse all
-  useState(() => {
+  useEffect(() => {
     if (expandAll) {
       const categories = [...new Set(items.map(item => item.category_name || 'Other'))];
       setExpandedCategories(new Set(categories));
-    } else if (collapseAll) {
+    }
+  }, [expandAll, items]);
+
+  useEffect(() => {
+    if (collapseAll) {
       setExpandedCategories(new Set());
     }
-  });
+  }, [collapseAll]);
 
   const toggleCategory = (categoryName: string) => {
     setExpandedCategories(prev => {
