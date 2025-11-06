@@ -17,6 +17,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePropertyContext } from '@/contexts/PropertyContext';
 import { PropertySelector } from './PropertySelector';
 import { InventoryPropertyAssignment } from './InventoryPropertyAssignment';
+import { RestockRequestsManager } from './RestockRequestsManager';
 
 export const InventorySection = () => {
   const { toast } = useToast();
@@ -47,6 +48,7 @@ export const InventorySection = () => {
   }, []);
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [stockFilter, setStockFilter] = useState<'all' | 'low' | 'out'>('all');
   const [expandAll, setExpandAll] = useState(false);
   const [collapseAll, setCollapseAll] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
@@ -91,14 +93,21 @@ export const InventorySection = () => {
     );
   }
 
-  // Filter items based on search and selected property
+  // Filter items based on search, selected property, and stock status
   const filteredItems = items.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.category_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.supplier?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesProperty = !selectedProperty || item.property_id === selectedProperty.id;
     
-    return matchesSearch && matchesProperty;
+    let matchesStockFilter = true;
+    if (stockFilter === 'low') {
+      matchesStockFilter = item.current_quantity > 0 && item.current_quantity <= item.restock_threshold;
+    } else if (stockFilter === 'out') {
+      matchesStockFilter = item.current_quantity === 0;
+    }
+    
+    return matchesSearch && matchesProperty && matchesStockFilter;
   });
 
   const getStockStatus = (item: InventoryItem) => {
@@ -311,8 +320,10 @@ export const InventorySection = () => {
     }
   };
 
-  // Use filteredItems for property-specific counts
-  const lowStockItems = filteredItems.filter(item => item.current_quantity <= item.restock_threshold);
+  // Calculate counts based on filtered items (respects property and stock filter)
+  const lowStockItems = filteredItems.filter(item => 
+    item.current_quantity > 0 && item.current_quantity <= item.restock_threshold
+  );
   const outOfStockItems = filteredItems.filter(item => item.current_quantity === 0);
 
   return (
@@ -330,7 +341,7 @@ export const InventorySection = () => {
             <Package2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{items.filter(item => !selectedProperty || item.property_id === selectedProperty.id).length}</div>
+            <div className="text-2xl font-bold">{filteredItems.length}</div>
           </CardContent>
         </Card>
         <Card>
@@ -362,7 +373,7 @@ export const InventorySection = () => {
         </TabsList>
 
         <TabsContent value="inventory" className="space-y-4">
-          {/* Search and Add */}
+          {/* Search and Filters */}
           <div className="flex gap-2 flex-wrap">
             <Input
               placeholder="Search inventory..."
@@ -370,6 +381,16 @@ export const InventorySection = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="max-w-sm"
             />
+            <Select value={stockFilter} onValueChange={(value: 'all' | 'low' | 'out') => setStockFilter(value)}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Items</SelectItem>
+                <SelectItem value="low">Low Stock Only</SelectItem>
+                <SelectItem value="out">Out of Stock Only</SelectItem>
+              </SelectContent>
+            </Select>
             <Button onClick={() => navigate('/inventory-setup')}>
               Manage Categories
             </Button>
@@ -534,35 +555,10 @@ export const InventorySection = () => {
         </TabsContent>
 
         <TabsContent value="requests">
-          <Card>
-            <CardHeader>
-              <CardTitle>Restock Requests</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                Items with current stock at or below restock level:
-              </p>
-              <div className="mt-4 space-y-2">
-                {lowStockItems.length === 0 ? (
-                  <p className="text-sm text-muted-foreground italic">All inventory levels are sufficient</p>
-                ) : (
-                  lowStockItems.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between p-1.5 border rounded">
-                      <div>
-                        <div className="font-medium">{item.name}</div>
-                        <div className="text-sm text-muted-foreground">
-                          Current: {item.current_quantity} | Restock at: {item.restock_threshold}
-                        </div>
-                      </div>
-                      {item.restock_requested && (
-                        <Badge variant="secondary">Requested</Badge>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          <RestockRequestsManager 
+            items={items.filter(item => !selectedProperty || item.property_id === selectedProperty.id)}
+            onUpdateItem={updateItem}
+          />
         </TabsContent>
 
         <TabsContent value="notifications">

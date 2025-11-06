@@ -107,125 +107,129 @@ export const InventoryTable = ({ items, onEditItem, onUpdateStock, expandAll, co
   const sortedCategories = Object.keys(groupedItems).sort();
 
   return (
-    <div className="space-y-2">
-      {sortedCategories.map((categoryName) => {
-        const categoryItems = groupedItems[categoryName];
-        const isExpanded = expandedCategories.has(categoryName);
+    <div className="border rounded-lg overflow-hidden">
+      {/* Fixed Table Headers */}
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead className="border-b bg-muted/30 sticky top-0 z-10">
+            <tr>
+              <th className="text-left p-2 font-medium w-[35%]">Item</th>
+              <th className="text-center p-2 font-medium w-[12%]">Stock</th>
+              <th className="text-center p-2 font-medium w-[15%]">Restock Level</th>
+              <th className="text-center p-2 font-medium w-[15%]">Status</th>
+              <th className="text-center p-2 font-medium w-[15%]">Supplier</th>
+              <th className="text-center p-2 font-medium w-[8%]">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sortedCategories.map((categoryName) => {
+              const categoryItems = groupedItems[categoryName];
+              const isExpanded = expandedCategories.has(categoryName);
 
-        return (
-          <div key={categoryName} className="border rounded-lg overflow-hidden">
-            {/* Category Header */}
-            <div 
-              className="flex items-center gap-2 p-2 bg-muted/50 cursor-pointer hover:bg-muted/70 transition-colors"
-              onClick={() => toggleCategory(categoryName)}
-            >
-              {isExpanded ? (
-                <ChevronDown className="h-4 w-4" />
-              ) : (
-                <ChevronRight className="h-4 w-4" />
-              )}
-              <span className="font-semibold text-cyan-400">{categoryName}</span>
-              <span className="text-sm text-muted-foreground">({categoryItems.length})</span>
-            </div>
+              return (
+                <>
+                  {/* Category Header Row */}
+                  <tr key={categoryName} className="bg-muted/50 hover:bg-muted/70 cursor-pointer">
+                    <td 
+                      colSpan={6} 
+                      className="p-2"
+                      onClick={() => toggleCategory(categoryName)}
+                    >
+                      <div className="flex items-center gap-2">
+                        {isExpanded ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        )}
+                        <span className="font-semibold text-cyan-400">{categoryName}</span>
+                        <span className="text-sm text-muted-foreground">({categoryItems.length})</span>
+                      </div>
+                    </td>
+                  </tr>
 
-            {/* Category Items */}
-            {isExpanded && (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="border-b bg-muted/30">
-                    <tr>
-                      <th className="text-left p-1.5 font-medium">Item</th>
-                      <th className="text-center p-1.5 font-medium">Stock</th>
-                      <th className="text-center p-1.5 font-medium">Restock Level</th>
-                      <th className="text-center p-1.5 font-medium">Status</th>
-                      <th className="text-center p-1.5 font-medium">Supplier</th>
-                      <th className="text-center p-1.5 font-medium">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {categoryItems.map((item) => {
-                      const status = getStockStatus(item);
-                      const StatusIcon = status.icon;
-                      const isEditing = editingStock === item.id;
+                  {/* Category Items */}
+                  {isExpanded && categoryItems.map((item) => {
+                    const status = getStockStatus(item);
+                    const StatusIcon = status.icon;
+                    const isEditing = editingStock === item.id;
 
-                      return (
-                        <tr key={item.id} className="border-b hover:bg-muted/30">
-                          <td className="p-1.5">
-                            <div className="flex items-center gap-3">
-                              {item.amazon_image_url && (
-                                <img
-                                  src={item.amazon_image_url}
-                                  alt={item.name}
-                                  className="w-10 h-10 object-cover rounded"
-                                />
-                              )}
-                              <div>
-                                <div className="font-medium">{item.name}</div>
-                                {item.unit && (
-                                  <div className="text-sm text-muted-foreground">{item.unit}</div>
-                                )}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="p-1.5">
-                            <div className="flex justify-center">
-                              {isEditing ? (
-                                <Input
-                                  type="text"
-                                  value={stockValue}
-                                  onChange={(e) => {
-                                    const value = e.target.value.replace(/,/g, '');
-                                    if (/^\d{0,4}$/.test(value)) {
-                                      setStockValue(value);
-                                    }
-                                  }}
-                                  onBlur={() => handleStockSave(item.id)}
-                                  onKeyDown={(e) => handleStockKeyDown(e, item.id)}
-                                  onFocus={(e) => e.target.select()}
-                                  className="w-24 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                  autoFocus
-                                />
-                              ) : (
-                                <div
-                                  className="cursor-pointer hover:bg-muted/50 px-3 py-1 rounded"
-                                  onClick={() => handleStockEdit(item.id, item.current_quantity)}
-                                >
-                                  <span className="font-medium">{formatNumber(item.current_quantity)}</span>
-                                </div>
+                    return (
+                      <tr key={item.id} className="border-b hover:bg-muted/30">
+                        <td className="p-2 w-[35%]">
+                          <div className="flex items-center gap-3">
+                            {item.amazon_image_url && (
+                              <img
+                                src={item.amazon_image_url}
+                                alt={item.name}
+                                className="w-10 h-10 object-cover rounded"
+                              />
+                            )}
+                            <div>
+                              <div className="font-medium">{item.name}</div>
+                              {item.unit && (
+                                <div className="text-sm text-muted-foreground">{item.unit}</div>
                               )}
                             </div>
-                          </td>
-                          <td className="p-1.5 text-center">{formatNumber(item.restock_threshold)}</td>
-                          <td className="p-1.5">
-                            <div className="flex justify-center">
-                              <Badge variant={status.color as any} className="flex items-center gap-1 w-fit">
-                                <StatusIcon className="h-3 w-3" />
-                                {status.label}
-                              </Badge>
-                            </div>
-                          </td>
-                          <td className="p-1.5 text-center">{item.supplier || '-'}</td>
-                          <td className="p-1.5">
-                            <div className="flex justify-center">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => onEditItem(item)}
+                          </div>
+                        </td>
+                        <td className="p-2 w-[12%]">
+                          <div className="flex justify-center">
+                            {isEditing ? (
+                              <Input
+                                type="text"
+                                value={stockValue}
+                                onChange={(e) => {
+                                  const value = e.target.value.replace(/,/g, '');
+                                  if (/^\d{0,4}$/.test(value)) {
+                                    setStockValue(value);
+                                  }
+                                }}
+                                onBlur={() => handleStockSave(item.id)}
+                                onKeyDown={(e) => handleStockKeyDown(e, item.id)}
+                                onFocus={(e) => e.target.select()}
+                                className="w-24 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                autoFocus
+                              />
+                            ) : (
+                              <div
+                                className="cursor-pointer hover:bg-muted/50 px-3 py-1 rounded"
+                                onClick={() => handleStockEdit(item.id, item.current_quantity)}
                               >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        );
-      })}
+                                <span className="font-medium">{formatNumber(item.current_quantity)}</span>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-2 text-center w-[15%]">{formatNumber(item.restock_threshold)}</td>
+                        <td className="p-2 w-[15%]">
+                          <div className="flex justify-center">
+                            <Badge variant={status.color as any} className="flex items-center gap-1 w-fit">
+                              <StatusIcon className="h-3 w-3" />
+                              {status.label}
+                            </Badge>
+                          </div>
+                        </td>
+                        <td className="p-2 text-center w-[15%]">{item.supplier || '-'}</td>
+                        <td className="p-2 w-[8%]">
+                          <div className="flex justify-center">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => onEditItem(item)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };
