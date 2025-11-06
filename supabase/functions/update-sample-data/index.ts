@@ -17,6 +17,13 @@ Deno.serve(async (req) => {
 
     const elkMountainEscapeId = '79280fbd-5476-47f5-bcc0-1fada823d922'
 
+    // Get first template to assign to records without templates
+    const { data: templates } = await supabase
+      .from('inspection_templates')
+      .select('id')
+      .limit(1)
+      .single()
+
     // Update inspection records with null property_id
     const { error: recordsError } = await supabase
       .from('inspection_records')
@@ -24,6 +31,16 @@ Deno.serve(async (req) => {
       .is('property_id', null)
 
     if (recordsError) throw recordsError
+
+    // Update inspection records with null template_id
+    if (templates?.id) {
+      const { error: templateError } = await supabase
+        .from('inspection_records')
+        .update({ template_id: templates.id })
+        .is('template_id', null)
+
+      if (templateError) throw templateError
+    }
 
     // Update inventory items with null property_id
     const { error: inventoryError } = await supabase

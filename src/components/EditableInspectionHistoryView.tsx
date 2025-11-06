@@ -565,7 +565,7 @@ export const EditableInspectionHistoryView = () => {
                             ) : (
                               <>
                                 {record.items.map((item) => (
-                                  <div key={item.id} className="flex items-start gap-2 p-2 bg-background rounded text-sm">
+                                  <div key={item.id} className="flex items-start gap-2 p-2 pl-7 bg-background rounded text-sm">
                                     <Checkbox checked={item.completed} disabled className="mt-0.5" />
                                     <div className="flex-1 min-w-0 flex items-start gap-2">
                                       <span className="font-medium">{item.description}</span>

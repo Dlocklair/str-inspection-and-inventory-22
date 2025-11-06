@@ -17,7 +17,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePropertyContext } from '@/contexts/PropertyContext';
 import { PropertySelector } from './PropertySelector';
 import { InventoryPropertyAssignment } from './InventoryPropertyAssignment';
-import { cn } from '@/lib/utils';
 
 export const InventorySection = () => {
   const { toast } = useToast();
@@ -50,7 +49,6 @@ export const InventorySection = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [expandAll, setExpandAll] = useState(false);
   const [collapseAll, setCollapseAll] = useState(false);
-  const [stockFilter, setStockFilter] = useState<'all' | 'low' | 'out'>('all');
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showPropertyAssignment, setShowPropertyAssignment] = useState(false);
@@ -93,22 +91,14 @@ export const InventorySection = () => {
     );
   }
 
-  // Filter items based on search, selected property, and stock filter
+  // Filter items based on search and selected property
   const filteredItems = items.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.category_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.supplier?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesProperty = !selectedProperty || item.property_id === selectedProperty.id;
     
-    // Apply stock filter
-    let matchesStockFilter = true;
-    if (stockFilter === 'low') {
-      matchesStockFilter = item.current_quantity <= item.restock_threshold && item.current_quantity > 0;
-    } else if (stockFilter === 'out') {
-      matchesStockFilter = item.current_quantity === 0;
-    }
-    
-    return matchesSearch && matchesProperty && matchesStockFilter;
+    return matchesSearch && matchesProperty;
   });
 
   const getStockStatus = (item: InventoryItem) => {
@@ -332,15 +322,9 @@ export const InventorySection = () => {
         <PropertySelector />
       </div>
       
-      {/* Summary Cards - Now clickable filters */}
+      {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card 
-          className={cn(
-            "cursor-pointer transition-all hover:shadow-md",
-            stockFilter === 'all' && "ring-2 ring-primary"
-          )}
-          onClick={() => setStockFilter('all')}
-        >
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Items</CardTitle>
             <Package2 className="h-4 w-4 text-muted-foreground" />
@@ -349,13 +333,7 @@ export const InventorySection = () => {
             <div className="text-2xl font-bold">{items.filter(item => !selectedProperty || item.property_id === selectedProperty.id).length}</div>
           </CardContent>
         </Card>
-        <Card 
-          className={cn(
-            "cursor-pointer transition-all hover:shadow-md",
-            stockFilter === 'low' && "ring-2 ring-primary"
-          )}
-          onClick={() => setStockFilter('low')}
-        >
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Low Stock</CardTitle>
             <AlertTriangle className="h-4 w-4 text-yellow-500" />
@@ -364,13 +342,7 @@ export const InventorySection = () => {
             <div className="text-2xl font-bold">{lowStockItems.length}</div>
           </CardContent>
         </Card>
-        <Card 
-          className={cn(
-            "cursor-pointer transition-all hover:shadow-md",
-            stockFilter === 'out' && "ring-2 ring-primary"
-          )}
-          onClick={() => setStockFilter('out')}
-        >
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Out of Stock</CardTitle>
             <AlertTriangle className="h-4 w-4 text-destructive" />
