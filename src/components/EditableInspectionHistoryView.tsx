@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { usePropertyContext } from '@/contexts/PropertyContext';
 import { useInspectionRecords, useUpdateInspectionRecord, useDeleteInspectionRecord, InspectionRecord, InspectionItem } from '@/hooks/useInspectionRecords';
-import { useInspectionTemplates } from '@/hooks/useInspectionTemplates';
+import { useAllInspectionTemplates } from '@/hooks/useInspectionTemplates';
 
 export const EditableInspectionHistoryView = () => {
   const { toast } = useToast();
@@ -34,7 +34,7 @@ export const EditableInspectionHistoryView = () => {
   const [customEndDate, setCustomEndDate] = useState<Date | undefined>();
 
   const { data: inspectionRecords = [], isLoading } = useInspectionRecords(selectedProperty?.id);
-  const { data: templates = [] } = useInspectionTemplates();
+  const { data: templates = [] } = useAllInspectionTemplates();
   const updateRecord = useUpdateInspectionRecord();
   const deleteRecord = useDeleteInspectionRecord();
 
