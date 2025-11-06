@@ -17,7 +17,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePropertyContext } from '@/contexts/PropertyContext';
 import { PropertySelector } from './PropertySelector';
 import { InventoryPropertyAssignment } from './InventoryPropertyAssignment';
-import { RestockRequestsManager } from './RestockRequestsManager';
+import RestockRequestsManager from './RestockRequestsManager';
 
 export const InventorySection = () => {
   const { toast } = useToast();

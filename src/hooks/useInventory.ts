@@ -63,7 +63,7 @@ export const useInventoryItems = (enabled: boolean = true) => {
         .from('inventory_items')
         .select(`
           *,
-          category:inventory_categories(name)
+          category:inventory_categories!fk_inventory_items_category(name)
         `)
         .order('name');
       
