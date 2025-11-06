@@ -339,7 +339,11 @@ export const ImprovedInspectionTemplateManager = () => {
       name: newTemplateName,
       property_id: newTemplatePropertyId === 'unassigned' ? undefined : newTemplatePropertyId,
       is_predefined: false,
-      items: []
+      items: [{
+        id: Date.now().toString(),
+        description: newTemplateName,
+        notes: ''
+      }]
     }, {
       onSuccess: (data) => {
         setSelectedTemplateId(data.id);
