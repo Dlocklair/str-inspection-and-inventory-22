@@ -5,7 +5,17 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Edit, Save, X, Send, Loader2, AlertTriangle, CheckCircle, Package2, ChevronsUpDown, ChevronsDownUp } from 'lucide-react';
+import { Plus, Edit, Save, X, Send, Loader2, AlertTriangle, CheckCircle, Package2, ChevronsUpDown, ChevronsDownUp, Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useInventoryItems, useInventoryCategories, InventoryItem } from '@/hooks/useInventory';
@@ -54,6 +64,7 @@ export const InventorySection = () => {
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showPropertyAssignment, setShowPropertyAssignment] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [newItem, setNewItem] = useState({
     name: '',
     category_id: '',
@@ -327,6 +338,34 @@ export const InventorySection = () => {
     }
   };
 
+  const handleDeleteItem = async (itemId: string) => {
+    try {
+      const { error } = await supabase
+        .from('inventory_items')
+        .delete()
+        .eq('id', itemId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Item deleted successfully',
+      });
+
+      // Close edit form if we're editing this item
+      if (editingItem?.id === itemId) {
+        setEditingItem(null);
+      }
+    } catch (error: any) {
+      console.error('Error deleting item:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to delete item',
+        variant: 'destructive',
+      });
+    }
+  };
+
   // Calculate counts based on filtered items (respects property and stock filter)
   const lowStockItems = filteredItems.filter(item => 
     item.current_quantity > 0 && item.current_quantity <= item.restock_threshold
@@ -335,38 +374,54 @@ export const InventorySection = () => {
 
   return (
     <div className="space-y-6">
-      {/* Property Selector with Highlight */}
+      {/* Property Selector with Highlight and Filter */}
       <div className="p-4 bg-cyan-500/10 border-2 border-cyan-500/30 rounded-lg">
-        <PropertySelector />
+        <div className="flex gap-4 items-center flex-wrap">
+          <div className="flex-1 min-w-[250px]">
+            <PropertySelector />
+          </div>
+          <div className="w-[200px]">
+            <Select value={stockFilter} onValueChange={(value: 'all' | 'low' | 'out') => setStockFilter(value)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Items</SelectItem>
+                <SelectItem value="low">Low Stock</SelectItem>
+                <SelectItem value="out">Out of Stock</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </div>
       
-      {/* Summary Cards */}
+      {/* Summary Cards - Reduced Height */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Items</CardTitle>
-            <Package2 className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+            <CardTitle className="text-xs font-medium">Total Items</CardTitle>
+            <Package2 className="h-3 w-3 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{filteredItems.length}</div>
+          <CardContent className="pb-2">
+            <div className="text-xl font-bold">{filteredItems.length}</div>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Low Stock</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-yellow-500" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+            <CardTitle className="text-xs font-medium">Low Stock</CardTitle>
+            <AlertTriangle className="h-3 w-3 text-yellow-500" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{lowStockItems.length}</div>
+          <CardContent className="pb-2">
+            <div className="text-xl font-bold">{lowStockItems.length}</div>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Out of Stock</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-destructive" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+            <CardTitle className="text-xs font-medium">Out of Stock</CardTitle>
+            <AlertTriangle className="h-3 w-3 text-destructive" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{outOfStockItems.length}</div>
+          <CardContent className="pb-2">
+            <div className="text-xl font-bold">{outOfStockItems.length}</div>
           </CardContent>
         </Card>
       </div>
@@ -388,16 +443,6 @@ export const InventorySection = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="max-w-sm"
             />
-            <Select value={stockFilter} onValueChange={(value: 'all' | 'low' | 'out') => setStockFilter(value)}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Items</SelectItem>
-                <SelectItem value="low">Low Stock Only</SelectItem>
-                <SelectItem value="out">Out of Stock Only</SelectItem>
-              </SelectContent>
-            </Select>
             <Button onClick={() => navigate('/inventory-setup')}>
               Manage Categories
             </Button>
@@ -533,6 +578,7 @@ export const InventorySection = () => {
                 }}
                 onSave={handleEditSave}
                 onCancel={() => setEditingItem(null)}
+                onDelete={() => setItemToDelete(editingItem.id)}
                 categories={categories.map(c => c.name)}
                 onAssignToProperty={() => setShowPropertyAssignment(true)}
               />
@@ -555,11 +601,38 @@ export const InventorySection = () => {
                 onEditItem={setEditingItem}
                 onUpdateStock={handleStockUpdate}
                 onUpdateRestock={handleRestockUpdate}
+                onDeleteItem={(itemId) => setItemToDelete(itemId)}
                 expandAll={expandAll}
                 collapseAll={collapseAll}
               />
             </CardContent>
           </Card>
+
+          {/* Delete Confirmation Dialog */}
+          <AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Item</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete this item? This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    if (itemToDelete) {
+                      handleDeleteItem(itemToDelete);
+                      setItemToDelete(null);
+                    }
+                  }}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </TabsContent>
 
         <TabsContent value="requests">

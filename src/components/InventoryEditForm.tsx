@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Save, X, Plus, Copy } from 'lucide-react';
+import { Save, X, Plus, Copy, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { extractAsin } from '@/lib/amazon';
@@ -32,6 +32,7 @@ interface InventoryEditFormProps {
   item: InventoryItem;
   onSave: (updatedItem: InventoryItem) => void;
   onCancel: () => void;
+  onDelete?: () => void;
   categories: string[];
   onAssignToProperty?: () => void;
 }
@@ -39,6 +40,7 @@ export const InventoryEditForm = ({
   item,
   onSave,
   onCancel,
+  onDelete,
   categories,
   onAssignToProperty
 }: InventoryEditFormProps) => {
@@ -85,9 +87,15 @@ export const InventoryEditForm = ({
             Return to Current Inventory
           </Button>
           {onAssignToProperty && (
-            <Button onClick={onAssignToProperty} variant="secondary" className="flex items-center gap-2 ml-auto">
+            <Button onClick={onAssignToProperty} variant="secondary" className="flex items-center gap-2">
               <Copy className="h-4 w-4" />
               Assign to Properties
+            </Button>
+          )}
+          {onDelete && (
+            <Button onClick={onDelete} variant="destructive" className="flex items-center gap-2 ml-auto">
+              <Trash2 className="h-4 w-4" />
+              Delete Item
             </Button>
           )}
         </div>

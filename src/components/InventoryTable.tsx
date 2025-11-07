@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Edit, ChevronDown, ChevronRight, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Edit, ChevronDown, ChevronRight, AlertTriangle, CheckCircle, Trash2 } from 'lucide-react';
 import { InventoryItem } from '@/hooks/useInventory';
 
 interface InventoryTableProps {
@@ -10,11 +10,12 @@ interface InventoryTableProps {
   onEditItem: (item: InventoryItem) => void;
   onUpdateStock: (itemId: string, newQuantity: number) => void;
   onUpdateRestock: (itemId: string, newThreshold: number) => void;
+  onDeleteItem?: (itemId: string) => void;
   expandAll: boolean;
   collapseAll: boolean;
 }
 
-export const InventoryTable = ({ items, onEditItem, onUpdateStock, onUpdateRestock, expandAll, collapseAll }: InventoryTableProps) => {
+export const InventoryTable = ({ items, onEditItem, onUpdateStock, onUpdateRestock, onDeleteItem, expandAll, collapseAll }: InventoryTableProps) => {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [editingStock, setEditingStock] = useState<string | null>(null);
   const [stockValue, setStockValue] = useState<string>('');
@@ -261,7 +262,7 @@ export const InventoryTable = ({ items, onEditItem, onUpdateStock, onUpdateResto
                         </td>
                         <td className="p-2 text-center w-[15%]">{item.supplier || '-'}</td>
                         <td className="p-2 w-[8%]">
-                          <div className="flex justify-center">
+                          <div className="flex justify-center gap-1">
                             <Button
                               size="sm"
                               variant="ghost"
@@ -273,6 +274,16 @@ export const InventoryTable = ({ items, onEditItem, onUpdateStock, onUpdateResto
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
+                            {onDeleteItem && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => onDeleteItem(item.id)}
+                                className="text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </td>
                       </tr>
