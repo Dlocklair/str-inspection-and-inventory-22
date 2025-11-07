@@ -139,6 +139,13 @@ export const InventorySection = () => {
     });
   };
 
+  const handleRestockUpdate = (itemId: string, newThreshold: number) => {
+    updateItem({
+      id: itemId,
+      restock_threshold: Math.max(0, newThreshold),
+    });
+  };
+
   const handleExpandAll = () => {
     setExpandAll(true);
     setCollapseAll(false);
@@ -547,6 +554,7 @@ export const InventorySection = () => {
                 items={filteredItems}
                 onEditItem={setEditingItem}
                 onUpdateStock={handleStockUpdate}
+                onUpdateRestock={handleRestockUpdate}
                 expandAll={expandAll}
                 collapseAll={collapseAll}
               />

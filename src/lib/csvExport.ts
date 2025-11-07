@@ -57,10 +57,17 @@ export function exportToAmazonBusinessCSV(
     ? `amazon-order-${propertyName.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().split('T')[0]}.csv`
     : `amazon-order-${new Date().toISOString().split('T')[0]}.csv`;
   
-  link.setAttribute('href', url);
-  link.setAttribute('download', filename);
-  link.style.visibility = 'hidden';
+  link.href = url;
+  link.download = filename;
+  link.style.display = 'none';
   document.body.appendChild(link);
+  
+  // Trigger download
   link.click();
-  document.body.removeChild(link);
+  
+  // Cleanup
+  setTimeout(() => {
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, 100);
 }

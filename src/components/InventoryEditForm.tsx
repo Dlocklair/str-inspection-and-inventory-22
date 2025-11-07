@@ -74,8 +74,35 @@ export const InventoryEditForm = ({
         <CardTitle className="text-cyan">Edit Inventory Item</CardTitle>
       </CardHeader>
       <CardContent>
+        {/* Sticky Action Buttons at Top */}
+        <div className="flex gap-2 mb-6 flex-wrap sticky top-0 bg-card z-10 py-2 -mt-2">
+          <Button onClick={handleSave} className="flex items-center gap-2">
+            <Save className="h-4 w-4" />
+            Save Changes
+          </Button>
+          <Button onClick={onCancel} variant="outline" className="flex items-center gap-2">
+            <X className="h-4 w-4" />
+            Return to Current Inventory
+          </Button>
+          {onAssignToProperty && (
+            <Button onClick={onAssignToProperty} variant="secondary" className="flex items-center gap-2 ml-auto">
+              <Copy className="h-4 w-4" />
+              Assign to Properties
+            </Button>
+          )}
+        </div>
+
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {/* Category - First field */}
+          {/* Item Name - First field */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-cyan">Item Name</label>
+            <Input placeholder="Enter the name of the inventory item" value={editingData.name} onFocus={e => e.target.select()} onChange={e => setEditingData(prev => ({
+            ...prev,
+            name: e.target.value
+          }))} />
+          </div>
+
+          {/* Category - Second field */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-cyan">Category</label>
             <Select value={editingData.category} onValueChange={value => {
@@ -163,15 +190,6 @@ export const InventoryEditForm = ({
                 </div>
               </PopoverContent>
             </Popover>
-          </div>
-          
-          {/* Item - Second field */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-cyan">Item Name</label>
-            <Input placeholder="Enter the name of the inventory item" value={editingData.name} onFocus={e => e.target.select()} onChange={e => setEditingData(prev => ({
-            ...prev,
-            name: e.target.value
-          }))} />
           </div>
           
           {/* Units - Third field */}
@@ -383,23 +401,6 @@ export const InventoryEditForm = ({
           ...prev,
           notes: e.target.value
         }))} rows={2} className="mt-2" />
-        </div>
-        
-        <div className="flex gap-2 mt-6 flex-wrap">
-          <Button onClick={handleSave} className="flex items-center gap-2">
-            <Save className="h-4 w-4" />
-            Save Changes
-          </Button>
-          <Button onClick={onCancel} variant="outline" className="flex items-center gap-2">
-            <X className="h-4 w-4" />
-            Return to Current Inventory
-          </Button>
-          {onAssignToProperty && (
-            <Button onClick={onAssignToProperty} variant="secondary" className="flex items-center gap-2 ml-auto">
-              <Copy className="h-4 w-4" />
-              Assign to Properties
-            </Button>
-          )}
         </div>
       </CardContent>
     </Card>;

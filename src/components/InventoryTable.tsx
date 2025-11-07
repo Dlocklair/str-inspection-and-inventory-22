@@ -9,14 +9,17 @@ interface InventoryTableProps {
   items: InventoryItem[];
   onEditItem: (item: InventoryItem) => void;
   onUpdateStock: (itemId: string, newQuantity: number) => void;
+  onUpdateRestock: (itemId: string, newThreshold: number) => void;
   expandAll: boolean;
   collapseAll: boolean;
 }
 
-export const InventoryTable = ({ items, onEditItem, onUpdateStock, expandAll, collapseAll }: InventoryTableProps) => {
+export const InventoryTable = ({ items, onEditItem, onUpdateStock, onUpdateRestock, expandAll, collapseAll }: InventoryTableProps) => {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [editingStock, setEditingStock] = useState<string | null>(null);
   const [stockValue, setStockValue] = useState<string>('');
+  const [editingRestock, setEditingRestock] = useState<string | null>(null);
+  const [restockValue, setRestockValue] = useState<string>('');
 
   // Handle expand/collapse all
   useEffect(() => {
@@ -91,6 +94,26 @@ export const InventoryTable = ({ items, onEditItem, onUpdateStock, expandAll, co
       handleStockSave(itemId);
     } else if (e.key === 'Escape') {
       setEditingStock(null);
+    }
+  };
+
+  const handleRestockEdit = (itemId: string, currentRestock: number) => {
+    setEditingRestock(itemId);
+    setRestockValue(currentRestock.toString());
+  };
+
+  const handleRestockSave = (item: InventoryItem) => {
+    const newThreshold = parseFormattedNumber(restockValue);
+    onUpdateRestock(item.id, Math.max(0, newThreshold));
+    setEditingRestock(null);
+    setRestockValue('');
+  };
+
+  const handleRestockKeyDown = (e: React.KeyboardEvent, item: InventoryItem) => {
+    if (e.key === 'Enter') {
+      handleRestockSave(item);
+    } else if (e.key === 'Escape') {
+      setEditingRestock(null);
     }
   };
 
@@ -200,7 +223,34 @@ export const InventoryTable = ({ items, onEditItem, onUpdateStock, expandAll, co
                             )}
                           </div>
                         </td>
-                        <td className="p-2 text-center w-[15%]">{formatNumber(item.restock_threshold)}</td>
+                        <td className="p-2 w-[15%]">
+                          <div className="flex justify-center">
+                            {editingRestock === item.id ? (
+                              <Input
+                                type="text"
+                                value={restockValue}
+                                onChange={(e) => {
+                                  const value = e.target.value.replace(/,/g, '');
+                                  if (/^\d{0,4}$/.test(value)) {
+                                    setRestockValue(value);
+                                  }
+                                }}
+                                onBlur={() => handleRestockSave(item)}
+                                onKeyDown={(e) => handleRestockKeyDown(e, item)}
+                                onFocus={(e) => e.target.select()}
+                                className="w-24 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                autoFocus
+                              />
+                            ) : (
+                              <div
+                                className="cursor-pointer hover:bg-muted/50 px-3 py-1 rounded"
+                                onClick={() => handleRestockEdit(item.id, item.restock_threshold)}
+                              >
+                                <span className="font-medium">{formatNumber(item.restock_threshold)}</span>
+                              </div>
+                            )}
+                          </div>
+                        </td>
                         <td className="p-2 w-[15%]">
                           <div className="flex justify-center">
                             <Badge variant={status.color as any} className="flex items-center gap-1 w-fit">
@@ -215,7 +265,11 @@ export const InventoryTable = ({ items, onEditItem, onUpdateStock, expandAll, co
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => onEditItem(item)}
+                              onClick={() => {
+                                onEditItem(item);
+                                // Scroll to top of page
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                              }}
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
