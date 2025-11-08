@@ -95,14 +95,15 @@ export const EditableInspectionHistoryView = () => {
     return record.items.some(item => item.description?.toLowerCase().includes(searchLower) || item.notes?.toLowerCase().includes(searchLower));
   });
 
-  // Filter by selected items if custom report mode is active
-  const customFilteredRecords = showCustomReport && selectedItems.size > 0 ? filteredRecords.map(record => ({
-    ...record,
-    items: record.items.filter(item => selectedItems.has(item.description || ''))
-  })).filter(record => record.items.length > 0) : filteredRecords;
+  // Filter by selected templates if custom report mode is active
+  const customFilteredRecords = showCustomReport && selectedItems.size > 0 
+    ? filteredRecords.filter(record => selectedItems.has(record.template_id || ''))
+    : filteredRecords;
 
-  // Get all unique inspection item descriptions for custom report selection
-  const allInspectionItems = Array.from(new Set(inspectionRecords.flatMap(record => record.items.map(item => item.description || '')))).filter(Boolean).sort();
+  // Get all unique templates for the currently selected property for custom report selection
+  const availableTemplates = templates
+    .filter(t => !selectedProperty || t.property_id === selectedProperty.id)
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   // Group records: Property -> Template -> Sort by date (newest first)
   const groupedRecords = customFilteredRecords.reduce((groups, record) => {
@@ -236,14 +237,16 @@ export const EditableInspectionHistoryView = () => {
     setExpandedGroups({});
     setExpandedRecords({});
   };
-  const toggleItemSelection = (itemDescription: string) => {
-    const newSelected = new Set(selectedItems);
-    if (newSelected.has(itemDescription)) {
-      newSelected.delete(itemDescription);
-    } else {
-      newSelected.add(itemDescription);
-    }
-    setSelectedItems(newSelected);
+  const toggleTemplateSelection = (templateId: string) => {
+    setSelectedItems(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(templateId)) {
+        newSet.delete(templateId);
+      } else {
+        newSet.add(templateId);
+      }
+      return newSet;
+    });
   };
   return <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
@@ -323,19 +326,19 @@ export const EditableInspectionHistoryView = () => {
       
       {showCustomReport && <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Select Inspection Items</CardTitle>
+            <CardTitle className="text-lg">Select Inspection Templates</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-[300px] overflow-y-auto">
-              {allInspectionItems.map(item => <div key={item} className="flex items-center space-x-2">
-                  <Checkbox id={`item-${item}`} checked={selectedItems.has(item)} onCheckedChange={() => toggleItemSelection(item)} />
-                  <Label htmlFor={`item-${item}`} className="text-sm font-normal cursor-pointer">
-                    {item}
+              {availableTemplates.map(template => <div key={template.id} className="flex items-center space-x-2">
+                  <Checkbox id={`template-${template.id}`} checked={selectedItems.has(template.id)} onCheckedChange={() => toggleTemplateSelection(template.id)} />
+                  <Label htmlFor={`template-${template.id}`} className="text-sm font-normal cursor-pointer">
+                    {template.name}
                   </Label>
                 </div>)}
             </div>
             {selectedItems.size > 0 && <div className="mt-4 flex items-center gap-2">
-                <Badge variant="secondary">{selectedItems.size} items selected</Badge>
+                <Badge variant="secondary">{selectedItems.size} templates selected</Badge>
                 <Button size="sm" variant="ghost" onClick={() => setSelectedItems(new Set())}>
                   Clear Selection
                 </Button>
@@ -393,7 +396,7 @@ export const EditableInspectionHistoryView = () => {
                   </div>
                 </CardHeader>
                 
-                {expandedGroups[`property-${propertyId}`] && <CardContent className="space-y-4 pt-6">
+                {expandedGroups[`property-${propertyId}`] && <CardContent className="space-y-1 pt-6">
                     {(Object.entries(propertyGroup.templates) as Array<[string, any]>).map(([templateKey, group]): JSX.Element => {
               return <Card key={`${propertyId}-${templateKey}`} className="border-2">
                         <CardHeader className="cursor-pointer hover:bg-accent/30 transition-colors" onClick={() => toggleGroup(`${propertyId}-${templateKey}`)}>
@@ -404,7 +407,7 @@ export const EditableInspectionHistoryView = () => {
                           </div>
                         </CardHeader>
                         
-                        {expandedGroups[`${propertyId}-${templateKey}`] && <CardContent className="space-y-3">
+                        {expandedGroups[`${propertyId}-${templateKey}`] && <CardContent className="space-y-1">
                             {group.records.map((record: InspectionRecord) => <div key={record.id} className="border rounded-lg">
                                 <div className="p-1.5 cursor-pointer hover:bg-accent/20 transition-colors" onClick={() => toggleRecord(record.id)}>
                                    <div className="flex items-center justify-between">
@@ -490,7 +493,7 @@ export const EditableInspectionHistoryView = () => {
                   </div>
                 </CardHeader>
                 
-                {expandedGroups[templateKey] && <CardContent className="space-y-3 pt-6">
+                {expandedGroups[templateKey] && <CardContent className="space-y-1 pt-6">
                      {group.records.map((record: InspectionRecord) => <div key={record.id} className="border rounded-lg">
                         <div onClick={() => toggleRecord(record.id)} className="p-1.5 cursor-pointer hover:bg-accent/20 transition-colors py-px">
                           <div className="flex items-center justify-between">
