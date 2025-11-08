@@ -96,14 +96,10 @@ export const EditableInspectionHistoryView = () => {
   });
 
   // Filter by selected templates if custom report mode is active
-  const customFilteredRecords = showCustomReport && selectedItems.size > 0 
-    ? filteredRecords.filter(record => selectedItems.has(record.template_id || ''))
-    : filteredRecords;
+  const customFilteredRecords = showCustomReport && selectedItems.size > 0 ? filteredRecords.filter(record => selectedItems.has(record.template_id || '')) : filteredRecords;
 
   // Get all unique templates for the currently selected property for custom report selection
-  const availableTemplates = templates
-    .filter(t => !selectedProperty || t.property_id === selectedProperty.id)
-    .sort((a, b) => a.name.localeCompare(b.name));
+  const availableTemplates = templates.filter(t => !selectedProperty || t.property_id === selectedProperty.id).sort((a, b) => a.name.localeCompare(b.name));
 
   // Group records: Property -> Template -> Sort by date (newest first)
   const groupedRecords = customFilteredRecords.reduce((groups, record) => {
@@ -385,7 +381,7 @@ export const EditableInspectionHistoryView = () => {
           <CardContent className="p-8 text-center text-muted-foreground">
             No inspection records found
           </CardContent>
-        </Card> : <div className="space-y-6">
+        </Card> : <div className="space-y-6 py-0">
           {!selectedProperty ? <>
               {/* All Properties mode: Property -> Template -> Records */}
               {(Object.entries(groupedRecords) as [string, any][]).map(([propertyId, propertyGroup]) => <Card key={propertyId}>
@@ -485,7 +481,7 @@ export const EditableInspectionHistoryView = () => {
             </> : <>
               {/* Single Property mode: Template -> Records */}
               {(Object.entries(groupedRecords) as [string, any][]).map(([templateKey, group]) => <Card key={templateKey}>
-                <CardHeader onClick={() => toggleGroup(templateKey)} className="cursor-pointer hover:bg-accent/50 transition-colors bg-muted py-[6px]">
+                <CardHeader onClick={() => toggleGroup(templateKey)} className="cursor-pointer hover:bg-accent/50 transition-colors bg-muted my-0 py-[4px] mx-[2px]">
                   <div className="flex items-center gap-0.5">
                     {expandedGroups[templateKey] ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
                     <CardTitle className="text-sm">{group.templateName}</CardTitle>
@@ -495,7 +491,7 @@ export const EditableInspectionHistoryView = () => {
                 
                 {expandedGroups[templateKey] && <CardContent className="space-y-1 pt-6">
                      {group.records.map((record: InspectionRecord) => <div key={record.id} className="border rounded-lg">
-                        <div onClick={() => toggleRecord(record.id)} className="p-1.5 cursor-pointer hover:bg-accent/20 transition-colors py-px">
+                        <div onClick={() => toggleRecord(record.id)} className="p-1.5 cursor-pointer hover:bg-accent/20 transition-colors py-px mx-[20px] my-[2px]">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2 flex-1">
                               {expandedRecords[record.id] ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}

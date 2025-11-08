@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge';
 import { Home, ClipboardList, AlertTriangle, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-
 interface User {
   id: string;
   name: string;
@@ -17,18 +16,16 @@ interface User {
     damage: boolean;
   };
 }
-
 export const InventoryReport = () => {
   const navigate = useNavigate();
-  const { profile } = useAuth();
-
+  const {
+    profile
+  } = useAuth();
   const hasAccess = (module: keyof User['permissions']) => {
     // For now, return true since we're using profile-based access
     return true;
   };
-
-  return (
-    <div className="min-h-screen bg-background">
+  return <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
         {/* Navigation Header */}
         <div className="flex justify-between items-center mb-8">
@@ -38,34 +35,20 @@ export const InventoryReport = () => {
               Dashboard
             </Button>
             <div className="flex gap-2">
-              {hasAccess('inspections') && (
-                <Button 
-                  variant="outline" 
-                  onClick={() => navigate('/inspections')}
-                  className="flex items-center gap-2"
-                >
+              {hasAccess('inspections') && <Button variant="outline" onClick={() => navigate('/inspections')} className="flex items-center gap-2">
                   <ClipboardList className="h-4 w-4" />
                   Inspections
-                </Button>
-              )}
-              {hasAccess('damage') && (
-                <Button 
-                  variant="outline" 
-                  onClick={() => navigate('/damage')}
-                  className="flex items-center gap-2"
-                >
+                </Button>}
+              {hasAccess('damage') && <Button variant="outline" onClick={() => navigate('/damage')} className="flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4" />
                   Damage Reports
-                </Button>
-              )}
+                </Button>}
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {profile && (
-              <div className="flex items-center gap-2">
+            {profile && <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">{profile.full_name}</span>
-              </div>
-            )}
+              </div>}
             <Button variant="outline" onClick={() => navigate('/settings')}>
               <Settings className="h-4 w-4 mr-2" />
               Settings
@@ -75,7 +58,7 @@ export const InventoryReport = () => {
 
         <div className="space-y-2">
           <div className="text-center">
-            <h1 className="text-3xl font-bold text-foreground mb-1">
+            <h1 className="font-bold text-foreground mb-1 text-3xl">
               Inventory Management
             </h1>
             <p className="text-muted-foreground mb-4">
@@ -85,6 +68,5 @@ export const InventoryReport = () => {
           <InventorySection />
         </div>
       </div>
-    </div>
-  );
+    </div>;
 };
