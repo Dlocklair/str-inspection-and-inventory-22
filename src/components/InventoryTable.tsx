@@ -159,7 +159,7 @@ export const InventoryTable = ({
                 const StatusIcon = status.icon;
                 const isEditing = editingStock === item.id;
                 return <tr key={item.id} className="border-b hover:bg-muted/30">
-                        <td className="p-2 w-[35%] py-0 my-0">
+                        <td className="px-2 py-1 w-[35%]">
                           <div className="flex items-center gap-3">
                             {item.amazon_image_url && <img src={item.amazon_image_url} alt={item.name} className="w-10 h-10 object-cover rounded" />}
                             <div>
@@ -168,7 +168,7 @@ export const InventoryTable = ({
                             </div>
                           </div>
                         </td>
-                        <td className="p-2 w-[12%]">
+                        <td className="px-2 py-1 w-[12%]">
                           <div className="flex justify-center">
                             {isEditing ? <Input type="text" value={stockValue} onChange={e => {
                         const value = e.target.value.replace(/,/g, '');
@@ -180,7 +180,7 @@ export const InventoryTable = ({
                               </div>}
                           </div>
                         </td>
-                        <td className="p-2 w-[15%]">
+                        <td className="px-2 py-1 w-[15%]">
                           <div className="flex justify-center">
                             {editingRestock === item.id ? <Input type="text" value={restockValue} onChange={e => {
                         const value = e.target.value.replace(/,/g, '');
@@ -192,7 +192,7 @@ export const InventoryTable = ({
                               </div>}
                           </div>
                         </td>
-                        <td className="p-2 w-[15%]">
+                        <td className="px-2 py-1 w-[15%]">
                           <div className="flex justify-center">
                             <Badge variant={status.color as any} className="flex items-center gap-1 w-fit">
                               <StatusIcon className="h-3 w-3" />
@@ -200,8 +200,8 @@ export const InventoryTable = ({
                             </Badge>
                           </div>
                         </td>
-                        <td className="p-2 text-center w-[15%]">{item.supplier || '-'}</td>
-                        <td className="p-2 w-[8%]">
+                        <td className="px-2 py-1 text-center w-[15%]">{item.supplier || '-'}</td>
+                        <td className="px-2 py-1 w-[8%]">
                           <div className="flex justify-center gap-1">
                             <Button size="sm" variant="ghost" onClick={() => {
                         onEditItem(item);
