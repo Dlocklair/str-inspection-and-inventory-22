@@ -144,7 +144,7 @@ export const InventoryTable = ({
             return <>
                   {/* Category Header Row */}
                   <tr key={categoryName} className="bg-muted/50 hover:bg-muted/70 cursor-pointer">
-                    <td colSpan={6} className="p-2" onClick={() => toggleCategory(categoryName)}>
+                    <td colSpan={6} onClick={() => toggleCategory(categoryName)} className="p-2 py-[4px]">
                       <div className="flex items-center gap-2">
                         {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                         <span className="font-semibold text-cyan-400">{categoryName}</span>
