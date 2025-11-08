@@ -483,7 +483,7 @@ export const EditableInspectionHistoryView = () => {
               {/* Single Property mode: Template -> Records */}
               {(Object.entries(groupedRecords) as [string, any][]).map(([templateKey, group]) => <Card key={templateKey}>
                 <CardHeader onClick={() => toggleGroup(templateKey)} className="cursor-pointer hover:bg-accent/50 transition-colors bg-muted py-[6px]">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-0.5">
                     {expandedGroups[templateKey] ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
                     <CardTitle className="text-sm">{group.templateName}</CardTitle>
                     <Badge variant="secondary">{group.records.length} records</Badge>
