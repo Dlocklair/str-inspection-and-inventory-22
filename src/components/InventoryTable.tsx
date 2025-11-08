@@ -159,11 +159,11 @@ export const InventoryTable = ({
                 const StatusIcon = status.icon;
                 const isEditing = editingStock === item.id;
                 return <tr key={item.id} className="border-b hover:bg-muted/30">
-                        <td className="p-2 w-[35%]">
+                        <td className="p-2 w-[35%] py-0 my-0">
                           <div className="flex items-center gap-3">
                             {item.amazon_image_url && <img src={item.amazon_image_url} alt={item.name} className="w-10 h-10 object-cover rounded" />}
                             <div>
-                              <div className="font-medium px-[40px]">{item.name}</div>
+                              <div className="font-medium py-0 my-0 px-0 mx-[40px]">{item.name}</div>
                               {item.unit && <div className="text-sm text-muted-foreground">{item.unit}</div>}
                             </div>
                           </div>
