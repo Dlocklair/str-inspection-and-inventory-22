@@ -191,12 +191,21 @@ export const ImprovedInspectionTemplateManager = () => {
     fetchProperties();
   }, []);
 
-  // Set initial selected template when templates load
+  // Set initial selected template when templates load or when property changes
   useEffect(() => {
-    if (templates.length > 0 && !selectedTemplateId) {
+    if (selectedProperty) {
+      // When a property is selected, auto-select the first template for that property
+      const propertyTemplates = templates.filter(t => t.property_id === selectedProperty.id);
+      if (propertyTemplates.length > 0) {
+        setSelectedTemplateId(propertyTemplates[0].id);
+      } else if (templates.length > 0) {
+        setSelectedTemplateId(templates[0].id);
+      }
+    } else if (templates.length > 0 && !selectedTemplateId) {
+      // Default behavior when no property is selected
       setSelectedTemplateId(templates[0].id);
     }
-  }, [templates, selectedTemplateId]);
+  }, [templates, selectedTemplateId, selectedProperty]);
 
   const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
 

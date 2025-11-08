@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Edit, Save, X, Send, Loader2, AlertTriangle, CheckCircle, Package2, ChevronsUpDown, ChevronsDownUp, Trash2 } from 'lucide-react';
+import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -61,7 +62,7 @@ export const InventorySection = () => {
     }
   }, []);
   const [searchTerm, setSearchTerm] = useState('');
-  const [stockFilter, setStockFilter] = useState<'all' | 'low' | 'out'>('all');
+  const [stockFilter, setStockFilter] = useState<'all' | 'low' | 'out' | 'low-out'>('all');
   const [expandAll, setExpandAll] = useState(false);
   const [collapseAll, setCollapseAll] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
@@ -112,6 +113,8 @@ export const InventorySection = () => {
       matchesStockFilter = item.current_quantity > 0 && item.current_quantity <= item.restock_threshold;
     } else if (stockFilter === 'out') {
       matchesStockFilter = item.current_quantity === 0;
+    } else if (stockFilter === 'low-out') {
+      matchesStockFilter = item.current_quantity === 0 || (item.current_quantity > 0 && item.current_quantity <= item.restock_threshold);
     }
     return matchesSearch && matchesProperty && matchesStockFilter;
   });
@@ -346,13 +349,14 @@ export const InventorySection = () => {
   const outOfStockItems = filteredItems.filter(item => item.current_quantity === 0);
   return <div className="space-y-6">
       {/* Property Selector with Highlight and Filter */}
-      <div className="p-3 border-2 border-cyan-500/30 rounded-lg">
+      <div className="p-4 bg-cyan-500/10 border-2 border-cyan-500/30 rounded-lg">
         <div className="flex gap-4 items-center flex-wrap">
           <div className="flex-1 min-w-[250px]">
             <PropertySelector />
           </div>
           <div className="w-[200px]">
-            <Select value={stockFilter} onValueChange={(value: 'all' | 'low' | 'out') => setStockFilter(value)}>
+            <Label className="text-sm font-medium mb-1.5 block">Filter</Label>
+            <Select value={stockFilter} onValueChange={(value: 'all' | 'low' | 'out' | 'low-out') => setStockFilter(value)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -360,6 +364,7 @@ export const InventorySection = () => {
                 <SelectItem value="all">All Items</SelectItem>
                 <SelectItem value="low">Low Stock</SelectItem>
                 <SelectItem value="out">Out of Stock</SelectItem>
+                <SelectItem value="low-out">Low & Out of Stock</SelectItem>
               </SelectContent>
             </Select>
           </div>

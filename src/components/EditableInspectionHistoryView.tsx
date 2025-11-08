@@ -263,59 +263,61 @@ export const EditableInspectionHistoryView = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div>
-          <Label>Filter by Property</Label>
-          <Select value={selectedProperty?.id || 'all'} onValueChange={value => {
-          if (value === 'all') {
-            setSelectedProperty(null);
-          } else {
-            const property = userProperties.find(p => p.id === value);
-            if (property) {
-              setSelectedProperty(property);
+      <div className="p-4 bg-cyan-500/10 border-2 border-cyan-500/30 rounded-lg">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <Label>Filter by Property</Label>
+            <Select value={selectedProperty?.id || 'all'} onValueChange={value => {
+            if (value === 'all') {
+              setSelectedProperty(null);
+            } else {
+              const property = userProperties.find(p => p.id === value);
+              if (property) {
+                setSelectedProperty(property);
+              }
             }
-          }
-        }}>
-            <SelectTrigger className="bg-background">
-              <SelectValue placeholder="All properties" />
-            </SelectTrigger>
-            <SelectContent className="bg-popover z-50">
-              <SelectItem value="all">All Properties</SelectItem>
-              {userProperties.map(property => <SelectItem key={property.id} value={property.id} className="cursor-pointer">
-                  {property.name}
-                </SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        
-        <div>
-          <Label>Date Range</Label>
-          <Select value={dateFilter} onValueChange={(value: any) => setDateFilter(value)}>
-            <SelectTrigger className="bg-background">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="bg-popover z-50">
-              <SelectItem value="all">All Time</SelectItem>
-              <SelectItem value="this-year">This Year</SelectItem>
-              <SelectItem value="past-12-months">Past 12 Months</SelectItem>
-              <SelectItem value="custom">Custom Period</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        <div>
-          <Label>Search</Label>
-          <div className="flex gap-2">
-            <Select value={searchScope} onValueChange={(value: any) => setSearchScope(value)}>
-              <SelectTrigger className="w-[140px] bg-background">
+          }}>
+              <SelectTrigger className="bg-background">
+                <SelectValue placeholder="All properties" />
+              </SelectTrigger>
+              <SelectContent className="bg-popover z-50">
+                <SelectItem value="all">All Properties</SelectItem>
+                {userProperties.map(property => <SelectItem key={property.id} value={property.id} className="cursor-pointer">
+                    {property.name}
+                  </SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div>
+            <Label>Date Range</Label>
+            <Select value={dateFilter} onValueChange={(value: any) => setDateFilter(value)}>
+              <SelectTrigger className="bg-background">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-popover z-50">
-                <SelectItem value="all">Search All</SelectItem>
-                <SelectItem value="title">Inspection Title</SelectItem>
+                <SelectItem value="all">All Time</SelectItem>
+                <SelectItem value="this-year">This Year</SelectItem>
+                <SelectItem value="past-12-months">Past 12 Months</SelectItem>
+                <SelectItem value="custom">Custom Period</SelectItem>
               </SelectContent>
             </Select>
-            <Input type="text" placeholder="Search inspections..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="flex-1" />
+          </div>
+          
+          <div>
+            <Label>Search</Label>
+            <div className="flex gap-2">
+              <Select value={searchScope} onValueChange={(value: any) => setSearchScope(value)}>
+                <SelectTrigger className="w-[140px] bg-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-popover z-50">
+                  <SelectItem value="all">Search All</SelectItem>
+                  <SelectItem value="title">Inspection Title</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input type="text" placeholder="Search inspections..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="flex-1" />
+            </div>
           </div>
         </div>
       </div>
@@ -342,40 +344,51 @@ export const EditableInspectionHistoryView = () => {
           </CardContent>
         </Card>}
 
-      {dateFilter === 'custom' && <Card>
-          <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label>Start Date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !customStartDate && "text-muted-foreground")}>
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {customStartDate ? format(customStartDate, "PPP") : "Pick start date"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 bg-popover z-50" align="start">
-                    <CalendarComponent mode="single" selected={customStartDate} onSelect={setCustomStartDate} initialFocus />
-                  </PopoverContent>
-                </Popover>
+      {dateFilter === 'custom' && (
+        <>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Start Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !customStartDate && "text-muted-foreground")}>
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {customStartDate ? format(customStartDate, "PPP") : "Pick start date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 bg-popover z-50" align="start">
+                      <CalendarComponent mode="single" selected={customStartDate} onSelect={setCustomStartDate} initialFocus captionLayout="dropdown-buttons" fromYear={2020} toYear={2030} />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div>
+                  <Label>End Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !customEndDate && "text-muted-foreground")}>
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {customEndDate ? format(customEndDate, "PPP") : "Pick end date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 bg-popover z-50" align="start">
+                      <CalendarComponent mode="single" selected={customEndDate} onSelect={setCustomEndDate} initialFocus captionLayout="dropdown-buttons" fromYear={2020} toYear={2030} />
+                    </PopoverContent>
+                  </Popover>
+                </div>
               </div>
-              <div>
-                <Label>End Date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !customEndDate && "text-muted-foreground")}>
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {customEndDate ? format(customEndDate, "PPP") : "Pick end date"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 bg-popover z-50" align="start">
-                    <CalendarComponent mode="single" selected={customEndDate} onSelect={setCustomEndDate} initialFocus />
-                  </PopoverContent>
-                </Popover>
-              </div>
+            </CardContent>
+          </Card>
+          {customStartDate && customEndDate && showCustomReport && (
+            <div className="p-3 bg-muted/50 rounded-lg border">
+              <p className="text-sm text-muted-foreground">
+                <span className="font-medium">Date Range:</span> {format(customStartDate, "PPP")} - {format(customEndDate, "PPP")}
+              </p>
             </div>
-          </CardContent>
-        </Card>}
+          )}
+        </>
+      )}
 
       {customFilteredRecords.length === 0 ? <Card>
           <CardContent className="p-8 text-center text-muted-foreground">
