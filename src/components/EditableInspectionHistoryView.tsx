@@ -381,7 +381,7 @@ export const EditableInspectionHistoryView = () => {
           <CardContent className="p-8 text-center text-muted-foreground">
             No inspection records found
           </CardContent>
-        </Card> : <div className="space-y-6 py-0">
+        </Card> : <div className="space-y-1.5 py-0">
           {!selectedProperty ? <>
               {/* All Properties mode: Property -> Template -> Records */}
               {(Object.entries(groupedRecords) as [string, any][]).map(([propertyId, propertyGroup]) => <Card key={propertyId}>
