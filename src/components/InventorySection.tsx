@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Edit, Save, X, Send, Loader2, AlertTriangle, CheckCircle, Package2, ChevronsUpDown, ChevronsDownUp, Trash2 } from 'lucide-react';
+import { Plus, Edit, Save, X, Send, Loader2, AlertTriangle, CheckCircle, Package2, ChevronsUpDown, ChevronsDownUp, Trash2, FileDown } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
@@ -20,6 +20,8 @@ import { usePropertyContext } from '@/contexts/PropertyContext';
 import { PropertySelector } from './PropertySelector';
 import { InventoryPropertyAssignment } from './InventoryPropertyAssignment';
 import RestockRequestsManager from './RestockRequestsManager';
+import { exportInventoryToPDF, exportInventoryToExcel } from '@/lib/exportUtils';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 export const InventorySection = () => {
   const {
     toast
@@ -433,6 +435,22 @@ export const InventorySection = () => {
                 <Send className="h-4 w-4 mr-2" />
                 Send Restock Emails ({lowStockItems.length})
               </Button>}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  <FileDown className="h-4 w-4 mr-2" />
+                  Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => exportInventoryToPDF(filteredItems, selectedProperty?.name)}>
+                  Export to PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => exportInventoryToExcel(filteredItems, selectedProperty?.name)}>
+                  Export to Excel
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           {/* Add Item Form */}

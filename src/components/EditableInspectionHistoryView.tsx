@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { Search, ChevronDown, ChevronRight, Calendar as CalendarIcon, FileText, Edit, Save, Trash2, X, ChevronsDown, ChevronsUp, Filter } from 'lucide-react';
+import { Search, ChevronDown, ChevronRight, Calendar as CalendarIcon, FileText, Edit, Save, Trash2, X, ChevronsDown, ChevronsUp, Filter, FileDown } from 'lucide-react';
 import { format, startOfYear, subMonths, isWithinInterval, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -17,6 +17,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePropertyContext } from '@/contexts/PropertyContext';
 import { useInspectionRecords, useUpdateInspectionRecord, useDeleteInspectionRecord, InspectionRecord, InspectionItem } from '@/hooks/useInspectionRecords';
 import { useAllInspectionTemplates } from '@/hooks/useInspectionTemplates';
+import { exportInspectionsToPDF, exportInspectionsToExcel } from '@/lib/exportUtils';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 export const EditableInspectionHistoryView = () => {
   const {
     toast
@@ -260,6 +262,22 @@ export const EditableInspectionHistoryView = () => {
             <Filter className="h-4 w-4 mr-1" />
             Custom Report
           </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <FileDown className="h-4 w-4 mr-1" />
+                Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => exportInspectionsToPDF(filteredRecords, selectedProperty?.name)}>
+                Export to PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => exportInspectionsToExcel(filteredRecords, selectedProperty?.name)}>
+                Export to Excel
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 

@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { ClipboardList, Package, AlertTriangle, Settings, User, Shield, Loader2, LogOut, Building2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { LowStockTrendsWidget } from '@/components/LowStockTrendsWidget';
 const Index = () => {
   const navigate = useNavigate();
   const {
@@ -213,7 +214,7 @@ const Index = () => {
         {/* Quick Stats */}
         <div className="mb-12">
           <h2 className="text-2xl font-semibold text-foreground mb-6">System Status</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900">
               <CardContent className="p-4 text-center">
                 <ClipboardList className="h-8 w-8 mx-auto text-blue-600 mb-2" />
@@ -243,6 +244,9 @@ const Index = () => {
               </CardContent>
             </Card>
           </div>
+          
+          {/* Low Stock Trends Widget */}
+          <LowStockTrendsWidget />
         </div>
       </div>
     </div>;

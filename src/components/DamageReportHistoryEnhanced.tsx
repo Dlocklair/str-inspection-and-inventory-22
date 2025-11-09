@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Eye, Calendar, AlertTriangle, DollarSign, ChevronDown, ChevronRight, Search, Building2, CalendarIcon, X, Filter } from 'lucide-react';
+import { Eye, Calendar, AlertTriangle, DollarSign, ChevronDown, ChevronRight, Search, Building2, CalendarIcon, X, Filter, FileDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -12,6 +12,8 @@ import { startOfYear, subMonths, isAfter, isBefore, startOfDay, endOfDay } from 
 import { format } from 'date-fns';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { exportDamageReportsToPDF, exportDamageReportsToExcel } from '@/lib/exportUtils';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 interface DamageItem {
   id: string;
@@ -315,6 +317,24 @@ const DamageReportHistoryEnhanced: React.FC<DamageReportHistoryEnhancedProps> = 
                 className="pl-8 w-[200px]"
               />
             </div>
+            
+            {/* Export Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <FileDown className="h-4 w-4 mr-2" />
+                  Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => exportDamageReportsToPDF(filteredReports)}>
+                  Export to PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => exportDamageReportsToExcel(filteredReports)}>
+                  Export to Excel
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </CardHeader>
