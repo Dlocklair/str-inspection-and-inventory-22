@@ -84,7 +84,7 @@ export const InventoryEditForm = ({
           </Button>
           <Button onClick={onCancel} variant="outline" className="flex items-center gap-2">
             <X className="h-4 w-4" />
-            Return to Current Inventory
+            Cancel
           </Button>
           {onAssignToProperty && (
             <Button onClick={onAssignToProperty} variant="secondary" className="flex items-center gap-2">
@@ -253,20 +253,14 @@ export const InventoryEditForm = ({
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
               <Input 
                 type="text" 
-                placeholder="1234.56" 
-                value={typeof editingData.costPerPackage === 'number' ? editingData.costPerPackage.toFixed(2) : editingData.costPerPackage || ''} 
+                placeholder="1,234.56" 
+                value={typeof editingData.costPerPackage === 'number' ? editingData.costPerPackage.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : editingData.costPerPackage || ''} 
                 className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none min-w-[120px] pl-7" 
                 onFocus={e => {
-                  // Show raw value for editing
-                  const numValue = parseFloat(e.target.value) || 0;
-                  setEditingData(prev => ({
-                    ...prev,
-                    costPerPackage: numValue.toString() as any
-                  }));
-                  setTimeout(() => e.target.select(), 0);
+                  e.target.select();
                 }}
                 onChange={e => {
-                  const value = e.target.value;
+                  const value = e.target.value.replace(/,/g, '');
                   // Allow empty, numbers, and one decimal point with up to 2 decimals
                   if (value && !/^\d{0,4}\.?\d{0,2}$/.test(value)) return;
                   
@@ -277,29 +271,21 @@ export const InventoryEditForm = ({
                   const costPerUnit = (parseFloat(value) || 0) / (editingData.unitsPerPackage || 1);
                   setEditingData(prev => ({
                     ...prev,
-                    costPerPackage: value as any,
+                    costPerPackage: parseFloat(value) || 0,
                     cost: costPerUnit
-                  }));
-                }}
-                onBlur={e => {
-                  // Format to always show 2 decimal places
-                  const numValue = parseFloat(e.target.value) || 0;
-                  setEditingData(prev => ({
-                    ...prev,
-                    costPerPackage: numValue
                   }));
                 }}
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              Max: $9,999.99 | Will display as: ${typeof editingData.costPerPackage === 'number' ? editingData.costPerPackage.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
+              Max: $9,999.99
             </p>
           </div>
           
           {/* Cost per unit - CALCULATED - Eighth field */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-cyan">Cost per Unit (Calculated)</label>
-            <Input type="text" readOnly value={editingData.cost ? `$${editingData.cost.toFixed(2)}` : '$0.00'} className="bg-muted" />
+            <Input type="text" readOnly value={editingData.cost ? `$${editingData.cost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '$0.00'} className="bg-muted" />
           </div>
           
           {/* Restock level - Ninth field */}
@@ -345,47 +331,56 @@ export const InventoryEditForm = ({
         {/* Product Image Section */}
         <div className="mt-6">
           <h4 className="text-sm font-semibold text-cyan mb-3">Product Image (Optional)</h4>
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-cyan">Image URL</label>
-            <Input placeholder="Paste image URL or copy/paste an image directly" value={editingData.image_url ?? ''} onFocus={e => e.target.select()} onChange={e => setEditingData(prev => ({
-            ...prev,
-            image_url: e.target.value
-          }))} onPaste={e => {
-            const items = e.clipboardData.items;
-            for (let i = 0; i < items.length; i++) {
-              if (items[i].type.indexOf('image') !== -1) {
-                const blob = items[i].getAsFile();
-                if (blob) {
-                  const reader = new FileReader();
-                  reader.onload = event => {
-                    setEditingData(prev => ({
-                      ...prev,
-                      image_url: event.target?.result as string
-                    }));
-                  };
-                  reader.readAsDataURL(blob);
-                  e.preventDefault();
+          <div className="flex gap-4 items-start">
+            <div className="flex-1 space-y-2">
+              <label className="text-sm font-medium text-cyan">Image URL</label>
+              <Input placeholder="Paste image URL or copy/paste an image directly" value={editingData.image_url ?? ''} onFocus={e => e.target.select()} onChange={e => setEditingData(prev => ({
+              ...prev,
+              image_url: e.target.value
+            }))} onPaste={e => {
+              const items = e.clipboardData.items;
+              for (let i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf('image') !== -1) {
+                  const blob = items[i].getAsFile();
+                  if (blob) {
+                    const reader = new FileReader();
+                    reader.onload = event => {
+                      setEditingData(prev => ({
+                        ...prev,
+                        image_url: event.target?.result as string
+                      }));
+                    };
+                    reader.readAsDataURL(blob);
+                    e.preventDefault();
+                  }
                 }
               }
-            }
-          }} />
-            <p className="text-xs text-muted-foreground">
-              Paste image URL or copy/paste an image directly
-            </p>
-          </div>
+            }} />
+              <p className="text-xs text-muted-foreground">
+                Paste image URL or copy/paste an image directly
+              </p>
+            </div>
 
-          {/* Image Preview - 120x120px */}
-          {editingData.image_url && <div className="mt-4">
-              <label className="text-sm font-medium text-cyan block mb-2">Image Preview</label>
-              <img src={editingData.image_url} alt={editingData.name || 'Product image'} className="w-[120px] h-[120px] rounded-md border object-contain" onError={e => {
-            e.currentTarget.style.display = 'none';
-            toast({
-              title: "Image load failed",
-              description: "The image URL may be invalid or inaccessible.",
-              variant: "destructive"
-            });
-          }} />
-            </div>}
+            {/* Image Preview - 120x120px */}
+            {editingData.image_url && (
+              <div className="flex-shrink-0">
+                <label className="text-sm font-medium text-cyan block mb-2">Preview</label>
+                <img 
+                  src={editingData.image_url} 
+                  alt={editingData.name || 'Product image'} 
+                  className="w-[120px] h-[120px] rounded-md border object-contain bg-muted" 
+                  onError={e => {
+                    e.currentTarget.style.display = 'none';
+                    toast({
+                      title: "Image load failed",
+                      description: "The image URL may be invalid or inaccessible.",
+                      variant: "destructive"
+                    });
+                  }} 
+                />
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Amazon Section */}

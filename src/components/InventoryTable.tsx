@@ -2,8 +2,17 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Edit, ChevronDown, ChevronRight, AlertTriangle, CheckCircle, Trash2 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Edit, ChevronDown, ChevronRight, AlertTriangle, CheckCircle, Trash2, Check, X } from 'lucide-react';
 import { InventoryItem } from '@/hooks/useInventory';
+
+interface PendingChange {
+  itemId: string;
+  type: 'stock' | 'restock';
+  value: number;
+  originalValue: number;
+}
+
 interface InventoryTableProps {
   items: InventoryItem[];
   onEditItem: (item: InventoryItem) => void;
@@ -27,6 +36,17 @@ export const InventoryTable = ({
   const [stockValue, setStockValue] = useState<string>('');
   const [editingRestock, setEditingRestock] = useState<string | null>(null);
   const [restockValue, setRestockValue] = useState<string>('');
+  const [pendingChanges, setPendingChanges] = useState<Map<string, PendingChange>>(new Map());
+  const [restockRequired, setRestockRequired] = useState<Map<string, boolean>>(new Map());
+
+  // Initialize restock required state based on stock levels
+  useEffect(() => {
+    const initialRestockMap = new Map<string, boolean>();
+    items.forEach(item => {
+      initialRestockMap.set(item.id, item.current_quantity <= item.restock_threshold);
+    });
+    setRestockRequired(initialRestockMap);
+  }, [items]);
 
   // Handle expand/collapse all
   useEffect(() => {
@@ -82,34 +102,116 @@ export const InventoryTable = ({
     setEditingStock(itemId);
     setStockValue(currentStock.toString());
   };
-  const handleStockSave = (itemId: string) => {
+  
+  const handleStockChange = (itemId: string, currentStock: number) => {
     const newQty = parseFormattedNumber(stockValue);
-    onUpdateStock(itemId, Math.max(0, newQty));
+    if (newQty !== currentStock) {
+      setPendingChanges(prev => {
+        const updated = new Map(prev);
+        updated.set(`${itemId}-stock`, {
+          itemId,
+          type: 'stock',
+          value: newQty,
+          originalValue: currentStock
+        });
+        return updated;
+      });
+    }
     setEditingStock(null);
     setStockValue('');
   };
-  const handleStockKeyDown = (e: React.KeyboardEvent, itemId: string) => {
-    if (e.key === 'Enter') {
-      handleStockSave(itemId);
-    } else if (e.key === 'Escape') {
-      setEditingStock(null);
+  
+  const handleStockAccept = (itemId: string) => {
+    const change = pendingChanges.get(`${itemId}-stock`);
+    if (change) {
+      onUpdateStock(itemId, Math.max(0, change.value));
+      setPendingChanges(prev => {
+        const updated = new Map(prev);
+        updated.delete(`${itemId}-stock`);
+        return updated;
+      });
     }
   };
+  
+  const handleStockCancel = (itemId: string) => {
+    setPendingChanges(prev => {
+      const updated = new Map(prev);
+      updated.delete(`${itemId}-stock`);
+      return updated;
+    });
+  };
+
+  const handleStockKeyDown = (e: React.KeyboardEvent, itemId: string, currentStock: number) => {
+    if (e.key === 'Enter') {
+      handleStockChange(itemId, currentStock);
+    } else if (e.key === 'Escape') {
+      setEditingStock(null);
+      setStockValue('');
+    }
+  };
+  
   const handleRestockEdit = (itemId: string, currentRestock: number) => {
     setEditingRestock(itemId);
     setRestockValue(currentRestock.toString());
   };
-  const handleRestockSave = (item: InventoryItem) => {
+  
+  const handleRestockChange = (itemId: string, currentRestock: number) => {
     const newThreshold = parseFormattedNumber(restockValue);
-    onUpdateRestock(item.id, Math.max(0, newThreshold));
+    if (newThreshold !== currentRestock) {
+      setPendingChanges(prev => {
+        const updated = new Map(prev);
+        updated.set(`${itemId}-restock`, {
+          itemId,
+          type: 'restock',
+          value: newThreshold,
+          originalValue: currentRestock
+        });
+        return updated;
+      });
+    }
     setEditingRestock(null);
     setRestockValue('');
   };
-  const handleRestockKeyDown = (e: React.KeyboardEvent, item: InventoryItem) => {
+  
+  const handleRestockAccept = (itemId: string) => {
+    const change = pendingChanges.get(`${itemId}-restock`);
+    if (change) {
+      onUpdateRestock(itemId, Math.max(0, change.value));
+      setPendingChanges(prev => {
+        const updated = new Map(prev);
+        updated.delete(`${itemId}-restock`);
+        return updated;
+      });
+    }
+  };
+  
+  const handleRestockCancel = (itemId: string) => {
+    setPendingChanges(prev => {
+      const updated = new Map(prev);
+      updated.delete(`${itemId}-restock`);
+      return updated;
+    });
+  };
+
+  const handleRestockKeyDown = (e: React.KeyboardEvent, itemId: string, currentRestock: number) => {
     if (e.key === 'Enter') {
-      handleRestockSave(item);
+      handleRestockChange(itemId, currentRestock);
     } else if (e.key === 'Escape') {
       setEditingRestock(null);
+      setRestockValue('');
+    }
+  };
+  
+  const handleRestockRequiredToggle = (item: InventoryItem, checked: boolean) => {
+    setRestockRequired(prev => {
+      const updated = new Map(prev);
+      updated.set(item.id, checked);
+      return updated;
+    });
+    
+    // If manually checked, adjust stock to equal restock level
+    if (checked && item.current_quantity > item.restock_threshold) {
+      onUpdateStock(item.id, item.restock_threshold);
     }
   };
 
@@ -129,12 +231,13 @@ export const InventoryTable = ({
         <table className="w-full">
           <thead className="border-b bg-muted/30 sticky top-0 z-10">
             <tr>
-              <th className="text-left p-2 font-medium w-[35%]">Item</th>
-              <th className="text-center p-2 font-medium w-[12%]">Stock</th>
-              <th className="text-center p-2 font-medium w-[15%]">Restock Level</th>
-              <th className="text-center p-2 font-medium w-[15%]">Status</th>
-              <th className="text-center p-2 font-medium w-[15%]">Supplier</th>
-              <th className="text-center p-2 font-medium w-[8%]">Actions</th>
+              <th className="text-left p-2 font-medium w-[30%]">Item</th>
+              <th className="text-center p-2 font-medium w-[10%]">Stock</th>
+              <th className="text-center p-2 font-medium w-[12%]">Restock Level</th>
+              <th className="text-center p-2 font-medium w-[10%]">Restock Required</th>
+              <th className="text-center p-2 font-medium w-[12%]">Status</th>
+              <th className="text-center p-2 font-medium w-[12%]">Supplier</th>
+              <th className="text-center p-2 font-medium w-[14%]">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -144,7 +247,7 @@ export const InventoryTable = ({
             return <>
                   {/* Category Header Row */}
                   <tr key={categoryName} className="bg-muted/50 hover:bg-muted/70 cursor-pointer">
-                    <td colSpan={6} onClick={() => toggleCategory(categoryName)} className="p-2 py-[4px]">
+                    <td colSpan={7} onClick={() => toggleCategory(categoryName)} className="p-2 py-[4px]">
                       <div className="flex items-center gap-2">
                         {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                         <span className="font-semibold text-cyan-400">{categoryName}</span>
@@ -157,9 +260,16 @@ export const InventoryTable = ({
                   {isExpanded && categoryItems.map(item => {
                 const status = getStockStatus(item);
                 const StatusIcon = status.icon;
-                const isEditing = editingStock === item.id;
+                const isEditingStock = editingStock === item.id;
+                const isEditingRestock = editingRestock === item.id;
+                const stockChange = pendingChanges.get(`${item.id}-stock`);
+                const restockChange = pendingChanges.get(`${item.id}-restock`);
+                const displayStock = stockChange ? stockChange.value : item.current_quantity;
+                const displayRestock = restockChange ? restockChange.value : item.restock_threshold;
+                const isRestockRequired = restockRequired.get(item.id) ?? (item.current_quantity <= item.restock_threshold);
+                
                 return <tr key={item.id} className="border-b hover:bg-muted/30">
-                        <td className="px-2 py-1 w-[35%]">
+                        <td className="px-2 py-1 w-[30%]">
                           <div className="flex items-center gap-3">
                             {item.amazon_image_url && <img src={item.amazon_image_url} alt={item.name} className="w-10 h-10 object-cover rounded" />}
                             <div>
@@ -168,31 +278,89 @@ export const InventoryTable = ({
                             </div>
                           </div>
                         </td>
-                        <td className="px-2 py-1 w-[12%]">
-                          <div className="flex justify-center">
-                            {isEditing ? <Input type="text" value={stockValue} onChange={e => {
-                        const value = e.target.value.replace(/,/g, '');
-                        if (/^\d{0,4}$/.test(value)) {
-                          setStockValue(value);
-                        }
-                      }} onBlur={() => handleStockSave(item.id)} onKeyDown={e => handleStockKeyDown(e, item.id)} onFocus={e => e.target.select()} className="w-24 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" autoFocus /> : <div className="cursor-pointer hover:bg-muted/50 px-3 py-1 rounded" onClick={() => handleStockEdit(item.id, item.current_quantity)}>
+                        <td className={`px-2 py-1 w-[10%] ${stockChange ? 'bg-yellow-500/20' : ''}`}>
+                          <div className="flex flex-col items-center gap-1">
+                            {isEditingStock ? (
+                              <Input 
+                                type="text" 
+                                value={stockValue} 
+                                onChange={e => {
+                                  const value = e.target.value.replace(/,/g, '');
+                                  if (/^\d{0,4}$/.test(value)) {
+                                    setStockValue(value);
+                                  }
+                                }} 
+                                onBlur={() => handleStockChange(item.id, item.current_quantity)} 
+                                onKeyDown={e => handleStockKeyDown(e, item.id, item.current_quantity)} 
+                                onFocus={e => e.target.select()} 
+                                className="w-24 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                                autoFocus 
+                              />
+                            ) : stockChange ? (
+                              <>
+                                <div className="font-medium text-yellow-600 dark:text-yellow-400">{formatNumber(displayStock)}</div>
+                                <div className="flex gap-1">
+                                  <Button size="sm" variant="ghost" onClick={() => handleStockAccept(item.id)} className="h-6 w-6 p-0">
+                                    <Check className="h-3 w-3 text-green-600" />
+                                  </Button>
+                                  <Button size="sm" variant="ghost" onClick={() => handleStockCancel(item.id)} className="h-6 w-6 p-0">
+                                    <X className="h-3 w-3 text-destructive" />
+                                  </Button>
+                                </div>
+                              </>
+                            ) : (
+                              <div className="cursor-pointer hover:bg-muted/50 px-3 py-1 rounded" onClick={() => handleStockEdit(item.id, item.current_quantity)}>
                                 <span className="font-medium">{formatNumber(item.current_quantity)}</span>
-                              </div>}
+                              </div>
+                            )}
                           </div>
                         </td>
-                        <td className="px-2 py-1 w-[15%]">
-                          <div className="flex justify-center">
-                            {editingRestock === item.id ? <Input type="text" value={restockValue} onChange={e => {
-                        const value = e.target.value.replace(/,/g, '');
-                        if (/^\d{0,4}$/.test(value)) {
-                          setRestockValue(value);
-                        }
-                      }} onBlur={() => handleRestockSave(item)} onKeyDown={e => handleRestockKeyDown(e, item)} onFocus={e => e.target.select()} className="w-24 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" autoFocus /> : <div className="cursor-pointer hover:bg-muted/50 px-3 py-1 rounded" onClick={() => handleRestockEdit(item.id, item.restock_threshold)}>
+                        <td className={`px-2 py-1 w-[12%] ${restockChange ? 'bg-yellow-500/20' : ''}`}>
+                          <div className="flex flex-col items-center gap-1">
+                            {isEditingRestock ? (
+                              <Input 
+                                type="text" 
+                                value={restockValue} 
+                                onChange={e => {
+                                  const value = e.target.value.replace(/,/g, '');
+                                  if (/^\d{0,4}$/.test(value)) {
+                                    setRestockValue(value);
+                                  }
+                                }} 
+                                onBlur={() => handleRestockChange(item.id, item.restock_threshold)} 
+                                onKeyDown={e => handleRestockKeyDown(e, item.id, item.restock_threshold)} 
+                                onFocus={e => e.target.select()} 
+                                className="w-24 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                                autoFocus 
+                              />
+                            ) : restockChange ? (
+                              <>
+                                <div className="font-medium text-yellow-600 dark:text-yellow-400">{formatNumber(displayRestock)}</div>
+                                <div className="flex gap-1">
+                                  <Button size="sm" variant="ghost" onClick={() => handleRestockAccept(item.id)} className="h-6 w-6 p-0">
+                                    <Check className="h-3 w-3 text-green-600" />
+                                  </Button>
+                                  <Button size="sm" variant="ghost" onClick={() => handleRestockCancel(item.id)} className="h-6 w-6 p-0">
+                                    <X className="h-3 w-3 text-destructive" />
+                                  </Button>
+                                </div>
+                              </>
+                            ) : (
+                              <div className="cursor-pointer hover:bg-muted/50 px-3 py-1 rounded" onClick={() => handleRestockEdit(item.id, item.restock_threshold)}>
                                 <span className="font-medium">{formatNumber(item.restock_threshold)}</span>
-                              </div>}
+                              </div>
+                            )}
                           </div>
                         </td>
-                        <td className="px-2 py-1 w-[15%]">
+                        <td className="px-2 py-1 w-[10%]">
+                          <div className="flex justify-center">
+                            <Checkbox 
+                              checked={isRestockRequired}
+                              onCheckedChange={(checked) => handleRestockRequiredToggle(item, checked as boolean)}
+                            />
+                          </div>
+                        </td>
+                        <td className="px-2 py-1 w-[12%]">
                           <div className="flex justify-center">
                             <Badge variant={status.color as any} className="flex items-center gap-1 w-fit">
                               <StatusIcon className="h-3 w-3" />
@@ -200,8 +368,8 @@ export const InventoryTable = ({
                             </Badge>
                           </div>
                         </td>
-                        <td className="px-2 py-1 text-center w-[15%]">{item.supplier || '-'}</td>
-                        <td className="px-2 py-1 w-[8%]">
+                        <td className="px-2 py-1 text-center w-[12%]">{item.supplier || '-'}</td>
+                        <td className="px-2 py-1 w-[14%]">
                           <div className="flex justify-center gap-1">
                             <Button size="sm" variant="ghost" onClick={() => {
                         onEditItem(item);
