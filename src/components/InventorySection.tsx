@@ -554,7 +554,7 @@ export const InventorySection = () => {
           {/* Inventory Table */}
           <Card>
             <CardContent className="p-4">
-              <InventoryTable items={filteredItems} onEditItem={setEditingItem} onUpdateStock={handleStockUpdate} onUpdateRestock={handleRestockUpdate} onDeleteItem={itemId => setItemToDelete(itemId)} expandAll={expandAll} collapseAll={collapseAll} />
+              <InventoryTable items={filteredItems} onEditItem={setEditingItem} onUpdateStock={handleStockUpdate} onUpdateRestock={handleRestockUpdate} onUpdateItem={updateItem} onDeleteItem={itemId => setItemToDelete(itemId)} expandAll={expandAll} collapseAll={collapseAll} />
             </CardContent>
           </Card>
 

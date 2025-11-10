@@ -3,8 +3,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Edit, ChevronDown, ChevronRight, AlertTriangle, CheckCircle, Trash2, Check, X } from 'lucide-react';
+import { Edit, ChevronDown, ChevronRight, AlertTriangle, CheckCircle, Trash2 } from 'lucide-react';
 import { InventoryItem } from '@/hooks/useInventory';
+import { toast } from 'sonner';
 
 interface PendingChange {
   itemId: string;
@@ -18,6 +19,7 @@ interface InventoryTableProps {
   onEditItem: (item: InventoryItem) => void;
   onUpdateStock: (itemId: string, newQuantity: number) => void;
   onUpdateRestock: (itemId: string, newThreshold: number) => void;
+  onUpdateItem: (updates: Partial<InventoryItem> & { id: string }) => void;
   onDeleteItem?: (itemId: string) => void;
   expandAll: boolean;
   collapseAll: boolean;
@@ -27,6 +29,7 @@ export const InventoryTable = ({
   onEditItem,
   onUpdateStock,
   onUpdateRestock,
+  onUpdateItem,
   onDeleteItem,
   expandAll,
   collapseAll
@@ -121,24 +124,54 @@ export const InventoryTable = ({
     setStockValue('');
   };
   
-  const handleStockAccept = (itemId: string) => {
-    const change = pendingChanges.get(`${itemId}-stock`);
-    if (change) {
-      onUpdateStock(itemId, Math.max(0, change.value));
-      setPendingChanges(prev => {
-        const updated = new Map(prev);
-        updated.delete(`${itemId}-stock`);
-        return updated;
-      });
+  const acceptAllChanges = () => {
+    if (pendingChanges.size === 0) {
+      toast.info("No changes to save");
+      return;
     }
-  };
-  
-  const handleStockCancel = (itemId: string) => {
-    setPendingChanges(prev => {
-      const updated = new Map(prev);
-      updated.delete(`${itemId}-stock`);
-      return updated;
+
+    const changedItems = new Set<string>();
+    pendingChanges.forEach((change) => {
+      changedItems.add(change.itemId);
     });
+
+    changedItems.forEach(itemId => {
+      const item = items.find(i => i.id === itemId);
+      if (!item) return;
+
+      const stockChange = pendingChanges.get(`${itemId}-stock`);
+      const restockChange = pendingChanges.get(`${itemId}-restock`);
+
+      let newStock = item.current_quantity;
+      let newRestock = item.restock_threshold;
+
+      if (stockChange) {
+        newStock = Math.max(0, stockChange.value);
+        onUpdateStock(itemId, newStock);
+      }
+      
+      if (restockChange) {
+        newRestock = Math.max(0, restockChange.value);
+        onUpdateRestock(itemId, newRestock);
+      }
+
+      // Update restock_requested if stock is at or below threshold
+      if (newStock <= newRestock) {
+        onUpdateItem({ id: itemId, restock_requested: true });
+      }
+    });
+
+    setPendingChanges(new Map());
+    toast.success("All changes saved successfully");
+  };
+
+  const cancelAllChanges = () => {
+    if (pendingChanges.size === 0) {
+      toast.info("No changes to cancel");
+      return;
+    }
+    setPendingChanges(new Map());
+    toast.info("All changes cancelled");
   };
 
   const handleStockKeyDown = (e: React.KeyboardEvent, itemId: string, currentStock: number) => {
@@ -173,25 +206,6 @@ export const InventoryTable = ({
     setRestockValue('');
   };
   
-  const handleRestockAccept = (itemId: string) => {
-    const change = pendingChanges.get(`${itemId}-restock`);
-    if (change) {
-      onUpdateRestock(itemId, Math.max(0, change.value));
-      setPendingChanges(prev => {
-        const updated = new Map(prev);
-        updated.delete(`${itemId}-restock`);
-        return updated;
-      });
-    }
-  };
-  
-  const handleRestockCancel = (itemId: string) => {
-    setPendingChanges(prev => {
-      const updated = new Map(prev);
-      updated.delete(`${itemId}-restock`);
-      return updated;
-    });
-  };
 
   const handleRestockKeyDown = (e: React.KeyboardEvent, itemId: string, currentRestock: number) => {
     if (e.key === 'Enter') {
@@ -225,9 +239,25 @@ export const InventoryTable = ({
     return acc;
   }, {} as Record<string, InventoryItem[]>);
   const sortedCategories = Object.keys(groupedItems).sort();
-  return <div className="border rounded-lg overflow-hidden">
-      {/* Fixed Table Headers */}
-      <div className="overflow-x-auto">
+  const hasPendingChanges = pendingChanges.size > 0;
+
+  return (
+    <div className="space-y-4">
+      {/* Global action buttons */}
+      {hasPendingChanges && (
+        <div className="flex gap-2 justify-end">
+          <Button onClick={acceptAllChanges} variant="default" className="gap-2">
+            Accept All Changes
+          </Button>
+          <Button variant="outline" onClick={cancelAllChanges} className="gap-2">
+            Cancel All Changes
+          </Button>
+        </div>
+      )}
+      
+      <div className="border rounded-lg overflow-hidden">
+        {/* Fixed Table Headers */}
+        <div className="overflow-x-auto">
         <table className="w-full">
           <thead className="border-b bg-muted/30 sticky top-0 z-10">
             <tr>
@@ -296,21 +326,11 @@ export const InventoryTable = ({
                                 className="w-24 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                                 autoFocus 
                               />
-                            ) : stockChange ? (
-                              <>
-                                <div className="font-medium text-yellow-600 dark:text-yellow-400">{formatNumber(displayStock)}</div>
-                                <div className="flex gap-1">
-                                  <Button size="sm" variant="ghost" onClick={() => handleStockAccept(item.id)} className="h-6 w-6 p-0">
-                                    <Check className="h-3 w-3 text-green-600" />
-                                  </Button>
-                                  <Button size="sm" variant="ghost" onClick={() => handleStockCancel(item.id)} className="h-6 w-6 p-0">
-                                    <X className="h-3 w-3 text-destructive" />
-                                  </Button>
-                                </div>
-                              </>
                             ) : (
                               <div className="cursor-pointer hover:bg-muted/50 px-3 py-1 rounded" onClick={() => handleStockEdit(item.id, item.current_quantity)}>
-                                <span className="font-medium">{formatNumber(item.current_quantity)}</span>
+                                <span className={`font-medium ${stockChange ? 'text-yellow-600 dark:text-yellow-400' : ''}`}>
+                                  {formatNumber(displayStock)}
+                                </span>
                               </div>
                             )}
                           </div>
@@ -333,21 +353,11 @@ export const InventoryTable = ({
                                 className="w-24 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                                 autoFocus 
                               />
-                            ) : restockChange ? (
-                              <>
-                                <div className="font-medium text-yellow-600 dark:text-yellow-400">{formatNumber(displayRestock)}</div>
-                                <div className="flex gap-1">
-                                  <Button size="sm" variant="ghost" onClick={() => handleRestockAccept(item.id)} className="h-6 w-6 p-0">
-                                    <Check className="h-3 w-3 text-green-600" />
-                                  </Button>
-                                  <Button size="sm" variant="ghost" onClick={() => handleRestockCancel(item.id)} className="h-6 w-6 p-0">
-                                    <X className="h-3 w-3 text-destructive" />
-                                  </Button>
-                                </div>
-                              </>
                             ) : (
                               <div className="cursor-pointer hover:bg-muted/50 px-3 py-1 rounded" onClick={() => handleRestockEdit(item.id, item.restock_threshold)}>
-                                <span className="font-medium">{formatNumber(item.restock_threshold)}</span>
+                                <span className={`font-medium ${restockChange ? 'text-yellow-600 dark:text-yellow-400' : ''}`}>
+                                  {formatNumber(displayRestock)}
+                                </span>
                               </div>
                             )}
                           </div>
@@ -393,5 +403,7 @@ export const InventoryTable = ({
           </tbody>
         </table>
       </div>
-    </div>;
+    </div>
+    </div>
+  );
 };

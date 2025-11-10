@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { exportToAmazonBusinessCSV } from "@/lib/csvExport";
-import { ExternalLink, Package, FileDown, Copy, CheckCircle2 } from "lucide-react";
+import { ExternalLink, Package, FileDown, Copy, CheckCircle2, Mail } from "lucide-react";
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
 
@@ -14,9 +14,12 @@ interface RestockRequestsManagerProps {
   onUpdateItem: (updates: Partial<InventoryItem> & { id: string }) => void;
 }
 
+type ItemStatus = 'pending' | 'ordered' | 'received';
+
 export default function RestockRequestsManager({ items, onUpdateItem }: RestockRequestsManagerProps) {
   const [receivedQuantities, setReceivedQuantities] = useState<Record<string, number>>({});
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [itemStatuses, setItemStatuses] = useState<Record<string, ItemStatus>>({});
 
   const restockItems = items.filter(item => 
     item.restock_requested || item.current_quantity <= item.restock_threshold
@@ -48,32 +51,39 @@ export default function RestockRequestsManager({ items, onUpdateItem }: RestockR
     [restockItems, selectedItems]
   );
 
-  const handleReceiveItem = (itemId: string, currentQty: number, receivedQty?: number) => {
-    const qty = receivedQty || receivedQuantities[itemId] || 0;
-    if (qty <= 0) {
-      toast.error("Please enter a valid quantity");
-      return;
+  const handleStatusChange = (itemId: string, status: ItemStatus) => {
+    setItemStatuses(prev => ({
+      ...prev,
+      [itemId]: status
+    }));
+
+    if (status === 'received') {
+      const item = restockItems.find(i => i.id === itemId);
+      if (!item) return;
+      
+      const qty = receivedQuantities[itemId] || item.reorder_quantity || 1;
+      onUpdateItem({
+        id: itemId,
+        current_quantity: item.current_quantity + qty,
+        restock_requested: false,
+      });
+
+      setReceivedQuantities(prev => {
+        const next = { ...prev };
+        delete next[itemId];
+        return next;
+      });
+      
+      setSelectedItems(prev => {
+        const next = new Set(prev);
+        next.delete(itemId);
+        return next;
+      });
+
+      toast.success(`Received ${qty} units`);
+    } else {
+      toast.success(`Status updated to ${status}`);
     }
-
-    onUpdateItem({
-      id: itemId,
-      current_quantity: currentQty + qty,
-      restock_requested: false,
-    });
-
-    setReceivedQuantities(prev => {
-      const next = { ...prev };
-      delete next[itemId];
-      return next;
-    });
-    
-    setSelectedItems(prev => {
-      const next = new Set(prev);
-      next.delete(itemId);
-      return next;
-    });
-
-    toast.success(`Received ${qty} units`);
   };
 
   const handleSelectAll = (propertyItems: InventoryItem[]) => {
@@ -104,23 +114,23 @@ export default function RestockRequestsManager({ items, onUpdateItem }: RestockR
     });
   };
 
-  const handleBulkReceive = () => {
-    if (selectedItems.size === 0) {
-      toast.error("No items selected");
-      return;
-    }
+  const handleEmailRestockRequests = () => {
+    const emailBody = restockItems.map(item => {
+      const status = itemStatuses[item.id] || 'pending';
+      return `${item.name}
+- Current Stock: ${item.current_quantity}
+- Restock Level: ${item.restock_threshold}
+- Suggested Order: ${item.reorder_quantity || 1}
+- Supplier: ${item.supplier || 'N/A'}
+- Status: ${status.toUpperCase()}
+`;
+    }).join('\n');
 
-    let receivedCount = 0;
-    selectedItems.forEach(itemId => {
-      const item = restockItems.find(i => i.id === itemId);
-      if (!item) return;
-      
-      const qty = receivedQuantities[itemId] || item.reorder_quantity || 1;
-      handleReceiveItem(itemId, item.current_quantity, qty);
-      receivedCount++;
-    });
-
-    toast.success(`Received ${receivedCount} items`);
+    const subject = encodeURIComponent('Restock Requests');
+    const body = encodeURIComponent(`Hi,\n\nPlease find the restock requests below:\n\n${emailBody}\n\nThank you.`);
+    
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    toast.success("Email draft opened");
   };
 
   const handleExportPropertyCSV = (propertyItems: InventoryItem[], propertyName?: string) => {
@@ -172,20 +182,20 @@ export default function RestockRequestsManager({ items, onUpdateItem }: RestockR
 
   return (
     <div className="space-y-6">
-      {/* Bulk Selection Controls */}
-      {selectedItems.size > 0 && (
-        <Card className="border-primary">
-          <CardContent className="py-4">
-            <div className="flex items-center justify-between">
-              <p className="font-medium">{selectedItems.size} items selected</p>
-              <Button onClick={handleBulkReceive} className="gap-2">
-                <CheckCircle2 className="h-4 w-4" />
-                Receive Selected Items
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Global Actions */}
+      <Card>
+        <CardContent className="py-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              {restockItems.length} items need restocking
+            </p>
+            <Button onClick={handleEmailRestockRequests} variant="outline" className="gap-2">
+              <Mail className="h-4 w-4" />
+              Email Restock Requests
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Property Groups */}
       {Object.entries(groupedByProperty).map(([propertyKey, { property, items: propertyItems }]) => {
@@ -239,7 +249,7 @@ export default function RestockRequestsManager({ items, onUpdateItem }: RestockR
                         className="gap-2"
                       >
                         <FileDown className="h-4 w-4" />
-                        Export to CSV
+                        Export Amazon items to CSV
                       </Button>
                     )}
                   </div>
@@ -342,12 +352,32 @@ export default function RestockRequestsManager({ items, onUpdateItem }: RestockR
                               }))}
                               className="w-32"
                             />
-                            <Button
-                              onClick={() => handleReceiveItem(item.id, item.current_quantity, receivedQty)}
-                              size="sm"
-                            >
-                              Mark Received
-                            </Button>
+                            <div className="flex gap-1">
+                              <Button
+                                onClick={() => handleStatusChange(item.id, 'pending')}
+                                size="sm"
+                                variant={itemStatuses[item.id] === 'pending' || !itemStatuses[item.id] ? 'default' : 'outline'}
+                                className="px-2"
+                              >
+                                Pending
+                              </Button>
+                              <Button
+                                onClick={() => handleStatusChange(item.id, 'ordered')}
+                                size="sm"
+                                variant={itemStatuses[item.id] === 'ordered' ? 'default' : 'outline'}
+                                className="px-2"
+                              >
+                                Ordered
+                              </Button>
+                              <Button
+                                onClick={() => handleStatusChange(item.id, 'received')}
+                                size="sm"
+                                variant={itemStatuses[item.id] === 'received' ? 'default' : 'outline'}
+                                className="px-2"
+                              >
+                                Received
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       );
@@ -435,12 +465,32 @@ export default function RestockRequestsManager({ items, onUpdateItem }: RestockR
                               }))}
                               className="w-32"
                             />
-                            <Button
-                              onClick={() => handleReceiveItem(item.id, item.current_quantity, receivedQty)}
-                              size="sm"
-                            >
-                              Mark Received
-                            </Button>
+                            <div className="flex gap-1">
+                              <Button
+                                onClick={() => handleStatusChange(item.id, 'pending')}
+                                size="sm"
+                                variant={itemStatuses[item.id] === 'pending' || !itemStatuses[item.id] ? 'default' : 'outline'}
+                                className="px-2"
+                              >
+                                Pending
+                              </Button>
+                              <Button
+                                onClick={() => handleStatusChange(item.id, 'ordered')}
+                                size="sm"
+                                variant={itemStatuses[item.id] === 'ordered' ? 'default' : 'outline'}
+                                className="px-2"
+                              >
+                                Ordered
+                              </Button>
+                              <Button
+                                onClick={() => handleStatusChange(item.id, 'received')}
+                                size="sm"
+                                variant={itemStatuses[item.id] === 'received' ? 'default' : 'outline'}
+                                className="px-2"
+                              >
+                                Received
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       );
