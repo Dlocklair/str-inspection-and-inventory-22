@@ -116,7 +116,7 @@ export const InventorySection = () => {
     } else if (stockFilter === 'out') {
       matchesStockFilter = item.current_quantity === 0;
     } else if (stockFilter === 'low-out') {
-      matchesStockFilter = item.current_quantity === 0 || (item.current_quantity > 0 && item.current_quantity <= item.restock_threshold);
+      matchesStockFilter = item.current_quantity === 0 || item.current_quantity > 0 && item.current_quantity <= item.restock_threshold;
     }
     return matchesSearch && matchesProperty && matchesStockFilter;
   });
@@ -352,8 +352,8 @@ export const InventorySection = () => {
   return <div className="space-y-6">
       {/* Property Selector with Highlight and Filter */}
       <div className="p-4 bg-cyan-500/10 border-2 border-cyan-500/30 rounded-lg">
-        <div className="flex gap-4 items-center flex-wrap">
-          <div className="flex-1 min-w-[250px]">
+        <div className="flex gap-4 items-center flex-wrap bg-sky-950">
+          <div className="flex-1 min-w-[20px] bg-sky-950">
             <PropertySelector />
           </div>
           <div className="w-[200px]">
