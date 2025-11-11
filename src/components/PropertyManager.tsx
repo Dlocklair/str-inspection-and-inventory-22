@@ -18,6 +18,7 @@ interface Property {
   city: string;
   state: string;
   zip: string;
+  image_url?: string;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -38,7 +39,8 @@ export const PropertyManager = () => {
     address: '',
     city: '',
     state: '',
-    zip: ''
+    zip: '',
+    image_url: ''
   });
 
   useEffect(() => {
@@ -91,7 +93,8 @@ export const PropertyManager = () => {
             address: formData.address.trim(),
             city: formData.city.trim(),
             state: formData.state.trim(),
-            zip: formData.zip.trim()
+            zip: formData.zip.trim(),
+            image_url: formData.image_url.trim() || null
           })
           .eq('id', editingProperty.id);
 
@@ -111,6 +114,7 @@ export const PropertyManager = () => {
             city: formData.city.trim(),
             state: formData.state.trim(),
             zip: formData.zip.trim(),
+            image_url: formData.image_url.trim() || null,
             created_by: profile?.user_id
           });
 
@@ -142,7 +146,8 @@ export const PropertyManager = () => {
       address: property.address,
       city: property.city,
       state: property.state,
-      zip: property.zip
+      zip: property.zip,
+      image_url: property.image_url || ''
     });
     setIsAddDialogOpen(true);
   };
@@ -178,7 +183,8 @@ export const PropertyManager = () => {
       address: '',
       city: '',
       state: '',
-      zip: ''
+      zip: '',
+      image_url: ''
     });
     setEditingProperty(null);
   };
@@ -274,6 +280,27 @@ export const PropertyManager = () => {
                     required
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="image_url">Property Image URL</Label>
+                  <Input
+                    id="image_url"
+                    value={formData.image_url}
+                    onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+                    placeholder="e.g., https://example.com/property.jpg"
+                  />
+                  {formData.image_url && (
+                    <div className="mt-2 rounded-md overflow-hidden border">
+                      <img 
+                        src={formData.image_url} 
+                        alt="Property preview" 
+                        className="w-full h-32 object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23ddd" width="100" height="100"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%23999"%3ENo Image%3C/text%3E%3C/svg%3E';
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
                 <div className="flex gap-2">
                   <Button type="submit" className="flex-1">
                     {editingProperty ? 'Update Property' : 'Add Property'}
@@ -315,6 +342,7 @@ export const PropertyManager = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Image</TableHead>
                     <TableHead>Property Name</TableHead>
                     <TableHead>Address</TableHead>
                     <TableHead>City</TableHead>
@@ -326,6 +354,22 @@ export const PropertyManager = () => {
                 <TableBody>
                   {filteredProperties.map((property) => (
                     <TableRow key={property.id}>
+                      <TableCell>
+                        {property.image_url ? (
+                          <img 
+                            src={property.image_url} 
+                            alt={property.name}
+                            className="w-16 h-16 object-cover rounded"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="64" height="64"%3E%3Crect fill="%23ddd" width="64" height="64"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%23999" font-size="10"%3ENo Image%3C/text%3E%3C/svg%3E';
+                            }}
+                          />
+                        ) : (
+                          <div className="w-16 h-16 bg-muted rounded flex items-center justify-center">
+                            <Building2 className="h-6 w-6 text-muted-foreground" />
+                          </div>
+                        )}
+                      </TableCell>
                       <TableCell className="font-medium">{property.name}</TableCell>
                       <TableCell>{property.address}</TableCell>
                       <TableCell>{property.city}</TableCell>

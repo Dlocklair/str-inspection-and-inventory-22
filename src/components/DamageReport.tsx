@@ -432,7 +432,7 @@ export const DamageReport = () => {
                                        selectedHistoryReport.responsibleParty.charAt(0).toUpperCase() + selectedHistoryReport.responsibleParty.slice(1)}
                                      </div>
                     <div><strong>Report Date:</strong> {format(new Date(selectedHistoryReport.reportDate + 'T12:00:00'), 'PPP')}</div>
-                    <div><strong>Est. Cost:</strong> ${selectedHistoryReport.estimatedCost}</div>
+                    <div><strong>Est. Cost:</strong> ${selectedHistoryReport.estimatedCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                   </div>
                   {selectedHistoryReport.notes && (
                     <div><strong>Notes:</strong> {selectedHistoryReport.notes}</div>

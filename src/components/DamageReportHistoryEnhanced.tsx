@@ -14,6 +14,7 @@ import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { exportDamageReportsToPDF, exportDamageReportsToExcel } from '@/lib/exportUtils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { usePropertyContext } from '@/contexts/PropertyContext';
 
 interface DamageItem {
   id: string;
@@ -33,11 +34,20 @@ interface DamageItem {
   propertyName?: string;
 }
 
+interface Property {
+  id: string;
+  name: string;
+  address: string;
+  city: string;
+  state: string;
+  zip: string;
+}
+
 interface DamageReportHistoryEnhancedProps {
   reports: DamageItem[];
   onViewReport: (report: DamageItem) => void;
   propertyMode: 'property' | 'all' | 'unassigned';
-  properties: Array<{ id: string; name: string }>;
+  properties: Property[];
 }
 
 const DamageReportHistoryEnhanced: React.FC<DamageReportHistoryEnhancedProps> = ({ 
@@ -46,6 +56,7 @@ const DamageReportHistoryEnhanced: React.FC<DamageReportHistoryEnhancedProps> = 
   propertyMode: initialPropertyMode,
   properties 
 }) => {
+  const { selectedProperty, setSelectedProperty } = usePropertyContext();
   const [searchTerm, setSearchTerm] = useState('');
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [dateFilter, setDateFilter] = useState<'all' | 'this-year' | 'past-12' | 'custom'>('all');
@@ -121,16 +132,26 @@ const DamageReportHistoryEnhanced: React.FC<DamageReportHistoryEnhancedProps> = 
     return filtered;
   };
 
-  // Filter reports by search
+  // Filter reports by search and property selection
   const filteredReports = getDateFilteredReports().filter(report => {
-    if (!searchTerm) return true;
-    const search = searchTerm.toLowerCase();
-    return (
-      report.title.toLowerCase().includes(search) ||
-      report.description.toLowerCase().includes(search) ||
-      report.location.toLowerCase().includes(search) ||
-      report.propertyName?.toLowerCase().includes(search)
-    );
+    // Search filter
+    if (searchTerm) {
+      const search = searchTerm.toLowerCase();
+      const matchesSearch = (
+        report.title.toLowerCase().includes(search) ||
+        report.description.toLowerCase().includes(search) ||
+        report.location.toLowerCase().includes(search) ||
+        report.propertyName?.toLowerCase().includes(search)
+      );
+      if (!matchesSearch) return false;
+    }
+    
+    // Property filter
+    if (viewMode === 'current' && selectedProperty) {
+      return report.propertyId === selectedProperty.id;
+    }
+    
+    return true;
   });
 
   // Group by property and year if "all" mode
@@ -189,14 +210,14 @@ const DamageReportHistoryEnhanced: React.FC<DamageReportHistoryEnhancedProps> = 
             {report.estimatedCost && (
               <div className="flex items-center gap-1">
                 <DollarSign className="h-3 w-3" />
-                Est: ${report.estimatedCost.toFixed(2)}
+                Est: ${report.estimatedCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
             )}
             
             {report.actualCost && (
               <div className="flex items-center gap-1">
                 <DollarSign className="h-3 w-3" />
-                Actual: ${report.actualCost.toFixed(2)}
+                Actual: ${report.actualCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
             )}
           </div>
@@ -242,6 +263,28 @@ const DamageReportHistoryEnhanced: React.FC<DamageReportHistoryEnhancedProps> = 
                 All Properties
               </ToggleGroupItem>
             </ToggleGroup>
+
+            {/* Property Selector for current mode */}
+            {viewMode === 'current' && (
+              <Select 
+                value={selectedProperty?.id || ''} 
+                onValueChange={(value) => {
+                  const property = properties.find(p => p.id === value);
+                  if (property) setSelectedProperty(property);
+                }}
+              >
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Select property" />
+                </SelectTrigger>
+                <SelectContent>
+                  {properties.map((property) => (
+                    <SelectItem key={property.id} value={property.id}>
+                      {property.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
 
             {/* Date Range Filter */}
             <Select value={dateFilter} onValueChange={(value: any) => setDateFilter(value)}>
