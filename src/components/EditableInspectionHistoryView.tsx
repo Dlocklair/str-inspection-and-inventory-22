@@ -281,7 +281,7 @@ export const EditableInspectionHistoryView = () => {
         </div>
       </div>
 
-      <div className="p-4 bg-cyan-500/10 border-2 border-cyan-500/30 rounded-lg">
+      <div className="p-4 border-2 border-cyan-500/30 rounded-lg bg-sky-900">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <Label>Filter by Property</Label>
@@ -362,8 +362,7 @@ export const EditableInspectionHistoryView = () => {
           </CardContent>
         </Card>}
 
-      {dateFilter === 'custom' && (
-        <>
+      {dateFilter === 'custom' && <>
           <Card>
             <CardContent className="pt-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -398,15 +397,12 @@ export const EditableInspectionHistoryView = () => {
               </div>
             </CardContent>
           </Card>
-          {customStartDate && customEndDate && showCustomReport && (
-            <div className="p-3 bg-muted/50 rounded-lg border">
+          {customStartDate && customEndDate && showCustomReport && <div className="p-3 bg-muted/50 rounded-lg border">
               <p className="text-sm text-muted-foreground">
                 <span className="font-medium">Date Range:</span> {format(customStartDate, "PPP")} - {format(customEndDate, "PPP")}
               </p>
-            </div>
-          )}
-        </>
-      )}
+            </div>}
+        </>}
 
       {customFilteredRecords.length === 0 ? <Card>
           <CardContent className="p-8 text-center text-muted-foreground">

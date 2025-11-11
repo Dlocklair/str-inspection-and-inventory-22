@@ -252,7 +252,7 @@ export const NewInspectionForm = ({
   const canSave = selectedTemplateId && selectedDate && currentInspection.length > 0;
   return <div className="space-y-6">
       {/* Simple Property Selector - Only show actual properties */}
-      {userProperties.length > 1 && <Card className="p-4 bg-cyan-800">
+      {userProperties.length > 1 && <Card className="p-4 bg-sky-900">
           <div className="flex items-center gap-3">
             <Building2 className="h-5 w-5 text-primary" />
             <div className="flex-1">

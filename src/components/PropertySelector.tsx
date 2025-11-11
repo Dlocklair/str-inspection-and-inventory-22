@@ -41,7 +41,7 @@ export function PropertySelector() {
         </div>
       </Card>;
   }
-  return <Card className="p-4 mb-4 cyan bg-sky-950">
+  return <Card className="p-4 mb-4 cyan bg-sky-900">
       <div className="flex items-center gap-3 ">
         <Building2 className="h-5 w-5 text-primary" />
         <div className="flex-1 bg-[#000095]/0">
