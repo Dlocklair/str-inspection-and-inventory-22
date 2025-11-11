@@ -564,7 +564,19 @@ export const DamageReport = () => {
                 {showAddForm && (
                   <Card>
                     <CardHeader>
-                      <CardTitle>Create Damage Report</CardTitle>
+                      <div className="flex items-center justify-between">
+                        <CardTitle>Create Damage Report</CardTitle>
+                        <div className="flex gap-2">
+                          <Button onClick={addNewReport} size="sm">
+                            <Save className="h-4 w-4 mr-2" />
+                            Save Report
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => setShowAddForm(false)}>
+                            <X className="h-4 w-4 mr-2" />
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         {/* Damage Information Section */}
@@ -655,11 +667,16 @@ export const DamageReport = () => {
                               <div className="relative">
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
                                 <Input
-                                  type="number"
-                                  step="0.01"
+                                  type="text"
                                   placeholder="Estimated repair cost"
-                                  value={newReport.estimatedCost || ''}
-                                  onChange={(e) => setNewReport(prev => ({ ...prev, estimatedCost: Number(e.target.value) }))}
+                                  value={newReport.estimatedCost ? newReport.estimatedCost.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : ''}
+                                  onChange={(e) => {
+                                    const value = e.target.value.replace(/,/g, '');
+                                    const numValue = value === '' ? 0 : Number(value);
+                                    if (!isNaN(numValue)) {
+                                      setNewReport(prev => ({ ...prev, estimatedCost: Math.round(numValue) }));
+                                    }
+                                  }}
                                   className="pl-8"
                                 />
                               </div>
@@ -760,12 +777,6 @@ export const DamageReport = () => {
                             onChange={(e) => setNewReport(prev => ({ ...prev, notes: e.target.value }))}
                             rows={2}
                           />
-                        </div>
-
-                        <div className="flex gap-2">
-                          <Button onClick={addNewReport}>Create Report</Button>
-                          <Button variant="outline" onClick={() => setShowAddForm(false)}>Active Reports</Button>
-                          <Button variant="outline" onClick={() => setShowAddForm(false)}>Cancel</Button>
                         </div>
                       </CardContent>
                     </Card>
