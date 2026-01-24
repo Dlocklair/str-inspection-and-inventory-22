@@ -350,27 +350,29 @@ export const InventorySection = () => {
   const lowStockItems = filteredItems.filter(item => item.current_quantity > 0 && item.current_quantity <= item.restock_threshold);
   const outOfStockItems = filteredItems.filter(item => item.current_quantity === 0);
   return <div className="space-y-6">
-      {/* Property Selector with Highlight and Filter */}
-      <div className="p-4 bg-cyan-500/10 border-2 border-cyan-500/30 rounded-lg">
-        <div className="flex gap-4 items-center flex-wrap bg-sky-950">
-          <div className="flex-1 min-w-[20px] bg-sky-950">
-            <PropertySelector />
-          </div>
-          <div className="w-[200px]">
-            <Label className="text-sm font-medium mb-1.5 block">Filter</Label>
-            <Select value={stockFilter} onValueChange={(value: 'all' | 'low' | 'out' | 'low-out') => setStockFilter(value)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Items</SelectItem>
-                <SelectItem value="low">Low Stock</SelectItem>
-                <SelectItem value="out">Out of Stock</SelectItem>
-                <SelectItem value="low-out">Low & Out of Stock</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+      {/* Property Selector and Filter */}
+      <div className="flex gap-4 items-stretch flex-wrap">
+        <div className="flex-1 min-w-[200px]">
+          <PropertySelector />
         </div>
+        <Card className="p-4 mb-4 bg-primary/10 border-primary/30 shadow-sm w-fit">
+          <div className="flex items-center gap-3 h-full">
+            <div>
+              <Label className="text-sm font-medium mb-2 block text-foreground">Filter</Label>
+              <Select value={stockFilter} onValueChange={(value: 'all' | 'low' | 'out' | 'low-out') => setStockFilter(value)}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Items</SelectItem>
+                  <SelectItem value="low">Low Stock</SelectItem>
+                  <SelectItem value="out">Out of Stock</SelectItem>
+                  <SelectItem value="low-out">Low & Out of Stock</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </Card>
       </div>
       
       {/* Summary Cards - Reduced Height */}
