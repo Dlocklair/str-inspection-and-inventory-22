@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,10 +6,11 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Building2, Plus, Edit, Trash2, Search } from 'lucide-react';
+import { Building2, Plus, Edit, Trash2, Search, Upload, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { AspectRatio } from '@/components/ui/aspect-ratio';
 
 interface Property {
   id: string;
@@ -42,6 +43,10 @@ export const PropertyManager = () => {
     zip: '',
     image_url: ''
   });
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchProperties();
@@ -84,6 +89,28 @@ export const PropertyManager = () => {
     }
 
     try {
+      setIsUploading(true);
+      let finalImageUrl = formData.image_url;
+
+      // Upload image if a new file was selected
+      if (imageFile) {
+        const fileExt = imageFile.name.split('.').pop();
+        const fileName = `${crypto.randomUUID()}.${fileExt}`;
+        const filePath = `${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('property-images')
+          .upload(filePath, imageFile);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('property-images')
+          .getPublicUrl(filePath);
+
+        finalImageUrl = publicUrl;
+      }
+
       if (editingProperty) {
         // Update existing property
         const { error } = await supabase
@@ -94,7 +121,7 @@ export const PropertyManager = () => {
             city: formData.city.trim(),
             state: formData.state.trim(),
             zip: formData.zip.trim(),
-            image_url: formData.image_url.trim() || null
+            image_url: finalImageUrl || null
           })
           .eq('id', editingProperty.id);
 
@@ -114,7 +141,7 @@ export const PropertyManager = () => {
             city: formData.city.trim(),
             state: formData.state.trim(),
             zip: formData.zip.trim(),
-            image_url: formData.image_url.trim() || null,
+            image_url: finalImageUrl || null,
             created_by: profile?.user_id
           });
 
@@ -136,6 +163,47 @@ export const PropertyManager = () => {
         description: error.message || 'Failed to save property',
         variant: 'destructive'
       });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleImagePaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData.items;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        const file = items[i].getAsFile();
+        if (file) {
+          setImageFile(file);
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            setImagePreview(e.target?.result as string);
+          };
+          reader.readAsDataURL(file);
+        }
+        break;
+      }
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const clearImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    setFormData(prev => ({ ...prev, image_url: '' }));
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -149,6 +217,8 @@ export const PropertyManager = () => {
       zip: property.zip,
       image_url: property.image_url || ''
     });
+    setImageFile(null);
+    setImagePreview(property.image_url || null);
     setIsAddDialogOpen(true);
   };
 
@@ -187,6 +257,11 @@ export const PropertyManager = () => {
       image_url: ''
     });
     setEditingProperty(null);
+    setImageFile(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const filteredProperties = properties.filter(property =>
@@ -281,31 +356,56 @@ export const PropertyManager = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="image_url">Property Image URL</Label>
-                  <Input
-                    id="image_url"
-                    value={formData.image_url}
-                    onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                    placeholder="e.g., https://example.com/property.jpg"
+                  <Label>Property Image</Label>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    accept="image/*"
+                    onChange={handleFileSelect}
+                    className="hidden"
                   />
-                  {formData.image_url && (
-                    <div className="mt-2 rounded-md overflow-hidden border">
-                      <img 
-                        src={formData.image_url} 
-                        alt="Property preview" 
-                        className="w-full h-32 object-cover"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23ddd" width="100" height="100"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%23999"%3ENo Image%3C/text%3E%3C/svg%3E';
-                        }}
-                      />
-                    </div>
-                  )}
+                  <div 
+                    className="border-2 border-dashed rounded-lg p-4 cursor-pointer hover:border-primary transition-colors"
+                    onClick={() => fileInputRef.current?.click()}
+                    onPaste={handleImagePaste}
+                    tabIndex={0}
+                  >
+                    {imagePreview ? (
+                      <div className="relative w-32 mx-auto">
+                        <AspectRatio ratio={1}>
+                          <img 
+                            src={imagePreview} 
+                            alt="Property preview" 
+                            className="w-full h-full object-cover rounded-md"
+                          />
+                        </AspectRatio>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="destructive"
+                          className="absolute -top-2 -right-2 h-6 w-6"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            clearImage();
+                          }}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="text-center text-muted-foreground">
+                        <Upload className="h-8 w-8 mx-auto mb-2" />
+                        <p className="text-sm">Click to upload or paste an image</p>
+                        <p className="text-xs mt-1">1:1 aspect ratio recommended</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button type="submit" className="flex-1">
-                    {editingProperty ? 'Update Property' : 'Add Property'}
+                  <Button type="submit" className="flex-1" disabled={isUploading}>
+                    {isUploading ? 'Uploading...' : (editingProperty ? 'Update Property' : 'Add Property')}
                   </Button>
-                  <Button type="button" variant="outline" onClick={() => {
+                  <Button type="button" variant="outline" disabled={isUploading} onClick={() => {
                     resetForm();
                     setIsAddDialogOpen(false);
                   }}>
