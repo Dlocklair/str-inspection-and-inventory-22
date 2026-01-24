@@ -41,11 +41,11 @@ export function PropertySelector() {
         </div>
       </Card>;
   }
-  return <Card className="p-4 mb-4 cyan bg-sky-900">
-      <div className="flex items-center gap-3 ">
+  return <Card className="p-4 mb-4 bg-primary/10 border-primary/30 shadow-sm">
+      <div className="flex items-center gap-3">
         <Building2 className="h-5 w-5 text-primary" />
-        <div className="flex-1 bg-[#000095]/0">
-          <label className="font-medium mb-2 block text-sm text-">Current Property</label>
+        <div className="flex-1">
+          <label className="font-medium mb-2 block text-sm text-foreground">Current Property</label>
           <Select value={propertyMode === 'all' ? '__show_all__' : propertyMode === 'unassigned' ? '__unassigned__' : selectedProperty?.id || ''} onValueChange={value => {
           if (value === '__show_all__') {
             setPropertyMode('all');
