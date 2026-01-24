@@ -13,7 +13,7 @@ const corsHeaders = {
 interface InvitationRequest {
   email: string;
   fullName: string;
-  role: 'owner' | 'manager' | 'inspector';
+  role: 'manager' | 'inspector';
   inspectionTypeIds?: string[];
 }
 
