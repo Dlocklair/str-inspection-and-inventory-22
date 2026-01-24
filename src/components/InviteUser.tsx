@@ -9,7 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { Send, Loader2, Building2 } from 'lucide-react';
 
-type AppRole = 'owner' | 'manager' | 'inspector';
+type AppRole = 'manager' | 'inspector';
 
 interface Property {
   id: string;
@@ -27,7 +27,7 @@ export const InviteUser = () => {
   const { toast } = useToast();
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteFullName, setInviteFullName] = useState('');
-  const [inviteRole, setInviteRole] = useState<AppRole>('inspector');
+  const [inviteRole, setInviteRole] = useState<AppRole>('manager');
   const [inviteSending, setInviteSending] = useState(false);
   const [properties, setProperties] = useState<Property[]>([]);
   const [templates, setTemplates] = useState<InspectionTemplate[]>([]);
@@ -92,7 +92,7 @@ export const InviteUser = () => {
       return;
     }
 
-    if ((inviteRole === 'manager' || inviteRole === 'inspector') && selectedProperties.length === 0) {
+    if (selectedProperties.length === 0) {
       toast({
         title: 'Error',
         description: `Please select at least one property for ${inviteRole}s`,
@@ -118,7 +118,7 @@ export const InviteUser = () => {
           email: inviteEmail,
           fullName: inviteFullName,
           role: inviteRole,
-          propertyIds: inviteRole !== 'owner' ? selectedProperties : undefined,
+          propertyIds: selectedProperties,
           inspectionTypeIds: inviteRole === 'inspector' ? selectedTemplates : undefined
         }
       });
@@ -133,7 +133,7 @@ export const InviteUser = () => {
       // Reset form
       setInviteEmail('');
       setInviteFullName('');
-      setInviteRole('inspector');
+      setInviteRole('manager');
       setSelectedProperties([]);
       setSelectedTemplates([]);
     } catch (error: any) {
@@ -206,14 +206,13 @@ export const InviteUser = () => {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="owner">Owner - Full access to all modules</SelectItem>
                 <SelectItem value="manager">Manager - All modules, properties must be assigned</SelectItem>
                 <SelectItem value="inspector">Inspector - Limited access, properties & templates required</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {(inviteRole === 'manager' || inviteRole === 'inspector') && (
+          <div>
             <div>
               <Label className="mb-2 block">Select Properties *</Label>
               <div className="space-y-2 max-h-60 overflow-y-auto border rounded-md p-3">
@@ -238,7 +237,7 @@ export const InviteUser = () => {
                 Select the properties this {inviteRole} will have access to
               </p>
             </div>
-          )}
+          </div>
 
           {inviteRole === 'inspector' && selectedProperties.length > 0 && (
             <div>
