@@ -29,7 +29,7 @@ export function PropertySelector() {
       </Card>;
   }
   if (userProperties.length === 1) {
-    return <Card className="p-4 mb-6 bg-primary/5 border-primary/20">
+    return <Card className="p-4 mb-6 bg-primary/10 border-primary/30 shadow-sm">
         <div className="flex items-center gap-3">
           <Building2 className="h-5 w-5 text-primary" />
           <div className="flex-1">
@@ -41,7 +41,7 @@ export function PropertySelector() {
         </div>
       </Card>;
   }
-  return <Card className="p-4 mb-4 bg-primary/10 border-primary/30 shadow-sm">
+  return <Card className="p-4 mb-6 bg-primary/10 border-primary/30 shadow-sm">
       <div className="flex items-center gap-3">
         <Building2 className="h-5 w-5 text-primary" />
         <div className="flex-1">

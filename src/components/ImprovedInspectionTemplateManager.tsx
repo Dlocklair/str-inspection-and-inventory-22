@@ -96,7 +96,7 @@ const SortableItem = ({ item, templateId, isEditing, editingText, onEdit, onSave
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-2 pl-4 py-2 pr-2 bg-muted/20 rounded border"
+      className="flex items-center gap-2 pl-8 py-2 pr-2 bg-muted/20 rounded border"
     >
       <div {...attributes} {...listeners} className="cursor-grab">
         <GripVertical className="h-4 w-4 text-muted-foreground" />
@@ -162,7 +162,7 @@ export const ImprovedInspectionTemplateManager = () => {
   const [tempFrequencyType, setTempFrequencyType] = useState<string>('none');
   const [tempFrequencyDays, setTempFrequencyDays] = useState<number>(30);
   const [tempNotificationsEnabled, setTempNotificationsEnabled] = useState<boolean>(true);
-  const [tempNotificationMethod, setTempNotificationMethod] = useState<string>('email');
+  const [tempNotificationMethod, setTempNotificationMethod] = useState<string>('both');
   const [tempNotificationDaysAhead, setTempNotificationDaysAhead] = useState<number>(7);
   const [tempNextOccurrence, setTempNextOccurrence] = useState<Date | undefined>(undefined);
   
@@ -505,7 +505,7 @@ export const ImprovedInspectionTemplateManager = () => {
     setTempFrequencyType('none');
     setTempFrequencyDays(30);
     setTempNotificationsEnabled(true);
-    setTempNotificationMethod('email');
+    setTempNotificationMethod('both');
     setTempNotificationDaysAhead(7);
     setTempNextOccurrence(undefined);
   };
@@ -903,7 +903,7 @@ export const ImprovedInspectionTemplateManager = () => {
                                     {tempNextOccurrence ? format(tempNextOccurrence, "PPP") : <span>Pick a date</span>}
                                   </Button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0" align="start">
+                              <PopoverContent className="w-auto p-0" align="start" side="bottom" sideOffset={4}>
                                   <Calendar
                                     mode="single"
                                     selected={tempNextOccurrence}
