@@ -13,7 +13,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Plus, Edit, Save, X, Trash2, AlertTriangle, Camera, FileText, CalendarIcon, DollarSign, Home, ClipboardList, Package, Settings, History, Upload, MapPin, Search, Image as ImageIcon, Building2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { LocationManagerModal } from './LocationManagerModal';
@@ -57,8 +57,9 @@ interface User {
 export const DamageReport = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { profile, roles, isOwner } = useAuth();
-  const { selectedProperty, propertyMode, userProperties } = usePropertyContext();
+  const { selectedProperty, propertyMode, userProperties, setSelectedProperty, setPropertyMode } = usePropertyContext();
   
   const [damageReports, setDamageReports] = useState<DamageItem[]>([
     {
@@ -104,6 +105,7 @@ export const DamageReport = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [captureMode, setCaptureMode] = useState(false);
   const [editingPhotoIndex, setEditingPhotoIndex] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<string>('active');
 
   const severityColors = {
     minor: 'default',
@@ -119,9 +121,33 @@ export const DamageReport = () => {
     completed: 'success'
   };
 
+  // Handle URL view parameter and auto-select property
   useEffect(() => {
-    // Remove the localStorage user loading since we're using useAuth now
-  }, []);
+    const view = searchParams.get('view');
+    
+    // Auto-select property if user only has one
+    if (userProperties.length === 1 && !selectedProperty) {
+      setSelectedProperty(userProperties[0]);
+      setPropertyMode('property');
+    }
+    
+    // Handle view parameter
+    if (view === 'new') {
+      setShowHistory(false);
+      setSelectedHistoryReport(null);
+      setShowAddForm(true);
+      setActiveTab('active');
+    } else if (view === 'pending') {
+      setShowHistory(false);
+      setSelectedHistoryReport(null);
+      setShowAddForm(false);
+      setActiveTab('pending');
+    } else if (view === 'history') {
+      setShowAddForm(false);
+      setSelectedHistoryReport(null);
+      setShowHistory(true);
+    }
+  }, [searchParams, userProperties, selectedProperty, setSelectedProperty, setPropertyMode]);
 
   // Load saved data from localStorage
   useEffect(() => {
@@ -615,7 +641,7 @@ export const DamageReport = () => {
                 )}
               </div>
               
-              <Tabs defaultValue="active" className="w-full">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid w-full max-w-md grid-cols-2">
                   <TabsTrigger value="active">Active Reports</TabsTrigger>
                   <TabsTrigger value="pending">Pending Reports</TabsTrigger>
