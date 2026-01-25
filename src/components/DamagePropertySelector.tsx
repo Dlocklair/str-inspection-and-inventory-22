@@ -60,11 +60,10 @@ export function DamagePropertySelector() {
         <Building2 className="h-5 w-5 text-primary" />
         <div className="flex-1">
           <label className="text-sm font-medium mb-2 block">Select Property</label>
-          <Select value={selectedProperty?.id || ''} onValueChange={value => {
+    <Select value={selectedProperty?.id || ''} onValueChange={value => {
           const property = userProperties.find(p => p.id === value);
           if (property) {
             setSelectedProperty(property);
-            setPropertyMode('property');
           }
         }}>
             <SelectTrigger className="w-full">
