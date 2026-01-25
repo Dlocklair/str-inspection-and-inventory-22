@@ -96,7 +96,7 @@ const SortableItem = ({ item, templateId, isEditing, editingText, onEdit, onSave
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-2 pl-8 py-2 pr-2 bg-muted/20 rounded border"
+      className="flex items-center gap-2 pl-4 py-2 pr-2 bg-muted/20 rounded border"
     >
       <div {...attributes} {...listeners} className="cursor-grab">
         <GripVertical className="h-4 w-4 text-muted-foreground" />

@@ -44,29 +44,20 @@ export function DamagePropertySelector() {
       <div className="flex items-center gap-3">
         <Building2 className="h-5 w-5 text-primary" />
         <div className="flex-1">
-          <label className="text-sm font-medium mb-2 block">Current Property</label>
+          <label className="text-sm font-medium mb-2 block">Select Property</label>
           <Select value={selectedProperty?.id || ''} onValueChange={value => {
           const property = userProperties.find(p => p.id === value);
           if (property) {
             setSelectedProperty(property);
-            setPropertyMode('property'); // Always use 'property' mode for damage reports
+            setPropertyMode('property');
           }
         }}>
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select a property">
-                {selectedProperty && <span className="font-medium">
-                    {selectedProperty.name} - {selectedProperty.address}
-                  </span>}
-              </SelectValue>
+              <SelectValue placeholder="Select Property" />
             </SelectTrigger>
             <SelectContent>
               {userProperties.map(property => <SelectItem key={property.id} value={property.id}>
-                  <div className="flex flex-col">
-                    <span className="font-medium">{property.name}</span>
-                    <span className="text-sm text-muted-foreground">
-                      {property.address}, {property.city}, {property.state} {property.zip}
-                    </span>
-                  </div>
+                  {property.name} - {property.address}
                 </SelectItem>)}
             </SelectContent>
           </Select>
