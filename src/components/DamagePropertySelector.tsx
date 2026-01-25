@@ -1,8 +1,10 @@
+import { useEffect } from 'react';
 import { Building2 } from 'lucide-react';
 import { usePropertyContext } from '@/contexts/PropertyContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+
 export function DamagePropertySelector() {
   const {
     selectedProperty,
@@ -11,11 +13,21 @@ export function DamagePropertySelector() {
     userProperties,
     isLoading
   } = usePropertyContext();
+
+  // Auto-select property if only one is available
+  useEffect(() => {
+    if (!isLoading && userProperties.length === 1 && !selectedProperty) {
+      setSelectedProperty(userProperties[0]);
+      setPropertyMode('property');
+    }
+  }, [isLoading, userProperties, selectedProperty, setSelectedProperty, setPropertyMode]);
+
   if (isLoading) {
     return <Card className="p-4 mb-4">
         <Skeleton className="h-10 w-full" />
       </Card>;
   }
+
   if (userProperties.length === 0) {
     return <Card className="p-4 mb-4 bg-muted/50">
         <div className="flex items-center gap-3 text-muted-foreground">
@@ -27,19 +39,22 @@ export function DamagePropertySelector() {
         </div>
       </Card>;
   }
+
   if (userProperties.length === 1) {
+    const property = selectedProperty || userProperties[0];
     return <Card className="p-4 mb-4 bg-primary/10 border-primary/30 shadow-sm">
         <div className="flex items-center gap-3">
           <Building2 className="h-5 w-5 text-primary" />
           <div className="flex-1">
-            <p className="font-semibold text-lg">{selectedProperty?.name}</p>
+            <p className="font-semibold text-lg">{property?.name}</p>
             <p className="text-sm text-muted-foreground">
-              {selectedProperty?.address}, {selectedProperty?.city}, {selectedProperty?.state} {selectedProperty?.zip}
+              {property?.address}, {property?.city}, {property?.state} {property?.zip}
             </p>
           </div>
         </div>
       </Card>;
   }
+
   return <Card className="p-4 mb-4 bg-primary/10 border-primary/30 shadow-sm">
       <div className="flex items-center gap-3">
         <Building2 className="h-5 w-5 text-primary" />
