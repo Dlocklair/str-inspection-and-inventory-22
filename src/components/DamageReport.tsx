@@ -121,17 +121,10 @@ export const DamageReport = () => {
     completed: 'success'
   };
 
-  // Handle URL view parameter and auto-select property
+  // Handle URL view parameter - only runs when searchParams changes
   useEffect(() => {
     const view = searchParams.get('view');
     
-    // Auto-select property if user only has one
-    if (userProperties.length === 1 && !selectedProperty) {
-      setSelectedProperty(userProperties[0]);
-      setPropertyMode('property');
-    }
-    
-    // Handle view parameter
     if (view === 'new') {
       setShowHistory(false);
       setSelectedHistoryReport(null);
@@ -147,7 +140,14 @@ export const DamageReport = () => {
       setSelectedHistoryReport(null);
       setShowHistory(true);
     }
-  }, [searchParams, userProperties, selectedProperty, setSelectedProperty, setPropertyMode]);
+  }, [searchParams]);
+
+  // Auto-select property if user only has one - separate effect
+  useEffect(() => {
+    if (userProperties.length === 1 && !selectedProperty) {
+      setSelectedProperty(userProperties[0]);
+    }
+  }, [userProperties.length, selectedProperty, setSelectedProperty]);
 
   // Load saved data from localStorage
   useEffect(() => {
