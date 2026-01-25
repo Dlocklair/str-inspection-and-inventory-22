@@ -252,7 +252,7 @@ export const NewInspectionForm = ({
   const canSave = selectedTemplateId && selectedDate && currentInspection.length > 0;
   return <div className="space-y-6">
       {/* Simple Property Selector - Only show actual properties */}
-      {userProperties.length > 1 && <Card className="p-4 bg-sky-900">
+      {userProperties.length > 1 && <Card className="p-4 bg-primary/10 border-primary/30 shadow-sm">
           <div className="flex items-center gap-3">
             <Building2 className="h-5 w-5 text-primary" />
             <div className="flex-1">
@@ -275,7 +275,7 @@ export const NewInspectionForm = ({
             </div>
           </div>
         </Card>}
-      {userProperties.length === 1 && selectedProperty && <Card className="p-4 bg-primary/5 border-primary/20">
+      {userProperties.length === 1 && selectedProperty && <Card className="p-4 bg-primary/10 border-primary/30 shadow-sm">
           <div className="flex items-center gap-3">
             <Building2 className="h-5 w-5 text-primary" />
             <div className="flex-1">
@@ -338,7 +338,7 @@ export const NewInspectionForm = ({
                     {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
+              <PopoverContent className="w-auto p-0" align="start" side="bottom" sideOffset={4}>
                   <Calendar mode="single" selected={selectedDate} onSelect={handleDateChange} initialFocus className="p-3 pointer-events-auto" />
                 </PopoverContent>
               </Popover>
@@ -361,7 +361,7 @@ export const NewInspectionForm = ({
                     {nextDueDate ? format(nextDueDate, "PPP") : <span>Pick a date</span>}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
+              <PopoverContent className="w-auto p-0" align="start" side="bottom" sideOffset={4}>
                   <Calendar mode="single" selected={nextDueDate} onSelect={setNextDueDate} disabled={date => date < new Date()} initialFocus className="p-3 pointer-events-auto" />
                 </PopoverContent>
               </Popover>
