@@ -23,6 +23,7 @@ const menuItems = [
     icon: ClipboardList,
     subItems: [
       { title: 'New Inspection', url: '/inspections?view=new-inspection', icon: FilePlus },
+      { title: 'Upcoming Inspections', url: '/inspections?view=upcoming', icon: Clock },
       { title: 'Manage Inspection Templates', url: '/inspections?view=manage-templates', icon: FileEdit },
       { title: 'Inspection History', url: '/inspections?view=inspection-history', icon: History },
     ]

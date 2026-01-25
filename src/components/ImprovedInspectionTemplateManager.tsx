@@ -96,7 +96,7 @@ const SortableItem = ({ item, templateId, isEditing, editingText, onEdit, onSave
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-2 p-2 bg-muted/20 rounded border"
+      className="flex items-center gap-2 pl-4 py-2 pr-2 bg-muted/20 rounded border"
     >
       <div {...attributes} {...listeners} className="cursor-grab">
         <GripVertical className="h-4 w-4 text-muted-foreground" />
@@ -144,6 +144,7 @@ export const ImprovedInspectionTemplateManager = () => {
   
   const [properties, setProperties] = useState<Property[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+  const [userHasSelected, setUserHasSelected] = useState(false);
   const [newItemText, setNewItemText] = useState('');
   const [editingItem, setEditingItem] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
@@ -191,8 +192,15 @@ export const ImprovedInspectionTemplateManager = () => {
     fetchProperties();
   }, []);
 
+  // Reset user selection when property changes
+  useEffect(() => {
+    setUserHasSelected(false);
+  }, [selectedProperty?.id]);
+
   // Set initial selected template when templates load or when property changes
   useEffect(() => {
+    if (userHasSelected) return; // Don't override user selection
+    
     if (selectedProperty) {
       // When a property is selected, auto-select the first template for that property
       const propertyTemplates = templates.filter(t => t.property_id === selectedProperty.id);
@@ -205,7 +213,7 @@ export const ImprovedInspectionTemplateManager = () => {
       // Default behavior when no property is selected
       setSelectedTemplateId(templates[0].id);
     }
-  }, [templates, selectedTemplateId, selectedProperty]);
+  }, [templates, selectedTemplateId, selectedProperty, userHasSelected]);
 
   const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
 
@@ -552,7 +560,7 @@ export const ImprovedInspectionTemplateManager = () => {
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
-              Create New Template
+              Create New Inspection Template
             </Button>
           </DialogTrigger>
           <DialogContent>
@@ -640,7 +648,10 @@ export const ImprovedInspectionTemplateManager = () => {
                         key={template.id}
                         variant={selectedTemplateId === template.id ? 'secondary' : 'ghost'}
                         className="w-full justify-start pl-6 mb-1"
-                        onClick={() => setSelectedTemplateId(template.id)}
+                        onClick={() => {
+                          setSelectedTemplateId(template.id);
+                          setUserHasSelected(true);
+                        }}
                       >
                         <FileText className="mr-2 h-4 w-4" />
                         <div className="flex-1 text-left">
@@ -705,7 +716,7 @@ export const ImprovedInspectionTemplateManager = () => {
                       onClick={() => openAssignPropertyDialog(selectedTemplate.id)}
                     >
                       <Copy className="h-4 w-4 mr-1" />
-                      Copy to Property
+                      Copy to Other Properties
                     </Button>
                     {(!selectedTemplate.is_predefined || selectedTemplate.property_id) && (
                       <Button 

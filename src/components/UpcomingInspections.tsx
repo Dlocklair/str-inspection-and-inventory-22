@@ -1,0 +1,198 @@
+import { useState, useMemo } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { PropertySelector } from './PropertySelector';
+import { usePropertyContext } from '@/contexts/PropertyContext';
+import { useAllInspectionTemplates } from '@/hooks/useInspectionTemplates';
+import { useInspectionRecords } from '@/hooks/useInspectionRecords';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { differenceInDays, parseISO, format } from 'date-fns';
+import { Clock, AlertTriangle, CheckCircle, CalendarDays, Building2 } from 'lucide-react';
+
+interface UpcomingInspection {
+  id: string;
+  propertyId: string;
+  propertyName: string;
+  templateName: string;
+  dueDate: string;
+  daysUntilDue: number;
+  source: 'template' | 'record';
+}
+
+export const UpcomingInspections = () => {
+  const { selectedProperty, propertyMode } = usePropertyContext();
+  const { data: templates = [] } = useAllInspectionTemplates();
+  const { data: records = [] } = useInspectionRecords();
+
+  // Fetch properties
+  const { data: properties = [] } = useQuery({
+    queryKey: ['properties-list'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('properties')
+        .select('id, name')
+        .order('name');
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const upcomingInspections = useMemo(() => {
+    const today = new Date();
+    const inspections: UpcomingInspection[] = [];
+
+    // Get upcoming from templates with next_occurrence
+    templates.forEach(template => {
+      if (template.next_occurrence && template.property_id) {
+        const property = properties.find(p => p.id === template.property_id);
+        if (property) {
+          const dueDate = parseISO(template.next_occurrence);
+          const daysUntilDue = differenceInDays(dueDate, today);
+          
+          inspections.push({
+            id: `template-${template.id}`,
+            propertyId: template.property_id,
+            propertyName: property.name,
+            templateName: template.name,
+            dueDate: template.next_occurrence,
+            daysUntilDue,
+            source: 'template',
+          });
+        }
+      }
+    });
+
+    // Get upcoming from records with next_due_date
+    records.forEach(record => {
+      if (record.next_due_date && record.property_id) {
+        const property = properties.find(p => p.id === record.property_id);
+        const template = templates.find(t => t.id === record.template_id);
+        if (property) {
+          const dueDate = parseISO(record.next_due_date);
+          const daysUntilDue = differenceInDays(dueDate, today);
+          
+          inspections.push({
+            id: `record-${record.id}`,
+            propertyId: record.property_id,
+            propertyName: property.name,
+            templateName: template?.name || 'Inspection',
+            dueDate: record.next_due_date,
+            daysUntilDue,
+            source: 'record',
+          });
+        }
+      }
+    });
+
+    // Filter based on property selection
+    let filtered = inspections;
+    if (propertyMode === 'property' && selectedProperty) {
+      filtered = inspections.filter(i => i.propertyId === selectedProperty.id);
+    }
+
+    // Sort by due date ascending
+    filtered.sort((a, b) => a.daysUntilDue - b.daysUntilDue);
+
+    return filtered;
+  }, [templates, records, properties, selectedProperty, propertyMode]);
+
+  const getStatusBadge = (daysUntilDue: number) => {
+    if (daysUntilDue < 0) {
+      return (
+        <Badge variant="destructive" className="flex items-center gap-1">
+          <AlertTriangle className="h-3 w-3" />
+          Overdue by {Math.abs(daysUntilDue)} days
+        </Badge>
+      );
+    } else if (daysUntilDue <= 7) {
+      return (
+        <Badge variant="warning" className="flex items-center gap-1">
+          <Clock className="h-3 w-3" />
+          Due in {daysUntilDue} days
+        </Badge>
+      );
+    } else {
+      return (
+        <Badge variant="success" className="flex items-center gap-1">
+          <CheckCircle className="h-3 w-3" />
+          Due in {daysUntilDue} days
+        </Badge>
+      );
+    }
+  };
+
+  const overdueCount = upcomingInspections.filter(i => i.daysUntilDue < 0).length;
+  const dueSoonCount = upcomingInspections.filter(i => i.daysUntilDue >= 0 && i.daysUntilDue <= 7).length;
+
+  return (
+    <div className="space-y-6">
+      <PropertySelector />
+
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold flex items-center gap-2">
+          <CalendarDays className="h-6 w-6" />
+          Upcoming Inspections
+        </h2>
+        <div className="flex gap-2">
+          {overdueCount > 0 && (
+            <Badge variant="destructive">{overdueCount} Overdue</Badge>
+          )}
+          {dueSoonCount > 0 && (
+            <Badge variant="warning">{dueSoonCount} Due Soon</Badge>
+          )}
+        </div>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Scheduled Inspections</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {upcomingInspections.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <CalendarDays className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>No upcoming inspections scheduled.</p>
+              <p className="text-sm mt-2">
+                Set up inspection frequencies in Manage Inspection Templates to see upcoming inspections here.
+              </p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Property</TableHead>
+                  <TableHead>Inspection Type</TableHead>
+                  <TableHead>Due Date</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {upcomingInspections.map(inspection => (
+                  <TableRow key={inspection.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-4 w-4 text-muted-foreground" />
+                        {inspection.propertyName}
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {inspection.templateName}
+                    </TableCell>
+                    <TableCell>
+                      {format(parseISO(inspection.dueDate), 'MMM d, yyyy')}
+                    </TableCell>
+                    <TableCell>
+                      {getStatusBadge(inspection.daysUntilDue)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+};

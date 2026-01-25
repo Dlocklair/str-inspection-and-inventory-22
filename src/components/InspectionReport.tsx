@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Home, Package, AlertTriangle, Settings, FileText, History, Settings as TemplateIcon } from 'lucide-react';
+import { Home, Package, AlertTriangle, Settings, FileText, History, Settings as TemplateIcon, Clock } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { NewInspectionForm } from './NewInspectionForm';
 import { EditableInspectionHistoryView } from './EditableInspectionHistoryView';
 import { ImprovedInspectionTemplateManager } from './ImprovedInspectionTemplateManager';
+import { UpcomingInspections } from './UpcomingInspections';
 import { PropertySelector } from './PropertySelector';
 
 export const InspectionReport = () => {
@@ -98,6 +99,12 @@ export const InspectionReport = () => {
                     Inspection History
                   </div>
                 </SelectItem>
+                <SelectItem value="upcoming">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    Upcoming Inspections
+                  </div>
+                </SelectItem>
                 <SelectItem value="manage-templates">
                   <div className="flex items-center gap-2">
                     <TemplateIcon className="h-4 w-4" />
@@ -115,6 +122,7 @@ export const InspectionReport = () => {
             />
           )}
           {selectedView === 'inspection-history' && <EditableInspectionHistoryView />}
+          {selectedView === 'upcoming' && <UpcomingInspections />}
           {selectedView === 'manage-templates' && <ImprovedInspectionTemplateManager />}
         </div>
       </div>
