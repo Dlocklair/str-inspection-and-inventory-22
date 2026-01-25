@@ -281,7 +281,7 @@ export const EditableInspectionHistoryView = () => {
         </div>
       </div>
 
-      <div className="p-4 border-2 border-cyan-500/30 rounded-lg bg-sky-900">
+      <div className="p-4 border rounded-lg bg-primary/10 border-primary/30 shadow-sm">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <Label>Filter by Property</Label>

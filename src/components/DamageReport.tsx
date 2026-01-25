@@ -9,7 +9,8 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Plus, Edit, Save, X, Trash2, AlertTriangle, Camera, FileText, CalendarIcon, DollarSign, Home, ClipboardList, Package, Settings, History, Upload, MapPin, Search, Image as ImageIcon } from 'lucide-react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Plus, Edit, Save, X, Trash2, AlertTriangle, Camera, FileText, CalendarIcon, DollarSign, Home, ClipboardList, Package, Settings, History, Upload, MapPin, Search, Image as ImageIcon, Building2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
@@ -21,7 +22,6 @@ import CameraCapture from './CameraCapture';
 import { usePropertyContext } from '@/contexts/PropertyContext';
 import { DamagePropertySelector } from './DamagePropertySelector';
 import { DamageReportCard } from './DamageReportCard';
-import { Building2 } from 'lucide-react';
 
 interface DamageItem {
   id: string;
@@ -537,6 +537,69 @@ export const DamageReport = () => {
                 
                 {/* Property Selector - Only shows properties, required for damage reports */}
                 <DamagePropertySelector />
+                
+                {/* Display Active/Pending Reports for Selected Property in Accordion */}
+                {selectedProperty && !showAddForm && (
+                  <Card className="mt-4">
+                    <CardHeader>
+                      <CardTitle className="text-lg">Active and Pending Reports</CardTitle>
+                      <p className="text-sm text-muted-foreground">
+                        Existing reports for {selectedProperty.name}
+                      </p>
+                    </CardHeader>
+                    <CardContent>
+                      {filteredReports.filter(r => r.status !== 'completed').length > 0 ? (
+                        <Accordion type="multiple" className="space-y-2">
+                          {filteredReports
+                            .filter(r => r.status !== 'completed')
+                            .map(report => (
+                              <AccordionItem key={report.id} value={report.id} className="border rounded-lg px-4">
+                                <AccordionTrigger className="hover:no-underline">
+                                  <div className="flex items-center gap-3">
+                                    <AlertTriangle className="h-4 w-4 text-amber-500" />
+                                    <span className="font-medium">{report.title}</span>
+                                    <Badge variant={statusColors[report.status] as any}>
+                                      {report.status}
+                                    </Badge>
+                                  </div>
+                                </AccordionTrigger>
+                                <AccordionContent className="pt-4">
+                                  <div className="grid grid-cols-2 gap-4 text-sm">
+                                    <div><strong>Location:</strong> {report.location}</div>
+                                    <div><strong>Severity:</strong> {report.severity}</div>
+                                    <div><strong>Report Date:</strong> {format(new Date(report.reportDate + 'T12:00:00'), 'PPP')}</div>
+                                    <div><strong>Est. Cost:</strong> ${report.estimatedCost.toLocaleString()}</div>
+                                    <div><strong>Responsible Party:</strong> {report.responsibleParty}</div>
+                                    <div><strong>Status:</strong> {report.status}</div>
+                                  </div>
+                                  {report.description && (
+                                    <div className="mt-3">
+                                      <strong>Description:</strong> {report.description}
+                                    </div>
+                                  )}
+                                  {report.notes && (
+                                    <div className="mt-2">
+                                      <strong>Notes:</strong> {report.notes}
+                                    </div>
+                                  )}
+                                  <div className="mt-4 flex gap-2">
+                                    <Button size="sm" variant="outline" onClick={() => startEditing(report)}>
+                                      <Edit className="h-4 w-4 mr-1" />
+                                      Edit
+                                    </Button>
+                                  </div>
+                                </AccordionContent>
+                              </AccordionItem>
+                            ))}
+                        </Accordion>
+                      ) : (
+                        <p className="text-muted-foreground text-center py-4">
+                          No active or pending reports for this property.
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
                 
                 {/* Search Box */}
                 {!showAddForm && (
