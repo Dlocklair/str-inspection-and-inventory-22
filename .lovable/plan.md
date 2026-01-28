@@ -1,288 +1,159 @@
 
+## Plan: Fix User Management and Enhance Inspector Invitation UI
 
-## Plan: Property Photo Field Enhancement and Inspector Inspection Assignment
+### Issue 1: Fix "Failed to fetch users" Database Error
 
-This plan addresses two requests:
-1. Enlarge photo fields on the Properties page by 50% and add image downsizing to save memory
-2. Allow per-property inspection assignment when inviting inspectors
+**Problem:**  
+The `get_users_with_emails` function declares `email text` but `auth.users.email` is `character varying(255)`. PostgreSQL requires exact type matching.
 
----
+**Solution:**  
+Update the database function to cast `au.email::text` so it matches the declared return type.
 
-### Part 1: Property Photo Field Enlargement and Image Optimization
-
-#### 1.1 Enlarge Photo Fields (50% larger)
-
-**File: `src/components/PropertyManager.tsx`**
-
-**Current sizes:**
-- Properties table image: `w-16 h-16` (64px x 64px)
-- Form preview image: `w-32` (128px)
-
-**New sizes (50% larger):**
-- Properties table image: `w-24 h-24` (96px x 96px)
-- Form preview image: `w-48` (192px)
-
-**Changes:**
-
-1. **Properties table (lines 458-472):**
-   - Change `w-16 h-16` to `w-24 h-24` for both the image and placeholder
-
-2. **Form preview (lines 373-394):**
-   - Change `w-32` to `w-48` for the image container
-
-#### 1.2 Add Image Downsizing Before Upload
-
-Add a utility function to resize images before uploading to Supabase storage. This will:
-- Resize images to a maximum dimension of 400x400 pixels
-- Compress using canvas with JPEG quality of 0.8
-- Convert to optimized format
-
-**Changes in `src/components/PropertyManager.tsx`:**
-
-1. Add a new `resizeImage` function:
-```typescript
-const resizeImage = (file: File, maxSize: number = 400): Promise<Blob> => {
-  return new Promise((resolve, reject) => {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    const img = new Image();
-    
-    img.onload = () => {
-      let width = img.width;
-      let height = img.height;
-      
-      // Calculate new dimensions maintaining aspect ratio
-      if (width > height) {
-        if (width > maxSize) {
-          height = (height * maxSize) / width;
-          width = maxSize;
-        }
-      } else {
-        if (height > maxSize) {
-          width = (width * maxSize) / height;
-          height = maxSize;
-        }
-      }
-      
-      canvas.width = width;
-      canvas.height = height;
-      ctx?.drawImage(img, 0, 0, width, height);
-      
-      canvas.toBlob(
-        (blob) => {
-          if (blob) resolve(blob);
-          else reject(new Error('Failed to resize image'));
-        },
-        'image/jpeg',
-        0.8 // Quality
-      );
-    };
-    
-    img.onerror = reject;
-    img.src = URL.createObjectURL(file);
-  });
-};
-```
-
-2. Modify `handleSubmit` (around line 96-112) to use the resize function before upload:
-```typescript
-if (imageFile) {
-  const resizedBlob = await resizeImage(imageFile);
-  const fileName = `${crypto.randomUUID()}.jpg`;
-  const filePath = `${fileName}`;
-
-  const { error: uploadError } = await supabase.storage
-    .from('property-images')
-    .upload(filePath, resizedBlob, {
-      contentType: 'image/jpeg'
-    });
-  // ... rest of upload logic
-}
+**Database Migration:**
+```sql
+CREATE OR REPLACE FUNCTION public.get_users_with_emails()
+ RETURNS TABLE(profile_id uuid, user_id uuid, full_name text, email text, created_at timestamp with time zone)
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    p.id as profile_id,
+    p.user_id,
+    p.full_name,
+    au.email::text,  -- Cast to text to match return type
+    p.created_at
+  FROM profiles p
+  LEFT JOIN auth.users au ON au.id = p.user_id
+  ORDER BY p.created_at DESC;
+END;
+$function$;
 ```
 
 ---
 
-### Part 2: Per-Property Inspection Assignment for Inspectors
+### Issue 2: Enhance Inspector Invitation UI with Collapsible Property/Template Lists
 
-This enhancement allows owners to assign specific inspection templates for each property when inviting an inspector.
+**Current behavior:**
+- Select properties first (checkboxes)
+- If inspector, a separate section shows templates grouped by selected properties
 
-#### 2.1 Update InviteUser Component UI
+**New behavior:**
+- For inspector role: Show each property with a collapsible section
+- When a property is checked, expand to show its templates indented below
+- Add collapse/expand toggle (chevron icon) for each property
+- Templates appear in an outline format under their parent property
 
 **File: `src/components/InviteUser.tsx`**
 
-**Current behavior:**
-- Select properties first
-- Then select templates from ALL selected properties combined
-
-**New behavior:**
-- Select properties first
-- For each selected property, show a nested list of that property's templates
-- Allow selecting specific templates per property
-
 **Changes:**
 
-1. Update state to track per-property template selections:
-```typescript
-// Change from:
-const [selectedTemplates, setSelectedTemplates] = useState<string[]>([]);
+1. Add imports for Collapsible components and ChevronRight/ChevronDown icons
 
-// To a map of property ID -> template IDs:
-const [selectedTemplatesPerProperty, setSelectedTemplatesPerProperty] = 
-  useState<Record<string, string[]>>({});
+2. Add state to track expanded properties:
+```typescript
+const [expandedProperties, setExpandedProperties] = useState<string[]>([]);
 ```
 
-2. Fetch templates from Supabase instead of localStorage (they exist in the database):
+3. Add toggle function:
 ```typescript
-const fetchTemplates = async () => {
-  const { data, error } = await supabase
-    .from('inspection_templates')
-    .select('id, name, property_id')
-    .not('property_id', 'is', null)
-    .order('name');
-  
-  if (!error && data) {
-    setTemplates(data);
-  }
+const togglePropertyExpanded = (propertyId: string) => {
+  setExpandedProperties(prev => 
+    prev.includes(propertyId) 
+      ? prev.filter(id => id !== propertyId)
+      : [...prev, propertyId]
+  );
 };
 ```
 
-3. Reorganize the template selection UI to show templates grouped by property:
-```tsx
-{inviteRole === 'inspector' && selectedProperties.length > 0 && (
-  <div>
-    <Label className="mb-2 block">Assign Inspection Templates per Property *</Label>
-    <div className="space-y-4 max-h-80 overflow-y-auto border rounded-md p-3">
-      {selectedProperties.map(propertyId => {
-        const property = properties.find(p => p.id === propertyId);
-        const propertyTemplates = templates.filter(t => t.property_id === propertyId);
-        const selectedForProperty = selectedTemplatesPerProperty[propertyId] || [];
-        
-        return (
-          <div key={propertyId} className="border-b pb-3 last:border-b-0">
-            <div className="font-medium flex items-center gap-2 mb-2">
-              <Building2 className="h-4 w-4" />
-              {property?.name}
-            </div>
-            <div className="pl-6 space-y-2">
-              {propertyTemplates.map(template => (
-                <div key={template.id} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`template-${propertyId}-${template.id}`}
-                    checked={selectedForProperty.includes(template.id)}
-                    onCheckedChange={() => toggleTemplateForProperty(propertyId, template.id)}
-                  />
-                  <label htmlFor={`template-${propertyId}-${template.id}`} 
-                         className="text-sm cursor-pointer">
-                    {template.name}
-                  </label>
-                </div>
-              ))}
-              {propertyTemplates.length === 0 && (
-                <p className="text-xs text-muted-foreground">
-                  No templates available for this property
-                </p>
-              )}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  </div>
-)}
+4. For inspector role, replace the two-section layout with a unified property list where:
+   - Each property has a checkbox + expand/collapse chevron
+   - When property is selected AND inspector role, auto-expand to show templates
+   - Templates are indented under the property with checkboxes
+   - Collapsible component wraps the template list
+
+5. UI structure for inspector:
+```text
+[expand/collapse] [x] Property Name - Address
+  └─ [ ] Template 1
+  └─ [ ] Template 2
+  └─ [ ] Template 3
+
+[expand/collapse] [x] Another Property - Address
+  └─ [ ] Template A
+  └─ [ ] Template B
 ```
 
-4. Add helper function for toggling templates per property:
+6. Auto-expand property when selected (for inspector role):
 ```typescript
-const toggleTemplateForProperty = (propertyId: string, templateId: string) => {
-  setSelectedTemplatesPerProperty(prev => {
-    const current = prev[propertyId] || [];
-    const updated = current.includes(templateId)
-      ? current.filter(id => id !== templateId)
-      : [...current, templateId];
-    return { ...prev, [propertyId]: updated };
+const toggleProperty = (propertyId: string) => {
+  setSelectedProperties(prev => {
+    const isCurrentlySelected = prev.includes(propertyId);
+    if (isCurrentlySelected) {
+      // Remove property and collapse
+      setExpandedProperties(current => current.filter(id => id !== propertyId));
+      setSelectedTemplatesPerProperty(current => {
+        const updated = { ...current };
+        delete updated[propertyId];
+        return updated;
+      });
+      return prev.filter(id => id !== propertyId);
+    } else {
+      // Add property and expand (for inspector)
+      if (inviteRole === 'inspector') {
+        setExpandedProperties(current => [...current, propertyId]);
+      }
+      return [...prev, propertyId];
+    }
   });
 };
 ```
 
-5. Update validation to check templates are selected for at least one property:
-```typescript
-if (inviteRole === 'inspector') {
-  const allSelectedTemplates = Object.values(selectedTemplatesPerProperty).flat();
-  if (allSelectedTemplates.length === 0) {
-    toast({ ... 'Please select at least one inspection template' });
-    return;
-  }
-}
-```
+---
 
-6. Update form submission to send the flat list of all selected template IDs:
-```typescript
-const allSelectedTemplates = Object.values(selectedTemplatesPerProperty).flat();
-// Send as inspectionTypeIds
-```
+### Issue 3: Pending Invitations - Working Correctly
 
-#### 2.2 Update Edge Function (Optional Enhancement)
+The PendingInvitations component is functioning properly:
+- Fetches from `invitations` table
+- Shows invitation status (Pending, Accepted, Expired)
+- Allows revoking pending invitations
+- Displays "No invitations found" when empty
 
-**File: `supabase/functions/create-user-invitation/index.ts`**
-
-Update to also store `propertyIds` in the invitation permissions:
-```typescript
-if (role === 'inspector') {
-  await supabase
-    .from("invitations")
-    .update({ 
-      permissions: { 
-        property_ids: propertyIds,
-        inspection_type_ids: inspectionTypeIds 
-      } 
-    })
-    .eq("id", invitation.id);
-}
-```
-
-#### 2.3 Update AcceptInvitation to Create Property Assignments
-
-**File: `src/pages/AcceptInvitation.tsx`**
-
-Add property assignment when accepting the invitation:
-```typescript
-// After creating the user role, also assign properties
-if (invitation.permissions?.property_ids) {
-  const propertyAssignments = invitation.permissions.property_ids.map((propId: string) => ({
-    user_id: profile.id,
-    property_id: propId,
-    assigned_by: invitation.owner_id,
-  }));
-  
-  await supabase
-    .from("user_properties")
-    .insert(propertyAssignments);
-}
-```
+No changes needed.
 
 ---
 
-### Summary of Files to Modify
+### Issue 4: Invitation Flow - Working Correctly
 
-| File | Changes |
-|------|---------|
-| `src/components/PropertyManager.tsx` | Enlarge photo fields 50%, add image resize function |
-| `src/components/InviteUser.tsx` | Per-property template selection UI, fetch from Supabase |
-| `supabase/functions/create-user-invitation/index.ts` | Store propertyIds in permissions |
-| `src/pages/AcceptInvitation.tsx` | Create user_properties assignments on invitation acceptance |
+The AcceptInvitation flow is properly implemented:
+- Validates the invitation token
+- Handles both signup and signin modes
+- Creates user profile
+- Marks invitation as accepted
+- Assigns the role from the invitation
+- Creates `user_properties` records from `permissions.property_ids`
+- Creates `inspector_inspection_permissions` from `permissions.inspection_type_ids`
+
+No changes needed.
 
 ---
 
-### Technical Notes
+### Summary of Changes
 
-**Image Downsizing:**
-- Uses HTML5 Canvas API for client-side resizing
-- Targets 400x400 max dimension (suitable for thumbnails)
-- JPEG compression at 80% quality balances size/quality
-- Original aspect ratio is preserved
+| File | Change |
+|------|--------|
+| Database Migration | Fix `get_users_with_emails` function - cast email to text |
+| `src/components/InviteUser.tsx` | Implement collapsible property/template UI for inspectors |
 
-**Per-Property Template Assignment:**
-- Templates are already linked to properties via `property_id` column in `inspection_templates`
-- The `inspector_inspection_permissions` table stores which templates an inspector can access
-- Combined with `user_properties`, this gives fine-grained control per property
+### Technical Details
 
+**Collapsible UI Implementation:**
+
+The updated InviteUser component will use:
+- `@radix-ui/react-collapsible` via shadcn's Collapsible component (already available)
+- ChevronRight/ChevronDown icons to indicate expand/collapse state
+- Smooth animation for expanding/collapsing template lists
+- Auto-expand when property is selected for inspector role
+- Visual indentation using `pl-6` to show hierarchy
