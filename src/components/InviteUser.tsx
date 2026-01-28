@@ -6,8 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useToast } from '@/hooks/use-toast';
-import { Send, Loader2, Building2, ClipboardList } from 'lucide-react';
+import { Send, Loader2, Building2, ClipboardList, ChevronRight, ChevronDown } from 'lucide-react';
 
 type AppRole = 'manager' | 'inspector';
 
@@ -33,6 +34,7 @@ export const InviteUser = () => {
   const [templates, setTemplates] = useState<InspectionTemplate[]>([]);
   const [selectedProperties, setSelectedProperties] = useState<string[]>([]);
   const [selectedTemplatesPerProperty, setSelectedTemplatesPerProperty] = useState<Record<string, string[]>>({});
+  const [expandedProperties, setExpandedProperties] = useState<string[]>([]);
 
   useEffect(() => {
     fetchProperties();
@@ -43,6 +45,7 @@ export const InviteUser = () => {
     // Reset selections when role changes
     setSelectedProperties([]);
     setSelectedTemplatesPerProperty({});
+    setExpandedProperties([]);
   }, [inviteRole]);
 
   const fetchProperties = async () => {
@@ -151,7 +154,8 @@ export const InviteUser = () => {
     setSelectedProperties(prev => {
       const isCurrentlySelected = prev.includes(propertyId);
       if (isCurrentlySelected) {
-        // Remove property and clear its template selections
+        // Remove property, collapse it, and clear its template selections
+        setExpandedProperties(current => current.filter(id => id !== propertyId));
         setSelectedTemplatesPerProperty(current => {
           const updated = { ...current };
           delete updated[propertyId];
@@ -159,9 +163,21 @@ export const InviteUser = () => {
         });
         return prev.filter(id => id !== propertyId);
       } else {
+        // Add property and auto-expand for inspector role
+        if (inviteRole === 'inspector') {
+          setExpandedProperties(current => [...current, propertyId]);
+        }
         return [...prev, propertyId];
       }
     });
+  };
+
+  const togglePropertyExpanded = (propertyId: string) => {
+    setExpandedProperties(prev => 
+      prev.includes(propertyId) 
+        ? prev.filter(id => id !== propertyId)
+        : [...prev, propertyId]
+    );
   };
 
   const toggleTemplateForProperty = (propertyId: string, templateId: string) => {
@@ -223,79 +239,95 @@ export const InviteUser = () => {
           </div>
 
           <div>
-            <div>
-              <Label className="mb-2 block">Select Properties *</Label>
-              <div className="space-y-2 max-h-60 overflow-y-auto border rounded-md p-3">
-                {properties.map(property => (
-                  <div key={property.id} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`property-${property.id}`}
-                      checked={selectedProperties.includes(property.id)}
-                      onCheckedChange={() => toggleProperty(property.id)}
-                    />
-                    <label htmlFor={`property-${property.id}`} className="text-sm cursor-pointer flex items-center gap-2">
-                      <Building2 className="h-3 w-3" />
-                      {property.name} - {property.address}
-                    </label>
-                  </div>
-                ))}
-                {properties.length === 0 && (
-                  <p className="text-sm text-muted-foreground">No properties available</p>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                Select the properties this {inviteRole} will have access to
-              </p>
-            </div>
-          </div>
-
-          {inviteRole === 'inspector' && selectedProperties.length > 0 && (
-            <div>
-              <Label className="mb-2 block">Assign Inspection Templates per Property *</Label>
-              <div className="space-y-4 max-h-80 overflow-y-auto border rounded-md p-3">
-                {selectedProperties.map(propertyId => {
-                  const property = properties.find(p => p.id === propertyId);
-                  const propertyTemplates = getTemplatesForProperty(propertyId);
-                  const selectedForProperty = selectedTemplatesPerProperty[propertyId] || [];
-                  
-                  return (
-                    <div key={propertyId} className="border-b pb-3 last:border-b-0">
-                      <div className="font-medium flex items-center gap-2 mb-2">
-                        <Building2 className="h-4 w-4 text-primary" />
-                        {property?.name}
-                      </div>
-                      <div className="pl-6 space-y-2">
-                        {propertyTemplates.map(template => (
-                          <div key={template.id} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`template-${propertyId}-${template.id}`}
-                              checked={selectedForProperty.includes(template.id)}
-                              onCheckedChange={() => toggleTemplateForProperty(propertyId, template.id)}
-                            />
-                            <label 
-                              htmlFor={`template-${propertyId}-${template.id}`} 
-                              className="text-sm cursor-pointer flex items-center gap-2"
-                            >
-                              <ClipboardList className="h-3 w-3 text-muted-foreground" />
-                              {template.name}
-                            </label>
-                          </div>
-                        ))}
-                        {propertyTemplates.length === 0 && (
-                          <p className="text-xs text-muted-foreground italic">
-                            No templates available for this property
-                          </p>
-                        )}
-                      </div>
+            <Label className="mb-2 block">
+              {inviteRole === 'inspector' ? 'Select Properties & Inspection Templates *' : 'Select Properties *'}
+            </Label>
+            <div className="space-y-1 max-h-80 overflow-y-auto border rounded-md p-3">
+              {properties.map(property => {
+                const propertyTemplates = getTemplatesForProperty(property.id);
+                const isSelected = selectedProperties.includes(property.id);
+                const isExpanded = expandedProperties.includes(property.id);
+                const selectedForProperty = selectedTemplatesPerProperty[property.id] || [];
+                const showTemplates = inviteRole === 'inspector' && isSelected;
+                
+                return (
+                  <Collapsible
+                    key={property.id}
+                    open={isExpanded}
+                    onOpenChange={() => inviteRole === 'inspector' && togglePropertyExpanded(property.id)}
+                  >
+                    <div className="flex items-center gap-2 py-1.5">
+                      {inviteRole === 'inspector' && (
+                        <CollapsibleTrigger asChild>
+                          <button
+                            type="button"
+                            className="p-0.5 hover:bg-muted rounded transition-colors"
+                            disabled={!isSelected}
+                          >
+                            {isExpanded ? (
+                              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </button>
+                        </CollapsibleTrigger>
+                      )}
+                      <Checkbox
+                        id={`property-${property.id}`}
+                        checked={isSelected}
+                        onCheckedChange={() => toggleProperty(property.id)}
+                      />
+                      <label 
+                        htmlFor={`property-${property.id}`} 
+                        className="text-sm cursor-pointer flex items-center gap-2 flex-1"
+                      >
+                        <Building2 className="h-3.5 w-3.5 text-primary" />
+                        {property.name} - {property.address}
+                      </label>
                     </div>
-                  );
-                })}
-              </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                Select the inspection templates this inspector will be authorized to perform for each property
-              </p>
+                    
+                    {showTemplates && (
+                      <CollapsibleContent>
+                        <div className="pl-10 pb-2 space-y-1.5 border-l-2 border-muted ml-3">
+                          {propertyTemplates.length > 0 ? (
+                            propertyTemplates.map(template => (
+                              <div key={template.id} className="flex items-center space-x-2 pl-3">
+                                <Checkbox
+                                  id={`template-${property.id}-${template.id}`}
+                                  checked={selectedForProperty.includes(template.id)}
+                                  onCheckedChange={() => toggleTemplateForProperty(property.id, template.id)}
+                                />
+                                <label 
+                                  htmlFor={`template-${property.id}-${template.id}`} 
+                                  className="text-sm cursor-pointer flex items-center gap-2"
+                                >
+                                  <ClipboardList className="h-3 w-3 text-muted-foreground" />
+                                  {template.name}
+                                </label>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-xs text-muted-foreground italic pl-3">
+                              No templates available for this property
+                            </p>
+                          )}
+                        </div>
+                      </CollapsibleContent>
+                    )}
+                  </Collapsible>
+                );
+              })}
+              {properties.length === 0 && (
+                <p className="text-sm text-muted-foreground">No properties available</p>
+              )}
             </div>
-          )}
+            <p className="text-xs text-muted-foreground mt-2">
+              {inviteRole === 'inspector' 
+                ? 'Select properties and the inspection templates this inspector will be authorized to perform'
+                : `Select the properties this ${inviteRole} will have access to`
+              }
+            </p>
+          </div>
 
           <Button type="submit" disabled={inviteSending} className="w-full">
             {inviteSending ? (
