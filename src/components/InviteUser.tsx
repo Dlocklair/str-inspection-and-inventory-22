@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { Send, Loader2, Building2 } from 'lucide-react';
+import { Send, Loader2, Building2, ClipboardList } from 'lucide-react';
 
 type AppRole = 'manager' | 'inspector';
 
@@ -20,7 +20,7 @@ interface Property {
 interface InspectionTemplate {
   id: string;
   name: string;
-  propertyIds?: string[];
+  property_id: string | null;
 }
 
 export const InviteUser = () => {
@@ -32,17 +32,17 @@ export const InviteUser = () => {
   const [properties, setProperties] = useState<Property[]>([]);
   const [templates, setTemplates] = useState<InspectionTemplate[]>([]);
   const [selectedProperties, setSelectedProperties] = useState<string[]>([]);
-  const [selectedTemplates, setSelectedTemplates] = useState<string[]>([]);
+  const [selectedTemplatesPerProperty, setSelectedTemplatesPerProperty] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
     fetchProperties();
-    loadTemplatesFromLocalStorage();
+    fetchTemplates();
   }, []);
 
   useEffect(() => {
     // Reset selections when role changes
     setSelectedProperties([]);
-    setSelectedTemplates([]);
+    setSelectedTemplatesPerProperty({});
   }, [inviteRole]);
 
   const fetchProperties = async () => {
@@ -59,25 +59,19 @@ export const InviteUser = () => {
     }
   };
 
-  const loadTemplatesFromLocalStorage = () => {
+  const fetchTemplates = async () => {
     try {
-      const savedTemplates = localStorage.getItem('inspection-templates');
-      if (savedTemplates) {
-        const parsedTemplates = JSON.parse(savedTemplates);
-        setTemplates(parsedTemplates);
-      }
-    } catch (error) {
-      console.error('Error loading templates from localStorage:', error);
-    }
-  };
+      const { data, error } = await supabase
+        .from('inspection_templates')
+        .select('id, name, property_id')
+        .not('property_id', 'is', null)
+        .order('name');
 
-  const getTemplatesForSelectedProperties = () => {
-    if (selectedProperties.length === 0) return [];
-    
-    return templates.filter(template => {
-      // Include templates assigned to any of the selected properties
-      return template.propertyIds?.some(propId => selectedProperties.includes(propId));
-    });
+      if (error) throw error;
+      setTemplates(data || []);
+    } catch (error: any) {
+      console.error('Error fetching templates:', error);
+    }
   };
 
   const handleSendInvitation = async (e: React.FormEvent) => {
@@ -101,25 +95,30 @@ export const InviteUser = () => {
       return;
     }
 
-    if (inviteRole === 'inspector' && selectedTemplates.length === 0) {
-      toast({
-        title: 'Error',
-        description: 'Please select at least one inspection template for the inspector',
-        variant: 'destructive'
-      });
-      return;
+    if (inviteRole === 'inspector') {
+      const allSelectedTemplates = Object.values(selectedTemplatesPerProperty).flat();
+      if (allSelectedTemplates.length === 0) {
+        toast({
+          title: 'Error',
+          description: 'Please select at least one inspection template for the inspector',
+          variant: 'destructive'
+        });
+        return;
+      }
     }
 
     setInviteSending(true);
 
     try {
+      const allSelectedTemplates = Object.values(selectedTemplatesPerProperty).flat();
+      
       const { data, error } = await supabase.functions.invoke('create-user-invitation', {
         body: {
           email: inviteEmail,
           fullName: inviteFullName,
           role: inviteRole,
           propertyIds: selectedProperties,
-          inspectionTypeIds: inviteRole === 'inspector' ? selectedTemplates : undefined
+          inspectionTypeIds: inviteRole === 'inspector' ? allSelectedTemplates : undefined
         }
       });
 
@@ -135,7 +134,7 @@ export const InviteUser = () => {
       setInviteFullName('');
       setInviteRole('manager');
       setSelectedProperties([]);
-      setSelectedTemplates([]);
+      setSelectedTemplatesPerProperty({});
     } catch (error: any) {
       console.error('Error sending invitation:', error);
       toast({
@@ -149,24 +148,35 @@ export const InviteUser = () => {
   };
 
   const toggleProperty = (propertyId: string) => {
-    setSelectedProperties(prev =>
-      prev.includes(propertyId)
-        ? prev.filter(id => id !== propertyId)
-        : [...prev, propertyId]
-    );
-    // Reset template selection when properties change
-    setSelectedTemplates([]);
+    setSelectedProperties(prev => {
+      const isCurrentlySelected = prev.includes(propertyId);
+      if (isCurrentlySelected) {
+        // Remove property and clear its template selections
+        setSelectedTemplatesPerProperty(current => {
+          const updated = { ...current };
+          delete updated[propertyId];
+          return updated;
+        });
+        return prev.filter(id => id !== propertyId);
+      } else {
+        return [...prev, propertyId];
+      }
+    });
   };
 
-  const toggleTemplate = (templateId: string) => {
-    setSelectedTemplates(prev =>
-      prev.includes(templateId)
-        ? prev.filter(id => id !== templateId)
-        : [...prev, templateId]
-    );
+  const toggleTemplateForProperty = (propertyId: string, templateId: string) => {
+    setSelectedTemplatesPerProperty(prev => {
+      const current = prev[propertyId] || [];
+      const updated = current.includes(templateId)
+        ? current.filter(id => id !== templateId)
+        : [...current, templateId];
+      return { ...prev, [propertyId]: updated };
+    });
   };
 
-  const availableTemplates = getTemplatesForSelectedProperties();
+  const getTemplatesForProperty = (propertyId: string) => {
+    return templates.filter(t => t.property_id === propertyId);
+  };
 
   return (
     <Card>
@@ -241,26 +251,48 @@ export const InviteUser = () => {
 
           {inviteRole === 'inspector' && selectedProperties.length > 0 && (
             <div>
-              <Label className="mb-2 block">Select Inspection Templates *</Label>
-              <div className="space-y-2 max-h-60 overflow-y-auto border rounded-md p-3">
-                {availableTemplates.map(template => (
-                  <div key={template.id} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`template-${template.id}`}
-                      checked={selectedTemplates.includes(template.id)}
-                      onCheckedChange={() => toggleTemplate(template.id)}
-                    />
-                    <label htmlFor={`template-${template.id}`} className="text-sm cursor-pointer">
-                      {template.name}
-                    </label>
-                  </div>
-                ))}
-                {availableTemplates.length === 0 && (
-                  <p className="text-sm text-muted-foreground">No templates for selected properties</p>
-                )}
+              <Label className="mb-2 block">Assign Inspection Templates per Property *</Label>
+              <div className="space-y-4 max-h-80 overflow-y-auto border rounded-md p-3">
+                {selectedProperties.map(propertyId => {
+                  const property = properties.find(p => p.id === propertyId);
+                  const propertyTemplates = getTemplatesForProperty(propertyId);
+                  const selectedForProperty = selectedTemplatesPerProperty[propertyId] || [];
+                  
+                  return (
+                    <div key={propertyId} className="border-b pb-3 last:border-b-0">
+                      <div className="font-medium flex items-center gap-2 mb-2">
+                        <Building2 className="h-4 w-4 text-primary" />
+                        {property?.name}
+                      </div>
+                      <div className="pl-6 space-y-2">
+                        {propertyTemplates.map(template => (
+                          <div key={template.id} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`template-${propertyId}-${template.id}`}
+                              checked={selectedForProperty.includes(template.id)}
+                              onCheckedChange={() => toggleTemplateForProperty(propertyId, template.id)}
+                            />
+                            <label 
+                              htmlFor={`template-${propertyId}-${template.id}`} 
+                              className="text-sm cursor-pointer flex items-center gap-2"
+                            >
+                              <ClipboardList className="h-3 w-3 text-muted-foreground" />
+                              {template.name}
+                            </label>
+                          </div>
+                        ))}
+                        {propertyTemplates.length === 0 && (
+                          <p className="text-xs text-muted-foreground italic">
+                            No templates available for this property
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
               <p className="text-xs text-muted-foreground mt-2">
-                Select the inspection templates this inspector will be authorized to perform
+                Select the inspection templates this inspector will be authorized to perform for each property
               </p>
             </div>
           )}

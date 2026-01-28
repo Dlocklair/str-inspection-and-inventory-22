@@ -48,6 +48,56 @@ export const PropertyManager = () => {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Resize image before upload to save memory
+  const resizeImage = (file: File, maxSize: number = 400): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        
+        // Calculate new dimensions maintaining aspect ratio
+        if (width > height) {
+          if (width > maxSize) {
+            height = (height * maxSize) / width;
+            width = maxSize;
+          }
+        } else {
+          if (height > maxSize) {
+            width = (width * maxSize) / height;
+            height = maxSize;
+          }
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        ctx?.drawImage(img, 0, 0, width, height);
+        
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              URL.revokeObjectURL(img.src);
+              resolve(blob);
+            } else {
+              reject(new Error('Failed to resize image'));
+            }
+          },
+          'image/jpeg',
+          0.8 // Quality
+        );
+      };
+      
+      img.onerror = () => {
+        URL.revokeObjectURL(img.src);
+        reject(new Error('Failed to load image'));
+      };
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
   useEffect(() => {
     fetchProperties();
   }, [profile]);
@@ -92,15 +142,17 @@ export const PropertyManager = () => {
       setIsUploading(true);
       let finalImageUrl = formData.image_url;
 
-      // Upload image if a new file was selected
+      // Upload image if a new file was selected (resize first to save memory)
       if (imageFile) {
-        const fileExt = imageFile.name.split('.').pop();
-        const fileName = `${crypto.randomUUID()}.${fileExt}`;
+        const resizedBlob = await resizeImage(imageFile);
+        const fileName = `${crypto.randomUUID()}.jpg`;
         const filePath = `${fileName}`;
 
         const { error: uploadError } = await supabase.storage
           .from('property-images')
-          .upload(filePath, imageFile);
+          .upload(filePath, resizedBlob, {
+            contentType: 'image/jpeg'
+          });
 
         if (uploadError) throw uploadError;
 
@@ -371,7 +423,7 @@ export const PropertyManager = () => {
                     tabIndex={0}
                   >
                     {imagePreview ? (
-                      <div className="relative w-32 mx-auto">
+                      <div className="relative w-48 mx-auto">
                         <AspectRatio ratio={1}>
                           <img 
                             src={imagePreview} 
@@ -459,14 +511,14 @@ export const PropertyManager = () => {
                           <img 
                             src={property.image_url} 
                             alt={property.name}
-                            className="w-16 h-16 object-cover rounded"
+                            className="w-24 h-24 object-cover rounded"
                             onError={(e) => {
-                              (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="64" height="64"%3E%3Crect fill="%23ddd" width="64" height="64"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%23999" font-size="10"%3ENo Image%3C/text%3E%3C/svg%3E';
+                              (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="96" height="96"%3E%3Crect fill="%23ddd" width="96" height="96"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%23999" font-size="12"%3ENo Image%3C/text%3E%3C/svg%3E';
                             }}
                           />
                         ) : (
-                          <div className="w-16 h-16 bg-muted rounded flex items-center justify-center">
-                            <Building2 className="h-6 w-6 text-muted-foreground" />
+                          <div className="w-24 h-24 bg-muted rounded flex items-center justify-center">
+                            <Building2 className="h-8 w-8 text-muted-foreground" />
                           </div>
                         )}
                       </TableCell>
