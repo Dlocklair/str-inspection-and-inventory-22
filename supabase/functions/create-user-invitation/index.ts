@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 import { Resend } from "npm:resend@2.0.0";
+import { z } from "npm:zod@3.23.8";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -10,12 +11,40 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-interface InvitationRequest {
-  email: string;
-  fullName: string;
-  role: 'manager' | 'inspector';
-  propertyIds?: string[];
-  inspectionTypeIds?: string[];
+// Input validation schema
+const InvitationSchema = z.object({
+  email: z.string().email("Invalid email format").max(255, "Email too long"),
+  fullName: z.string()
+    .min(1, "Name is required")
+    .max(100, "Name too long")
+    .regex(/^[a-zA-Z\s'.\-]+$/, "Name contains invalid characters"),
+  role: z.enum(['manager', 'inspector'], { errorMap: () => ({ message: "Role must be 'manager' or 'inspector'" }) }),
+  propertyIds: z.array(z.string().uuid("Invalid property ID format")).max(50, "Too many properties").optional(),
+  inspectionTypeIds: z.array(z.string().uuid("Invalid inspection type ID format")).max(100, "Too many inspection types").optional()
+});
+
+type InvitationRequest = z.infer<typeof InvitationSchema>;
+
+// Simple in-memory rate limiting (per function instance)
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT_MAX = 10; // 10 invitations per hour
+const RATE_LIMIT_WINDOW = 60 * 60 * 1000; // 1 hour in milliseconds
+
+function checkRateLimit(userId: string): boolean {
+  const now = Date.now();
+  const userLimit = rateLimitMap.get(userId);
+  
+  if (!userLimit || now > userLimit.resetTime) {
+    rateLimitMap.set(userId, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
+    return true;
+  }
+  
+  if (userLimit.count >= RATE_LIMIT_MAX) {
+    return false;
+  }
+  
+  userLimit.count++;
+  return true;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -31,14 +60,28 @@ const handler = async (req: Request): Promise<Response> => {
     // Get the authenticated user
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      throw new Error("No authorization header");
+      return new Response(
+        JSON.stringify({ error: "No authorization header" }),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
     }
 
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
     if (authError || !user) {
-      throw new Error("Unauthorized");
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Rate limiting check
+    if (!checkRateLimit(user.id)) {
+      return new Response(
+        JSON.stringify({ error: "Rate limit exceeded. Maximum 10 invitations per hour." }),
+        { status: 429, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
     }
 
     // Verify user is an owner
@@ -48,7 +91,10 @@ const handler = async (req: Request): Promise<Response> => {
       .eq("user_id", user.id);
 
     if (rolesError || !userRoles?.some(r => r.role === 'owner')) {
-      throw new Error("Only owners can send invitations");
+      return new Response(
+        JSON.stringify({ error: "Only owners can send invitations" }),
+        { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
     }
 
     // Get the owner's profile
@@ -59,10 +105,25 @@ const handler = async (req: Request): Promise<Response> => {
       .single();
 
     if (profileError || !ownerProfile) {
-      throw new Error("Owner profile not found");
+      return new Response(
+        JSON.stringify({ error: "Owner profile not found" }),
+        { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
     }
 
-    const { email, fullName, role, propertyIds, inspectionTypeIds }: InvitationRequest = await req.json();
+    // Parse and validate input
+    const rawBody = await req.json();
+    const validationResult = InvitationSchema.safeParse(rawBody);
+    
+    if (!validationResult.success) {
+      const errors = validationResult.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+      return new Response(
+        JSON.stringify({ error: `Validation failed: ${errors}` }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    const { email, fullName, role, propertyIds, inspectionTypeIds }: InvitationRequest = validationResult.data;
 
     // Create invitation
     const { data: invitation, error: invitationError } = await supabase
@@ -78,18 +139,31 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (invitationError) {
       console.error("Error creating invitation:", invitationError);
-      throw new Error("Failed to create invitation");
+      return new Response(
+        JSON.stringify({ error: "Failed to create invitation" }),
+        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
     }
 
-    // If inspector role and inspection types provided, create permissions
+    // If inspector role and inspection types provided, log them
     if (role === 'inspector' && inspectionTypeIds && inspectionTypeIds.length > 0) {
-      // We'll create these after the user accepts the invitation
-      // For now, just log them
       console.log(`Inspection type IDs for inspector: ${inspectionTypeIds.join(", ")}`);
     }
 
-    // Send invitation email
-    const invitationUrl = `${Deno.env.get("SUPABASE_URL")?.replace('.supabase.co', '.lovable.app') || 'http://localhost:5173'}/accept-invitation?token=${invitation.invitation_token}`;
+    // Construct invitation URL safely
+    const baseUrl = Deno.env.get("SUPABASE_URL")?.replace('.supabase.co', '.lovable.app') || 'http://localhost:5173';
+    const invitationUrl = `${baseUrl}/accept-invitation?token=${encodeURIComponent(invitation.invitation_token)}`;
+
+    // Escape HTML in user-provided content for email
+    const escapeHtml = (str: string) => str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+
+    const safeFullName = escapeHtml(fullName);
+    const safeOwnerName = escapeHtml(ownerProfile.full_name || 'Property Owner');
 
     const emailResponse = await resend.emails.send({
       from: "Property Management <onboarding@resend.dev>",
@@ -97,8 +171,8 @@ const handler = async (req: Request): Promise<Response> => {
       subject: `You've been invited to join as ${role}`,
       html: `
         <h1>You've Been Invited!</h1>
-        <p>Hi ${fullName},</p>
-        <p><strong>${ownerProfile.full_name}</strong> has invited you to join their property management system as a <strong>${role}</strong>.</p>
+        <p>Hi ${safeFullName},</p>
+        <p><strong>${safeOwnerName}</strong> has invited you to join their property management system as a <strong>${role}</strong>.</p>
         ${role === 'inspector' && inspectionTypeIds && inspectionTypeIds.length > 0 
           ? `<p>You'll have access to specific inspection types once you accept this invitation.</p>` 
           : ''}
@@ -144,10 +218,11 @@ const handler = async (req: Request): Promise<Response> => {
         },
       }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in create-user-invitation function:", error);
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: errorMessage }),
       {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },
