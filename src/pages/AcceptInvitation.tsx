@@ -146,6 +146,19 @@ export default function AcceptInvitation() {
           assigned_by: invitation.owner_id,
         });
 
+      // Assign properties to user
+      if (invitation.permissions?.property_ids) {
+        const propertyAssignments = invitation.permissions.property_ids.map((propId: string) => ({
+          user_id: profile.id,
+          property_id: propId,
+          assigned_by: invitation.owner_id,
+        }));
+
+        await supabase
+          .from("user_properties")
+          .insert(propertyAssignments);
+      }
+
       // If inspector, create inspection permissions
       if (invitation.role === 'inspector' && invitation.permissions?.inspection_type_ids) {
         const permissionsToCreate = invitation.permissions.inspection_type_ids.map((typeId: string) => ({

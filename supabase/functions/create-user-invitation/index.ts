@@ -14,6 +14,7 @@ interface InvitationRequest {
   email: string;
   fullName: string;
   role: 'manager' | 'inspector';
+  propertyIds?: string[];
   inspectionTypeIds?: string[];
 }
 
@@ -61,7 +62,7 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Owner profile not found");
     }
 
-    const { email, fullName, role, inspectionTypeIds }: InvitationRequest = await req.json();
+    const { email, fullName, role, propertyIds, inspectionTypeIds }: InvitationRequest = await req.json();
 
     // Create invitation
     const { data: invitation, error: invitationError } = await supabase
@@ -111,13 +112,21 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Email sent successfully:", emailResponse);
 
-    // Store inspection type IDs in invitation metadata if inspector
+    // Store property IDs and inspection type IDs in invitation metadata
+    const permissions: Record<string, string[]> = {};
+    
+    if (propertyIds && propertyIds.length > 0) {
+      permissions.property_ids = propertyIds;
+    }
+    
     if (role === 'inspector' && inspectionTypeIds && inspectionTypeIds.length > 0) {
+      permissions.inspection_type_ids = inspectionTypeIds;
+    }
+    
+    if (Object.keys(permissions).length > 0) {
       await supabase
         .from("invitations")
-        .update({ 
-          permissions: { inspection_type_ids: inspectionTypeIds } 
-        })
+        .update({ permissions })
         .eq("id", invitation.id);
     }
 
