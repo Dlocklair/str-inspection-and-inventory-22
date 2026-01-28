@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
+import { z } from "npm:zod@3.23.8";
 
 const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
 
@@ -9,38 +10,92 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface InventoryItem {
-  id: string;
-  name: string;
-  category: string;
-  currentStock: number;
-  restockLevel: number;
-  unit: string;
-  supplier: string;
-  supplierUrl?: string;
-  cost: number;
-  notes: string;
+// Input validation schemas
+const InventoryItemSchema = z.object({
+  id: z.string().uuid("Invalid item ID"),
+  name: z.string().min(1).max(200),
+  category: z.string().max(100),
+  currentStock: z.number().int().min(0),
+  restockLevel: z.number().int().min(0),
+  unit: z.string().max(50),
+  supplier: z.string().max(200),
+  supplierUrl: z.string().url().max(2000).optional().or(z.literal('')),
+  cost: z.number().min(0),
+  notes: z.string().max(1000).optional().default('')
+});
+
+const EmailRequestSchema = z.object({
+  items: z.array(InventoryItemSchema).min(1, "At least one item required").max(100, "Too many items"),
+  recipients: z.array(z.string().email("Invalid email format")).min(1, "At least one recipient required").max(20, "Too many recipients")
+});
+
+type InventoryItem = z.infer<typeof InventoryItemSchema>;
+type EmailRequest = z.infer<typeof EmailRequestSchema>;
+
+// Simple in-memory rate limiting (per function instance)
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT_MAX = 5; // 5 emails per hour per IP
+const RATE_LIMIT_WINDOW = 60 * 60 * 1000; // 1 hour in milliseconds
+
+function checkRateLimit(identifier: string): boolean {
+  const now = Date.now();
+  const limit = rateLimitMap.get(identifier);
+  
+  if (!limit || now > limit.resetTime) {
+    rateLimitMap.set(identifier, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
+    return true;
+  }
+  
+  if (limit.count >= RATE_LIMIT_MAX) {
+    return false;
+  }
+  
+  limit.count++;
+  return true;
 }
 
-interface EmailRequest {
-  items: InventoryItem[];
-  recipients: string[];
-}
+// Escape HTML to prevent XSS
+const escapeHtml = (str: string) => str
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#039;');
 
 const generateEmailHtml = (items: InventoryItem[]) => {
-  const itemsHtml = items.map(item => `
+  const itemsHtml = items.map(item => {
+    const safeName = escapeHtml(item.name);
+    const safeCategory = escapeHtml(item.category);
+    const safeUnit = escapeHtml(item.unit);
+    const safeSupplier = escapeHtml(item.supplier);
+    
+    // Validate and sanitize supplier URL
+    let supplierLink = 'N/A';
+    if (item.supplierUrl && item.supplierUrl.trim()) {
+      try {
+        const url = item.supplierUrl.startsWith('http') ? item.supplierUrl : `https://${item.supplierUrl}`;
+        const parsedUrl = new URL(url);
+        // Only allow http and https protocols
+        if (parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:') {
+          supplierLink = `<a href="${escapeHtml(url)}" style="color: #06b6d4; text-decoration: none;">Product Link</a>`;
+        }
+      } catch {
+        // Invalid URL, skip
+      }
+    }
+    
+    return `
     <tr style="border-bottom: 1px solid #e5e7eb;">
-      <td style="padding: 12px; text-align: left; font-weight: 600;">${item.name}</td>
-      <td style="padding: 12px; text-align: center; color: #6b7280;">${item.category}</td>
-      <td style="padding: 12px; text-align: center; color: #dc2626; font-weight: 600;">${item.currentStock} ${item.unit}</td>
-      <td style="padding: 12px; text-align: center;">${item.restockLevel} ${item.unit}</td>
-      <td style="padding: 12px; text-align: center;">${item.supplier}</td>
+      <td style="padding: 12px; text-align: left; font-weight: 600;">${safeName}</td>
+      <td style="padding: 12px; text-align: center; color: #6b7280;">${safeCategory}</td>
+      <td style="padding: 12px; text-align: center; color: #dc2626; font-weight: 600;">${item.currentStock} ${safeUnit}</td>
+      <td style="padding: 12px; text-align: center;">${item.restockLevel} ${safeUnit}</td>
+      <td style="padding: 12px; text-align: center;">${safeSupplier}</td>
       <td style="padding: 12px; text-align: center;">$${item.cost.toFixed(2)}</td>
-      <td style="padding: 12px; text-align: center;">
-        ${item.supplierUrl ? `<a href="${item.supplierUrl.startsWith('http') ? item.supplierUrl : `https://${item.supplierUrl}`}" style="color: #06b6d4; text-decoration: none;">Product Link</a>` : 'N/A'}
-      </td>
+      <td style="padding: 12px; text-align: center;">${supplierLink}</td>
     </tr>
-  `).join('');
+  `;
+  }).join('');
 
   return `
     <!DOCTYPE html>
@@ -146,12 +201,29 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { items, recipients }: EmailRequest = await req.json();
-
-    // Validate request
-    if (!items || !Array.isArray(items) || items.length === 0) {
+    // Rate limiting by IP (or fallback identifier)
+    const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
+                     req.headers.get('x-real-ip') || 
+                     'unknown';
+    
+    if (!checkRateLimit(clientIp)) {
       return new Response(
-        JSON.stringify({ error: 'No items provided for restocking' }),
+        JSON.stringify({ error: 'Rate limit exceeded. Maximum 5 restock emails per hour.' }),
+        { 
+          status: 429, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Parse and validate input
+    const rawBody = await req.json();
+    const validationResult = EmailRequestSchema.safeParse(rawBody);
+    
+    if (!validationResult.success) {
+      const errors = validationResult.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+      return new Response(
+        JSON.stringify({ error: `Validation failed: ${errors}` }),
         { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -159,15 +231,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    if (!recipients || !Array.isArray(recipients) || recipients.length === 0) {
-      return new Response(
-        JSON.stringify({ error: 'No email recipients provided' }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
+    const { items, recipients }: EmailRequest = validationResult.data;
 
     console.log(`Processing restock email for ${items.length} items to ${recipients.length} recipients`);
 
@@ -175,21 +239,34 @@ const handler = async (req: Request): Promise<Response> => {
     const emailSubject = `🏨 Inventory Restock Request - ${items.length} Item${items.length > 1 ? 's' : ''} Need Restocking`;
     const htmlContent = generateEmailHtml(items);
     
-    // Plain text fallback
+    // Plain text fallback with escaped content
     const textContent = `Inventory Restock Request
 
 Dear Supplier Team,
 
 We need to restock the following ${items.length} inventory item${items.length > 1 ? 's' : ''}:
 
-${items.map(item => `
+${items.map(item => {
+  let urlText = '';
+  if (item.supplierUrl && item.supplierUrl.trim()) {
+    try {
+      const url = item.supplierUrl.startsWith('http') ? item.supplierUrl : `https://${item.supplierUrl}`;
+      const parsedUrl = new URL(url);
+      if (parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:') {
+        urlText = `\n  Product URL: ${url}`;
+      }
+    } catch {
+      // Invalid URL, skip
+    }
+  }
+  return `
 • ${item.name} (${item.category})
   Current Stock: ${item.currentStock} ${item.unit}
   Restock Level: ${item.restockLevel} ${item.unit}
   Supplier: ${item.supplier}
-  Cost per Unit: $${item.cost.toFixed(2)}${item.supplierUrl ? `
-  Product URL: ${item.supplierUrl.startsWith('http') ? item.supplierUrl : `https://${item.supplierUrl}`}` : ''}
-`).join('\n')}
+  Cost per Unit: $${item.cost.toFixed(2)}${urlText}
+`;
+}).join('\n')}
 
 Total Items: ${items.length}
 Estimated Total Value: $${items.reduce((total, item) => total + (item.cost * Math.max(item.restockLevel - item.currentStock, item.restockLevel)), 0).toFixed(2)}
@@ -225,13 +302,14 @@ Inventory Management Team`;
       }
     );
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in send-inventory-emails function:', error);
+    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
     
     return new Response(
       JSON.stringify({ 
         error: 'Failed to send restock request email',
-        details: error.message,
+        details: errorMessage,
         success: false
       }),
       {
