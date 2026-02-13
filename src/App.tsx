@@ -18,6 +18,7 @@ import { DamageReport } from "./components/DamageReport";
 import { PropertyManager } from "./components/PropertyManager";
 import AcceptInvitation from "./pages/AcceptInvitation";
 import NotFound from "./pages/NotFound";
+import Install from "./pages/Install";
 import { useMigrateInventory } from "./hooks/useMigrateInventory";
 import { DataMigrationWizard } from '@/components/DataMigrationWizard';
 import { OneTimeDataMigration } from '@/components/OneTimeDataMigration';
@@ -29,7 +30,7 @@ const LayoutWrapper = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, loading } = useAuth();
-  const hideMenuPaths = ['/auth'];
+  const hideMenuPaths = ['/auth', '/install'];
   const showMenu = !hideMenuPaths.includes(location.pathname);
   
   // Run inventory migration on app load (after auth is ready)
@@ -68,6 +69,7 @@ const LayoutWrapper = () => {
             <Route path="/inspections" element={<InspectionReport />} />
             <Route path="/inventory" element={<InventoryReport />} />
             <Route path="/damage" element={<DamageReport />} />
+            <Route path="/install" element={<Install />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
