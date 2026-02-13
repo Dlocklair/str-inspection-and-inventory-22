@@ -1,159 +1,84 @@
 
-## Plan: Fix User Management and Enhance Inspector Invitation UI
 
-### Issue 1: Fix "Failed to fetch users" Database Error
+# Add Google and Apple Sign-In + Installable Web App (PWA)
 
-**Problem:**  
-The `get_users_with_emails` function declares `email text` but `auth.users.email` is `character varying(255)`. PostgreSQL requires exact type matching.
-
-**Solution:**  
-Update the database function to cast `au.email::text` so it matches the declared return type.
-
-**Database Migration:**
-```sql
-CREATE OR REPLACE FUNCTION public.get_users_with_emails()
- RETURNS TABLE(profile_id uuid, user_id uuid, full_name text, email text, created_at timestamp with time zone)
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO 'public'
-AS $function$
-BEGIN
-  RETURN QUERY
-  SELECT 
-    p.id as profile_id,
-    p.user_id,
-    p.full_name,
-    au.email::text,  -- Cast to text to match return type
-    p.created_at
-  FROM profiles p
-  LEFT JOIN auth.users au ON au.id = p.user_id
-  ORDER BY p.created_at DESC;
-END;
-$function$;
-```
+This plan covers two features: adding social login buttons (Google and Apple) to the auth page, and making the app installable directly from the browser on both iPhone and Android.
 
 ---
 
-### Issue 2: Enhance Inspector Invitation UI with Collapsible Property/Template Lists
+## Part 1: Google and Apple Sign-In
 
-**Current behavior:**
-- Select properties first (checkboxes)
-- If inspector, a separate section shows templates grouped by selected properties
+### What will change
+- The login page will get "Sign in with Google" and "Sign in with Apple" buttons
+- The `useAuth` hook will get a new `signInWithOAuth` method
+- Both buttons will use Supabase's built-in OAuth flow
 
-**New behavior:**
-- For inspector role: Show each property with a collapsible section
-- When a property is checked, expand to show its templates indented below
-- Add collapse/expand toggle (chevron icon) for each property
-- Templates appear in an outline format under their parent property
+### Manual setup required (Supabase Dashboard)
 
-**File: `src/components/InviteUser.tsx`**
+**Google:**
+1. Go to [Google Cloud Console](https://console.cloud.google.com) and create OAuth credentials (Web application type)
+2. Set the authorized redirect URL to: `https://ckgjsgmsbszplcivxfls.supabase.co/auth/v1/callback`
+3. Set authorized JavaScript origins to your app URL: `https://str-inspection-and-inventory-22.lovable.app`
+4. Copy the Client ID and Client Secret
+5. Go to [Supabase Auth Providers](https://supabase.com/dashboard/project/ckgjsgmsbszplcivxfls/auth/providers), enable Google, and paste the credentials
 
-**Changes:**
+**Apple:**
+1. Go to [Apple Developer Console](https://developer.apple.com/account/resources/identifiers/list) and create a Services ID
+2. Enable "Sign In with Apple" and configure the domain and redirect URL (`https://ckgjsgmsbszplcivxfls.supabase.co/auth/v1/callback`)
+3. Create a private key for Sign In with Apple
+4. Go to [Supabase Auth Providers](https://supabase.com/dashboard/project/ckgjsgmsbszplcivxfls/auth/providers), enable Apple, and enter credentials
 
-1. Add imports for Collapsible components and ChevronRight/ChevronDown icons
+### Code changes
 
-2. Add state to track expanded properties:
-```typescript
-const [expandedProperties, setExpandedProperties] = useState<string[]>([]);
-```
+**`src/hooks/useAuth.tsx`**
+- Add a `signInWithOAuth(provider: 'google' | 'apple')` method that calls `supabase.auth.signInWithOAuth`
 
-3. Add toggle function:
-```typescript
-const togglePropertyExpanded = (propertyId: string) => {
-  setExpandedProperties(prev => 
-    prev.includes(propertyId) 
-      ? prev.filter(id => id !== propertyId)
-      : [...prev, propertyId]
-  );
-};
-```
-
-4. For inspector role, replace the two-section layout with a unified property list where:
-   - Each property has a checkbox + expand/collapse chevron
-   - When property is selected AND inspector role, auto-expand to show templates
-   - Templates are indented under the property with checkboxes
-   - Collapsible component wraps the template list
-
-5. UI structure for inspector:
-```text
-[expand/collapse] [x] Property Name - Address
-  └─ [ ] Template 1
-  └─ [ ] Template 2
-  └─ [ ] Template 3
-
-[expand/collapse] [x] Another Property - Address
-  └─ [ ] Template A
-  └─ [ ] Template B
-```
-
-6. Auto-expand property when selected (for inspector role):
-```typescript
-const toggleProperty = (propertyId: string) => {
-  setSelectedProperties(prev => {
-    const isCurrentlySelected = prev.includes(propertyId);
-    if (isCurrentlySelected) {
-      // Remove property and collapse
-      setExpandedProperties(current => current.filter(id => id !== propertyId));
-      setSelectedTemplatesPerProperty(current => {
-        const updated = { ...current };
-        delete updated[propertyId];
-        return updated;
-      });
-      return prev.filter(id => id !== propertyId);
-    } else {
-      // Add property and expand (for inspector)
-      if (inviteRole === 'inspector') {
-        setExpandedProperties(current => [...current, propertyId]);
-      }
-      return [...prev, propertyId];
-    }
-  });
-};
-```
+**`src/pages/Auth.tsx`**
+- Add "Sign in with Google" and "Sign in with Apple" buttons below the sign-in form with a divider ("or continue with")
+- Style buttons with appropriate icons
 
 ---
 
-### Issue 3: Pending Invitations - Working Correctly
+## Part 2: Installable Web App (PWA)
 
-The PendingInvitations component is functioning properly:
-- Fetches from `invitations` table
-- Shows invitation status (Pending, Accepted, Expired)
-- Allows revoking pending invitations
-- Displays "No invitations found" when empty
+This will let users install your app directly from their browser to their home screen on both iPhone and Android -- no app store needed.
 
-No changes needed.
+### What will change
+
+**Install `vite-plugin-pwa` dependency**
+
+**`vite.config.ts`**
+- Add PWA plugin with manifest configuration (app name, icons, theme color, display mode)
+- Configure service worker with `navigateFallbackDenylist: [/^\/~oauth/]` to ensure OAuth redirects work properly
+
+**`index.html`**
+- Add mobile-optimized meta tags: `apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style`, theme-color, and manifest link
+
+**`public/manifest.webmanifest`** (auto-generated by plugin)
+- App name: "STR Management System"
+- Icons in multiple sizes for Android and iOS
+
+**`public/pwa-192x192.png` and `public/pwa-512x512.png`**
+- PWA icons (generated from placeholder or existing favicon)
+
+**`src/pages/Install.tsx`** (new page)
+- A simple page at `/install` with instructions for installing the app
+- Shows platform-specific instructions (iOS: Share > Add to Home Screen, Android: browser menu > Install)
+- Triggers the browser's install prompt on Android when available
+
+**`src/App.tsx`**
+- Add route for `/install`
 
 ---
 
-### Issue 4: Invitation Flow - Working Correctly
+## Summary of files to create/modify
 
-The AcceptInvitation flow is properly implemented:
-- Validates the invitation token
-- Handles both signup and signin modes
-- Creates user profile
-- Marks invitation as accepted
-- Assigns the role from the invitation
-- Creates `user_properties` records from `permissions.property_ids`
-- Creates `inspector_inspection_permissions` from `permissions.inspection_type_ids`
-
-No changes needed.
-
----
-
-### Summary of Changes
-
-| File | Change |
+| File | Action |
 |------|--------|
-| Database Migration | Fix `get_users_with_emails` function - cast email to text |
-| `src/components/InviteUser.tsx` | Implement collapsible property/template UI for inspectors |
+| `src/hooks/useAuth.tsx` | Add `signInWithOAuth` method |
+| `src/pages/Auth.tsx` | Add Google/Apple sign-in buttons |
+| `vite.config.ts` | Add PWA plugin config |
+| `index.html` | Add mobile meta tags |
+| `src/pages/Install.tsx` | New install instructions page |
+| `src/App.tsx` | Add `/install` route |
 
-### Technical Details
-
-**Collapsible UI Implementation:**
-
-The updated InviteUser component will use:
-- `@radix-ui/react-collapsible` via shadcn's Collapsible component (already available)
-- ChevronRight/ChevronDown icons to indicate expand/collapse state
-- Smooth animation for expanding/collapsing template lists
-- Auto-expand when property is selected for inspector role
-- Visual indentation using `pl-6` to show hierarchy
