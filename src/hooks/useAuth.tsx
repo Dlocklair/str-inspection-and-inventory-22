@@ -27,6 +27,7 @@ interface AuthContextType {
   rolesLoaded: boolean;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error?: any }>;
   signIn: (email: string, password: string) => Promise<{ error?: any }>;
+  signInWithOAuth: (provider: 'google' | 'apple') => Promise<{ error?: any }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   refreshRoles: () => Promise<void>;
@@ -312,6 +313,35 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
+  const signInWithOAuth = async (provider: 'google' | 'apple') => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: window.location.origin
+        }
+      });
+
+      if (error) {
+        toast({
+          title: `Sign in with ${provider} failed`,
+          description: error.message,
+          variant: "destructive"
+        });
+        return { error };
+      }
+
+      return {};
+    } catch (error: any) {
+      toast({
+        title: `Sign in with ${provider} failed`,
+        description: error.message,
+        variant: "destructive"
+      });
+      return { error };
+    }
+  };
+
   const signOut = async () => {
     try {
       // Clear local state immediately
@@ -459,6 +489,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     rolesLoaded,
     signUp,
     signIn,
+    signInWithOAuth,
     signOut,
     refreshProfile,
     refreshRoles,
