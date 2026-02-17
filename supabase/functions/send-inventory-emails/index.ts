@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { Resend } from "npm:resend@2.0.0";
 import { z } from "npm:zod@3.23.8";
 
@@ -201,12 +202,44 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    // Rate limiting by IP (or fallback identifier)
-    const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
-                     req.headers.get('x-real-ip') || 
-                     'unknown';
-    
-    if (!checkRateLimit(clientIp)) {
+    // Authenticate the user
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabaseClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const userId = claimsData.claims.sub;
+
+    // Verify user has owner or manager role
+    const { data: roles } = await supabaseClient.rpc('get_user_roles', { _user_id: userId });
+    const userRoles = roles?.map((r: { role: string }) => r.role) || [];
+    if (!userRoles.includes('owner') && !userRoles.includes('manager')) {
+      return new Response(
+        JSON.stringify({ error: 'Forbidden: insufficient permissions' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Rate limiting by authenticated user ID
+    if (!checkRateLimit(userId)) {
       return new Response(
         JSON.stringify({ error: 'Rate limit exceeded. Maximum 5 restock emails per hour.' }),
         { 
@@ -233,7 +266,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { items, recipients }: EmailRequest = validationResult.data;
 
-    console.log(`Processing restock email for ${items.length} items to ${recipients.length} recipients`);
+    console.log(`Processing restock email for ${items.length} items to ${recipients.length} recipients by user ${userId}`);
 
     // Generate email content
     const emailSubject = `🏨 Inventory Restock Request - ${items.length} Item${items.length > 1 ? 's' : ''} Need Restocking`;
