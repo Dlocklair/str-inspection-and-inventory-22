@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { LogOut, Users, UserPlus, Clock, Shield } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Users, UserPlus, Clock, Shield } from 'lucide-react';
+
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { ManageUsers } from '@/components/ManageUsers';
 import { InviteUser } from '@/components/InviteUser';
@@ -10,9 +10,7 @@ import { PendingInvitations } from '@/components/PendingInvitations';
 import { OwnerProfile } from '@/components/OwnerProfile';
 
 const Settings = () => {
-  const { toast } = useToast();
-  const navigate = useNavigate();
-  const { user, signOut, loading, isOwner, rolesLoaded } = useAuth();
+  const { user, loading, isOwner, rolesLoaded } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const viewFromUrl = searchParams.get('view') || 'users';
   const [activeView, setActiveView] = useState<'users' | 'invite' | 'invitations' | 'owner'>(viewFromUrl as any);
@@ -25,10 +23,6 @@ const Settings = () => {
   const handleViewChange = (newView: 'users' | 'invite' | 'invitations' | 'owner') => {
     setActiveView(newView);
     setSearchParams({ view: newView });
-  };
-
-  const handleSignOut = async () => {
-    await signOut();
   };
 
   if (loading || !rolesLoaded) {
@@ -58,24 +52,11 @@ const Settings = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-4xl font-bold text-foreground mb-2">
-              Settings
-            </h1>
-            <p className="text-muted-foreground text-lg">
-              Manage users, roles, and permissions
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button onClick={() => navigate('/')} variant="outline">
-              Back to Dashboard
-            </Button>
-            <Button onClick={handleSignOut} variant="destructive">
-              <LogOut className="h-4 w-4 mr-2" />
-              Sign Out
-            </Button>
-          </div>
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-foreground mb-2">Settings</h1>
+          <p className="text-muted-foreground text-lg">
+            Manage users, roles, and permissions
+          </p>
         </div>
 
         {isOwner() ? (

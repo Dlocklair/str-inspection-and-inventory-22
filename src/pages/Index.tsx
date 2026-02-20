@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ClipboardList, Package, AlertTriangle, Settings, User, Shield, Loader2, LogOut, Building2, ShieldCheck, ChevronDown, ChevronUp } from 'lucide-react';
+import { ClipboardList, Package, AlertTriangle, Settings, User, Shield, Loader2, Building2, ShieldCheck, ChevronDown, ChevronUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { LowStockTrendsWidget } from '@/components/LowStockTrendsWidget';
@@ -17,7 +17,6 @@ const Index = () => {
     profile,
     roles,
     loading,
-    signOut,
     isOwner,
     isManager,
     isInspector
@@ -151,39 +150,22 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="flex justify-between items-start mb-8">
-          <div className="text-center flex-1">
-            <h1 className="text-4xl font-bold text-foreground mb-2">
-              Welcome Back, {profile?.full_name || 'User'}!
-            </h1>
-            <p className="text-muted-foreground text-lg">
-              STR Management Dashboard
-            </p>
-          </div>
-          <div className="flex flex-col items-end gap-2">
-            <div className="flex items-center gap-2">
-              {roles.length > 0 ? (
-                roles.map(role => (
-                  <Badge key={role} variant={role === 'owner' ? 'default' : 'secondary'}>
-                    {role}
-                  </Badge>
-                ))
-              ) : (
-                <Badge variant="outline">No role assigned</Badge>
-              )}
-              {isOwner() && <Shield className="h-4 w-4 text-primary" />}
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-foreground mb-2">
+            Welcome Back, {profile?.full_name || 'User'}!
+          </h1>
+          <p className="text-muted-foreground text-lg">
+            STR Management Dashboard
+          </p>
+          {roles.length > 0 && (
+            <div className="flex items-center gap-2 mt-2">
+              {roles.map(role => (
+                <Badge key={role} variant={role === 'owner' ? 'default' : 'secondary'}>
+                  {role}
+                </Badge>
+              ))}
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => navigate('/settings')}>
-                <Settings className="h-4 w-4 mr-2" />
-                Settings
-              </Button>
-              <Button variant="outline" onClick={signOut}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Sign Out
-              </Button>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Main Content - Report Cards */}
