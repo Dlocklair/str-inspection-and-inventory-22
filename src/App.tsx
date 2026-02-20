@@ -7,6 +7,9 @@ import { useEffect } from "react";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
+import { MobileBottomTabs } from "@/components/MobileBottomTabs";
+import { MobileProfileMenu } from "@/components/MobileProfileMenu";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { FirstTimeSetup } from "./components/FirstTimeSetup";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -31,6 +34,7 @@ const LayoutWrapper = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, loading } = useAuth();
+  const isMobile = useIsMobile();
   const hideMenuPaths = ['/auth', '/install'];
   const showMenu = !hideMenuPaths.includes(location.pathname);
   
@@ -53,13 +57,20 @@ const LayoutWrapper = () => {
       <DataMigrationWizard />
       <OneTimeDataMigration />
       <div className="min-h-screen flex w-full">
-        {showMenu && <AppSidebar />}
-        <main className="flex-1 relative">
+        {showMenu && !isMobile && <AppSidebar />}
+        <main className="flex-1 relative pb-14 md:pb-0">
           {showMenu && (
-            <header className="sticky top-0 z-10 h-12 flex items-center border-b bg-background px-4">
-              <SidebarTrigger />
+            <header className="sticky top-0 z-10 h-12 flex items-center justify-between border-b bg-background px-4">
+              {!isMobile && <SidebarTrigger />}
+              {isMobile ? (
+                <div className="flex items-center justify-between w-full">
+                  <span className="font-semibold text-sm text-foreground">STR Manager</span>
+                  <MobileProfileMenu />
+                </div>
+              ) : <div />}
             </header>
           )}
+          {showMenu && isMobile && <MobileBottomTabs />}
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />

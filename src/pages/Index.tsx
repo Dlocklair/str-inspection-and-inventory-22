@@ -1,13 +1,17 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ClipboardList, Package, AlertTriangle, Settings, User, Shield, Loader2, LogOut, Building2 } from 'lucide-react';
+import { ClipboardList, Package, AlertTriangle, Settings, User, Shield, Loader2, LogOut, Building2, ShieldCheck, ChevronDown, ChevronUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { LowStockTrendsWidget } from '@/components/LowStockTrendsWidget';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+
 const Index = () => {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const {
     user,
     profile,
@@ -19,25 +23,28 @@ const Index = () => {
     isInspector
   } = useAuth();
   
+  const [statusOpen, setStatusOpen] = useState(false);
+
   useEffect(() => {
     if (!loading && !user) {
       navigate('/auth');
     }
   }, [user, loading, navigate]);
+
   if (loading) {
-    console.log('Showing loading screen...');
-    return <div className="min-h-screen bg-background flex items-center justify-center">
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-primary" />
           <p className="text-lg text-muted-foreground">Loading your dashboard...</p>
-          <p className="text-sm text-muted-foreground mt-2">
-            If this persists, please refresh the page
-          </p>
         </div>
-      </div>;
+      </div>
+    );
   }
+
   if (!user) {
-    return <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <Card className="w-full max-w-md text-center">
           <CardContent className="p-8">
             <User className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
@@ -51,9 +58,92 @@ const Index = () => {
             </Button>
           </CardContent>
         </Card>
-      </div>;
+      </div>
+    );
   }
-  return <div className="min-h-screen bg-background">
+
+  const quickLinks = [
+    { title: 'Properties', url: '/properties', icon: Building2, color: 'text-primary' },
+    { title: 'Inspections', url: '/inspections', icon: ClipboardList, color: 'text-primary' },
+    { title: 'Inventory', url: '/inventory', icon: Package, color: 'text-primary' },
+    { title: 'Damage Reports', url: '/damage', icon: AlertTriangle, color: 'text-primary' },
+    { title: 'Warranties', url: '/warranties', icon: ShieldCheck, color: 'text-primary' },
+  ];
+
+  // Mobile: native-app-style list
+  if (isMobile) {
+    return (
+      <div className="bg-background">
+        <div className="px-4 py-4">
+          {/* Compact header */}
+          <h1 className="text-xl font-bold text-foreground">
+            Hi, {profile?.full_name || 'User'}
+          </h1>
+          <p className="text-sm text-muted-foreground">STR Dashboard</p>
+
+          {/* Large tap-target list */}
+          <div className="mt-4 space-y-2">
+            {quickLinks.map((link) => (
+              <button
+                key={link.url}
+                onClick={() => navigate(link.url)}
+                className="flex items-center gap-3 w-full p-3 rounded-lg border bg-card hover:bg-accent/50 active:bg-accent transition-colors text-left"
+              >
+                <link.icon className={`h-5 w-5 ${link.color} shrink-0`} />
+                <span className="text-sm font-medium text-foreground">{link.title}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Owner shortcuts */}
+          {isOwner() && (
+            <div className="mt-4 space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Admin</p>
+              <button
+                onClick={() => navigate('/settings')}
+                className="flex items-center gap-3 w-full p-3 rounded-lg border bg-card hover:bg-accent/50 active:bg-accent transition-colors text-left"
+              >
+                <User className="h-5 w-5 text-primary shrink-0" />
+                <span className="text-sm font-medium text-foreground">Agent Management</span>
+              </button>
+              <button
+                onClick={() => navigate('/settings')}
+                className="flex items-center gap-3 w-full p-3 rounded-lg border bg-card hover:bg-accent/50 active:bg-accent transition-colors text-left"
+              >
+                <Settings className="h-5 w-5 text-primary shrink-0" />
+                <span className="text-sm font-medium text-foreground">System Configuration</span>
+              </button>
+            </div>
+          )}
+
+          {/* Collapsible system status */}
+          <Collapsible open={statusOpen} onOpenChange={setStatusOpen} className="mt-4">
+            <CollapsibleTrigger asChild>
+              <button className="flex items-center justify-between w-full py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                <span>System Status</span>
+                {statusOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="grid grid-cols-2 gap-2 mt-1">
+                <StatusCard icon={ClipboardList} label="Inspections" value="Ready" color="text-primary" />
+                <StatusCard icon={Package} label="Inventory" value="Online" color="text-primary" />
+                <StatusCard icon={AlertTriangle} label="Damage" value="Ready" color="text-primary" />
+                <StatusCard icon={Shield} label="System" value="Secure" color="text-primary" />
+              </div>
+              <div className="mt-3">
+                <LowStockTrendsWidget />
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop layout (original)
+  return (
+    <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex justify-between items-start mb-8">
@@ -93,81 +183,10 @@ const Index = () => {
 
         {/* Main Content - Report Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-          {/* Properties */}
-          <Card className="cursor-pointer transition-all hover:shadow-lg border-2 hover:border-primary/20 min-h-[200px] flex flex-col">
-            <CardHeader className="bg-slate-900 text-white">
-              <CardTitle className="flex items-center gap-2">
-                <Building2 className="h-6 w-6 text-primary" />
-                Properties
-                <Badge variant="default" className="ml-2">Active</Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="bg-slate-900 text-white flex-1 flex flex-col justify-between">
-              <p className="text-muted-foreground">
-                Manage all your property locations and details in one place.
-              </p>
-              <Button onClick={() => navigate('/properties')} className="w-full mt-4">
-                Manage Properties
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Inspection Reports */}
-          <Card className="cursor-pointer transition-all hover:shadow-lg border-2 hover:border-primary/20 min-h-[200px] flex flex-col">
-            <CardHeader className="bg-slate-900 text-white">
-              <CardTitle className="flex items-center gap-2">
-                <ClipboardList className="h-6 w-6 text-primary" />
-                Inspections
-                <Badge variant="default" className="ml-2">Active</Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="bg-slate-900 text-white flex-1 flex flex-col justify-between">
-              <p className="text-muted-foreground">
-                Manage property inspections with customizable templates and automated notifications.
-              </p>
-              <Button onClick={() => navigate('/inspections')} className="w-full mt-4">
-                Open Inspections
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Inventory Reports */}
-          <Card className="cursor-pointer transition-all hover:shadow-lg border-2 hover:border-primary/20 min-h-[200px] flex flex-col">
-            <CardHeader className="bg-slate-900 text-white">
-              <CardTitle className="flex items-center gap-2">
-                <Package className="h-6 w-6 text-primary" />
-                Inventory
-                <Badge variant="default" className="ml-2">Active</Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="bg-slate-900 text-white flex-1 flex flex-col justify-between">
-              <p className="text-muted-foreground">
-                Track stock levels, manage categories, and get automated reorder notifications.
-              </p>
-              <Button onClick={() => navigate('/inventory')} className="w-full mt-4">
-                Open Inventory
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Damage Reports */}
-          <Card className="cursor-pointer transition-all hover:shadow-lg border-2 hover:border-primary/20 min-h-[200px] flex flex-col">
-            <CardHeader className="bg-slate-900 text-white">
-              <CardTitle className="flex items-center gap-2">
-                <AlertTriangle className="h-6 w-6 text-primary" />
-                Damage Reports
-                <Badge variant="default" className="ml-2">Active</Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="bg-slate-900 text-white flex-1 flex flex-col justify-between">
-              <p className="text-muted-foreground">
-                Document damage with photos, track repairs, and generate insurance claims.
-              </p>
-              <Button onClick={() => navigate('/damage')} className="w-full mt-4">
-                Open Damage Reports
-              </Button>
-            </CardContent>
-          </Card>
+          <DashboardCard icon={Building2} title="Properties" description="Manage all your property locations and details in one place." onClick={() => navigate('/properties')} buttonLabel="Manage Properties" />
+          <DashboardCard icon={ClipboardList} title="Inspections" description="Manage property inspections with customizable templates and automated notifications." onClick={() => navigate('/inspections')} buttonLabel="Open Inspections" />
+          <DashboardCard icon={Package} title="Inventory" description="Track stock levels, manage categories, and get automated reorder notifications." onClick={() => navigate('/inventory')} buttonLabel="Open Inventory" />
+          <DashboardCard icon={AlertTriangle} title="Damage Reports" description="Document damage with photos, track repairs, and generate insurance claims." onClick={() => navigate('/damage')} buttonLabel="Open Damage Reports" />
         </div>
 
         {/* Owner Features */}
@@ -244,11 +263,42 @@ const Index = () => {
               </CardContent>
             </Card>
           </div>
-          
-          {/* Low Stock Trends Widget */}
           <LowStockTrendsWidget />
         </div>
       </div>
-    </div>;
+    </div>
+  );
 };
+
+// Helper components
+function StatusCard({ icon: Icon, label, value, color }: { icon: any; label: string; value: string; color: string }) {
+  return (
+    <div className="flex items-center gap-2 p-2 rounded-lg border bg-card">
+      <Icon className={`h-4 w-4 ${color} shrink-0`} />
+      <div>
+        <p className="text-[10px] text-muted-foreground">{label}</p>
+        <p className="text-xs font-semibold text-foreground">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+function DashboardCard({ icon: Icon, title, description, onClick, buttonLabel }: { icon: any; title: string; description: string; onClick: () => void; buttonLabel: string }) {
+  return (
+    <Card className="cursor-pointer transition-all hover:shadow-lg border-2 hover:border-primary/20 min-h-[200px] flex flex-col">
+      <CardHeader className="bg-slate-900 text-white">
+        <CardTitle className="flex items-center gap-2">
+          <Icon className="h-6 w-6 text-primary" />
+          {title}
+          <Badge variant="default" className="ml-2">Active</Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="bg-slate-900 text-white flex-1 flex flex-col justify-between">
+        <p className="text-muted-foreground">{description}</p>
+        <Button onClick={onClick} className="w-full mt-4">{buttonLabel}</Button>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default Index;
