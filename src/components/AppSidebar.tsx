@@ -63,7 +63,7 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
   const isMobile = useIsMobile();
-  const { isOwner, isManager } = useAuth();
+  const { isOwner, isManager, isInspector } = useAuth();
 
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
     isActive ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted/50';
@@ -71,6 +71,15 @@ export function AppSidebar() {
   // On mobile, only show settings/admin items (bottom tabs handle main nav)
   const showMainNav = !isMobile;
   const showSettings = isOwner() || isManager();
+
+  // Filter main menu items based on role
+  const filteredMainMenuItems = mainMenuItems.filter(item => {
+    // Inspectors can only see Inspections and Inventory
+    if (isInspector() && !isOwner() && !isManager()) {
+      return ['Dashboard', 'Inspections', 'Inventory'].includes(item.title);
+    }
+    return true;
+  });
 
   return (
     <Sidebar className={collapsed ? 'w-14' : 'w-60'} collapsible="icon">
@@ -80,7 +89,7 @@ export function AppSidebar() {
             <SidebarGroupLabel>Main Menu</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {mainMenuItems.map((item) => (
+                {filteredMainMenuItems.map((item) => (
                   item.subItems ? (
                     <SidebarMenuItem key={item.title}>
                       <HoverCard openDelay={200} closeDelay={100}>
