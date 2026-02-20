@@ -86,6 +86,10 @@ export type Database = {
           repair_cost: number | null
           repair_date: string | null
           reported_by: string
+          responsible_party: string
+          severity: string
+          status: string
+          title: string | null
           updated_at: string
           work_order_issued: boolean | null
           work_order_number: string | null
@@ -107,6 +111,10 @@ export type Database = {
           repair_cost?: number | null
           repair_date?: string | null
           reported_by: string
+          responsible_party?: string
+          severity?: string
+          status?: string
+          title?: string | null
           updated_at?: string
           work_order_issued?: boolean | null
           work_order_number?: string | null
@@ -128,6 +136,10 @@ export type Database = {
           repair_cost?: number | null
           repair_date?: string | null
           reported_by?: string
+          responsible_party?: string
+          severity?: string
+          status?: string
+          title?: string | null
           updated_at?: string
           work_order_issued?: boolean | null
           work_order_number?: string | null
