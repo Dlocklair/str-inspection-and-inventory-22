@@ -1,4 +1,4 @@
-import { Home, Package, ClipboardList, AlertTriangle, Settings, Settings2, Building2, UserCog, UserPlus, Clock, User, FileEdit, History, FilePlus, AlertCircle, ClipboardCheck } from 'lucide-react';
+import { Home, Package, ClipboardList, AlertTriangle, Settings, Settings2, Building2, UserCog, UserPlus, Clock, User, FileEdit, History, FilePlus, AlertCircle, ClipboardCheck, ShieldCheck } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import {
   Sidebar,
@@ -48,6 +48,7 @@ const menuItems = [
       { title: 'Damage Report History', url: '/damage?view=history', icon: ClipboardCheck },
     ]
   },
+  { title: 'Warranties', url: '/warranties', icon: ShieldCheck },
   { 
     title: 'Settings', 
     url: '/settings', 

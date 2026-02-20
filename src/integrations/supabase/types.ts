@@ -1063,6 +1063,97 @@ export type Database = {
         }
         Relationships: []
       }
+      warranties: {
+        Row: {
+          attachment_urls: string[] | null
+          cost: number | null
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          manufacturer: string | null
+          manufacturer_contact: string | null
+          notes: string | null
+          parent_warranty_id: string | null
+          product_name: string
+          property_id: string | null
+          purchase_date: string
+          purchased_from: string | null
+          updated_at: string
+          vendor: string | null
+          vendor_contact: string | null
+          warranty_duration_custom_days: number | null
+          warranty_duration_type: string
+          warranty_expiration_date: string
+        }
+        Insert: {
+          attachment_urls?: string[] | null
+          cost?: number | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          manufacturer?: string | null
+          manufacturer_contact?: string | null
+          notes?: string | null
+          parent_warranty_id?: string | null
+          product_name: string
+          property_id?: string | null
+          purchase_date: string
+          purchased_from?: string | null
+          updated_at?: string
+          vendor?: string | null
+          vendor_contact?: string | null
+          warranty_duration_custom_days?: number | null
+          warranty_duration_type?: string
+          warranty_expiration_date: string
+        }
+        Update: {
+          attachment_urls?: string[] | null
+          cost?: number | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          manufacturer?: string | null
+          manufacturer_contact?: string | null
+          notes?: string | null
+          parent_warranty_id?: string | null
+          product_name?: string
+          property_id?: string | null
+          purchase_date?: string
+          purchased_from?: string | null
+          updated_at?: string
+          vendor?: string | null
+          vendor_contact?: string | null
+          warranty_duration_custom_days?: number | null
+          warranty_duration_type?: string
+          warranty_expiration_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warranties_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warranties_parent_warranty_id_fkey"
+            columns: ["parent_warranty_id"]
+            isOneToOne: false
+            referencedRelation: "warranties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warranties_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
