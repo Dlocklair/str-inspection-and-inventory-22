@@ -13,6 +13,7 @@ import Auth from "./pages/Auth";
 import Settings from "./pages/Settings";
 import InventorySetup from "./pages/InventorySetup";
 import { InspectionReport } from "./components/InspectionReport";
+import { WarrantyManager } from "./components/WarrantyManager";
 import { InventoryReport } from "./components/InventoryReport";
 import { DamageReport } from "./components/DamageReport";
 import { PropertyManager } from "./components/PropertyManager";
@@ -69,6 +70,7 @@ const LayoutWrapper = () => {
             <Route path="/inspections" element={<InspectionReport />} />
             <Route path="/inventory" element={<InventoryReport />} />
             <Route path="/damage" element={<DamageReport />} />
+            <Route path="/warranties" element={<WarrantyManager />} />
             <Route path="/install" element={<Install />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
