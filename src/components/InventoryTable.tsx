@@ -3,10 +3,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Edit, ChevronDown, ChevronRight, AlertTriangle, CheckCircle, Trash2, Plus, Minus } from 'lucide-react';
+import { Edit, ChevronDown, ChevronRight, AlertTriangle, CheckCircle, Trash2, Plus, Minus, Clock } from 'lucide-react';
 import { InventoryItem } from '@/hooks/useInventory';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { formatDistanceToNow } from 'date-fns';
 
 interface PendingChange {
   itemId: string;
@@ -288,7 +289,7 @@ export const InventoryTable = ({
                           className="flex items-center justify-between w-full p-3 text-left"
                         >
                           <div className="flex items-center gap-2 min-w-0 flex-1">
-                            {item.amazon_image_url && <img src={item.amazon_image_url} alt={item.name} className="w-8 h-8 rounded object-cover shrink-0" />}
+                            {(item.image_url || item.amazon_image_url) && <img src={item.image_url || item.amazon_image_url!} alt={item.name} className="w-8 h-8 rounded object-cover shrink-0" />}
                             <span className="font-medium text-sm truncate">{item.name}</span>
                           </div>
                           <div className="flex items-center gap-2 shrink-0 ml-2">
@@ -318,6 +319,12 @@ export const InventoryTable = ({
                               <span className="text-muted-foreground">Restock Level</span>
                               <span className="font-medium">{formatNumber(item.restock_threshold)}</span>
                             </div>
+                            {item.last_counted_at && (
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> Last Counted</span>
+                                <span className="font-medium">{formatDistanceToNow(new Date(item.last_counted_at), { addSuffix: true })}</span>
+                              </div>
+                            )}
                             {item.supplier && (
                               <div className="flex items-center justify-between text-xs">
                                 <span className="text-muted-foreground">Supplier</span>
@@ -415,7 +422,7 @@ export const InventoryTable = ({
                 return <tr key={item.id} className="border-b hover:bg-muted/30">
                         <td className="px-2 py-1 w-[30%]">
                           <div className="flex items-center gap-3">
-                            {item.amazon_image_url && <img src={item.amazon_image_url} alt={item.name} className="w-10 h-10 object-cover rounded" />}
+                            {(item.image_url || item.amazon_image_url) && <img src={item.image_url || item.amazon_image_url!} alt={item.name} className="w-10 h-10 object-cover rounded" />}
                             <div>
                               <div className="font-medium py-0 my-0 px-0 mx-[40px]">{item.name}</div>
                               {item.unit && <div className="text-sm text-muted-foreground">{item.unit}</div>}

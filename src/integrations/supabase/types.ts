@@ -633,6 +633,7 @@ export type Database = {
           amazon_link: string | null
           amazon_title: string | null
           asin: string | null
+          barcode: string | null
           category_id: string
           cost_per_package: number | null
           created_at: string
@@ -640,6 +641,8 @@ export type Database = {
           current_quantity: number | null
           description: string | null
           id: string
+          image_url: string | null
+          last_counted_at: string | null
           name: string
           notes: string | null
           property_id: string | null
@@ -659,6 +662,7 @@ export type Database = {
           amazon_link?: string | null
           amazon_title?: string | null
           asin?: string | null
+          barcode?: string | null
           category_id: string
           cost_per_package?: number | null
           created_at?: string
@@ -666,6 +670,8 @@ export type Database = {
           current_quantity?: number | null
           description?: string | null
           id?: string
+          image_url?: string | null
+          last_counted_at?: string | null
           name: string
           notes?: string | null
           property_id?: string | null
@@ -685,6 +691,7 @@ export type Database = {
           amazon_link?: string | null
           amazon_title?: string | null
           asin?: string | null
+          barcode?: string | null
           category_id?: string
           cost_per_package?: number | null
           created_at?: string
@@ -692,6 +699,8 @@ export type Database = {
           current_quantity?: number | null
           description?: string | null
           id?: string
+          image_url?: string | null
+          last_counted_at?: string | null
           name?: string
           notes?: string | null
           property_id?: string | null

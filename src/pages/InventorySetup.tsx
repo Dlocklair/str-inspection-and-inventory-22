@@ -209,6 +209,9 @@ const InventorySetup = () => {
       reorder_link: null,
       restock_requested: false,
       property_id: null,
+      last_counted_at: null,
+      image_url: null,
+      barcode: null,
     });
 
     setNewItem({

@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Edit, Save, X, Send, Loader2, AlertTriangle, CheckCircle, Package2, ChevronsUpDown, ChevronsDownUp, Trash2, FileDown } from 'lucide-react';
+import { Plus, Edit, Save, X, Send, Loader2, AlertTriangle, CheckCircle, Package2, ChevronsUpDown, ChevronsDownUp, Trash2, FileDown, ClipboardCheck } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
@@ -22,6 +22,9 @@ import { InventoryPropertyAssignment } from './InventoryPropertyAssignment';
 import RestockRequestsManager from './RestockRequestsManager';
 import { exportInventoryToPDF, exportInventoryToExcel } from '@/lib/exportUtils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { QuickCountMode } from './QuickCountMode';
+import { BarcodeScanner } from './BarcodeScanner';
+import { CleanerInventoryView } from './CleanerInventoryView';
 export const InventorySection = () => {
   const {
     toast
@@ -29,11 +32,15 @@ export const InventorySection = () => {
   const navigate = useNavigate();
   const {
     rolesLoaded,
-    hasAnyRole
+    hasAnyRole,
+    isOwner,
+    isManager,
+    isInspector
   } = useAuth();
   const {
     selectedProperty
   } = usePropertyContext();
+  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
 
   // Only enable queries when roles are loaded
   const queriesEnabled = rolesLoaded && hasAnyRole();
@@ -106,6 +113,8 @@ export const InventorySection = () => {
       </div>;
   }
 
+  const isCleanerView = isInspector() && !isOwner() && !isManager();
+
   // Filter items based on search, selected property, and stock status
   const filteredItems = items.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) || item.category_name?.toLowerCase().includes(searchTerm.toLowerCase()) || item.supplier?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -146,6 +155,13 @@ export const InventorySection = () => {
       id: itemId,
       current_quantity: Math.max(0, newQuantity)
     });
+  };
+  const handleMarkCounted = (itemId: string, quantity: number) => {
+    updateItem({
+      id: itemId,
+      current_quantity: quantity,
+      last_counted_at: new Date().toISOString()
+    } as any);
   };
   const handleRestockUpdate = (itemId: string, newThreshold: number) => {
     updateItem({
@@ -214,7 +230,10 @@ export const InventorySection = () => {
       restock_requested: false,
       notes: newItem.notes,
       created_by: profile.id,
-      property_id: selectedProperty?.id || null
+      property_id: selectedProperty?.id || null,
+      last_counted_at: null,
+      image_url: null,
+      barcode: null
     } as any);
 
     // Reset form
@@ -349,6 +368,29 @@ export const InventorySection = () => {
   // Calculate counts based on filtered items (respects property and stock filter)
   const lowStockItems = filteredItems.filter(item => item.current_quantity > 0 && item.current_quantity <= item.restock_threshold);
   const outOfStockItems = filteredItems.filter(item => item.current_quantity === 0);
+
+  // Cleaner/Inspector view - simplified UI
+  if (isCleanerView) {
+    return (
+      <>
+        <CleanerInventoryView
+          items={items}
+          isLoading={isLoading}
+          onUpdateStock={handleStockUpdate}
+          onUpdateItem={updateItem}
+        />
+        <BarcodeScanner
+          isOpen={showBarcodeScanner}
+          onClose={() => setShowBarcodeScanner(false)}
+          onScan={(code) => {
+            setSearchTerm(code);
+            setShowBarcodeScanner(false);
+          }}
+        />
+      </>
+    );
+  }
+
   return <div className="space-y-6">
       {/* Property Selector and Filter */}
       <div className="flex gap-4 items-stretch flex-wrap">
@@ -410,6 +452,10 @@ export const InventorySection = () => {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="inventory">Current Inventory</TabsTrigger>
+          <TabsTrigger value="quick-count">
+            <ClipboardCheck className="h-4 w-4 mr-1" />
+            Quick Count
+          </TabsTrigger>
           <TabsTrigger value="requests">Restock Requests</TabsTrigger>
           <TabsTrigger value="notifications">Email Notifications</TabsTrigger>
         </TabsList>
@@ -584,6 +630,15 @@ export const InventorySection = () => {
           </AlertDialog>
         </TabsContent>
 
+        <TabsContent value="quick-count" className="space-y-4">
+          <QuickCountMode
+            items={filteredItems}
+            onUpdateStock={handleStockUpdate}
+            onMarkCounted={handleMarkCounted}
+            onScanBarcode={() => setShowBarcodeScanner(true)}
+          />
+        </TabsContent>
+
         <TabsContent value="requests">
           <RestockRequestsManager items={items.filter(item => !selectedProperty || item.property_id === selectedProperty.id)} onUpdateItem={updateItem} />
         </TabsContent>
@@ -594,5 +649,15 @@ export const InventorySection = () => {
         }} />
         </TabsContent>
       </Tabs>
+
+      {/* Barcode Scanner Modal */}
+      <BarcodeScanner
+        isOpen={showBarcodeScanner}
+        onClose={() => setShowBarcodeScanner(false)}
+        onScan={(code) => {
+          setSearchTerm(code);
+          setShowBarcodeScanner(false);
+        }}
+      />
     </div>;
 };
