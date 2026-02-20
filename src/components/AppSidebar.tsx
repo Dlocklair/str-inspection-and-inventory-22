@@ -1,4 +1,5 @@
-import { Home, Package, ClipboardList, AlertTriangle, Settings, Settings2, Building2, UserCog, UserPlus, Clock, User, FileEdit, History, FilePlus, AlertCircle, ClipboardCheck, ShieldCheck } from 'lucide-react';
+import { useState } from 'react';
+import { Home, Package, ClipboardList, AlertTriangle, Settings, Settings2, Building2, UserCog, UserPlus, Clock, User, FileEdit, History, FilePlus, AlertCircle, ClipboardCheck, ShieldCheck, ChevronDown } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import {
   Sidebar,
@@ -11,42 +12,47 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/hooks/useAuth';
 
-const mainMenuItems = [
+interface MenuItem {
+  title: string;
+  url?: string;
+  icon: any;
+  subItems?: { title: string; url: string; icon?: any }[];
+}
+
+const mainMenuItems: MenuItem[] = [
   { title: 'Dashboard', url: '/', icon: Home },
   { title: 'Properties', url: '/properties', icon: Building2 },
-  { 
-    title: 'Inspections', 
-    url: '/inspections', 
+  {
+    title: 'Inspections',
     icon: ClipboardList,
     subItems: [
       { title: 'New Inspection', url: '/inspections?view=new-inspection', icon: FilePlus },
       { title: 'Upcoming Inspections', url: '/inspections?view=upcoming', icon: Clock },
-      { title: 'Manage Inspection Templates', url: '/inspections?view=manage-templates', icon: FileEdit },
+      { title: 'Manage Templates', url: '/inspections?view=manage-templates', icon: FileEdit },
       { title: 'Inspection History', url: '/inspections?view=inspection-history', icon: History },
     ]
   },
-  { 
-    title: 'Inventory', 
+  {
+    title: 'Inventory',
     icon: Package,
     subItems: [
       { title: 'Current Inventory', url: '/inventory?tab=inventory' },
       { title: 'Restock Requests', url: '/inventory?tab=requests' },
       { title: 'Email Notifications', url: '/inventory?tab=notifications' },
-      { title: 'Inventory Setup and Updates', url: '/inventory-setup', icon: Settings2 },
+      { title: 'Setup & Updates', url: '/inventory-setup', icon: Settings2 },
     ]
   },
-  { 
-    title: 'Damage Reports', 
-    url: '/damage', 
+  {
+    title: 'Damage Reports',
     icon: AlertTriangle,
     subItems: [
       { title: 'New Damage Report', url: '/damage?view=new', icon: AlertCircle },
-      { title: 'Pending Damage Reports', url: '/damage?view=pending', icon: Clock },
-      { title: 'Damage Report History', url: '/damage?view=history', icon: ClipboardCheck },
+      { title: 'Pending Reports', url: '/damage?view=pending', icon: Clock },
+      { title: 'Report History', url: '/damage?view=history', icon: ClipboardCheck },
     ]
   },
   { title: 'Warranties', url: '/warranties', icon: ShieldCheck },
@@ -65,16 +71,19 @@ export function AppSidebar() {
   const isMobile = useIsMobile();
   const { isOwner, isManager, isInspector } = useAuth();
 
+  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
+
+  const toggleMenu = (title: string) => {
+    setOpenMenus(prev => ({ ...prev, [title]: !prev[title] }));
+  };
+
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
     isActive ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted/50';
 
-  // On mobile, only show settings/admin items (bottom tabs handle main nav)
   const showMainNav = !isMobile;
   const showSettings = isOwner() || isManager();
 
-  // Filter main menu items based on role
   const filteredMainMenuItems = mainMenuItems.filter(item => {
-    // Inspectors can only see Inspections and Inventory
     if (isInspector() && !isOwner() && !isManager()) {
       return ['Dashboard', 'Inspections', 'Inventory'].includes(item.title);
     }
@@ -92,34 +101,39 @@ export function AppSidebar() {
                 {filteredMainMenuItems.map((item) => (
                   item.subItems ? (
                     <SidebarMenuItem key={item.title}>
-                      <HoverCard openDelay={200} closeDelay={100}>
-                        <HoverCardTrigger asChild>
-                          <SidebarMenuButton>
-                            <item.icon className="h-4 w-4" />
-                            {!collapsed && <span>{item.title}</span>}
+                      <Collapsible open={openMenus[item.title] ?? false} onOpenChange={() => toggleMenu(item.title)}>
+                        <CollapsibleTrigger asChild>
+                          <SidebarMenuButton className="w-full justify-between">
+                            <span className="flex items-center gap-2">
+                              <item.icon className="h-4 w-4" />
+                              {!collapsed && <span>{item.title}</span>}
+                            </span>
+                            {!collapsed && (
+                              <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${openMenus[item.title] ? 'rotate-180' : ''}`} />
+                            )}
                           </SidebarMenuButton>
-                        </HoverCardTrigger>
-                        <HoverCardContent side="right" align="start" className="w-56 p-2 z-50 bg-background">
-                          <div className="space-y-1">
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <div className="ml-4 border-l pl-2 space-y-0.5 mt-1">
                             {item.subItems.map((subItem) => (
                               <NavLink
                                 key={subItem.url}
                                 to={subItem.url}
                                 className={({ isActive }) =>
-                                  `flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
+                                  `flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors ${
                                     isActive
                                       ? 'bg-primary/10 text-primary font-medium'
-                                      : 'hover:bg-muted/50'
+                                      : 'hover:bg-muted/50 text-muted-foreground'
                                   }`
                                 }
                               >
-                                {subItem.icon && <subItem.icon className="h-4 w-4" />}
+                                {subItem.icon && <subItem.icon className="h-3.5 w-3.5" />}
                                 <span>{subItem.title}</span>
                               </NavLink>
                             ))}
                           </div>
-                        </HoverCardContent>
-                      </HoverCard>
+                        </CollapsibleContent>
+                      </Collapsible>
                     </SidebarMenuItem>
                   ) : (
                     <SidebarMenuItem key={item.title}>

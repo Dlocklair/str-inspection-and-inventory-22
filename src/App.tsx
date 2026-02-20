@@ -11,6 +11,7 @@ import { MobileBottomTabs } from "@/components/MobileBottomTabs";
 import { MobileProfileMenu } from "@/components/MobileProfileMenu";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { FirstTimeSetup } from "./components/FirstTimeSetup";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Settings from "./pages/Settings";
@@ -28,8 +29,6 @@ import { DataMigrationWizard } from '@/components/DataMigrationWizard';
 import { OneTimeDataMigration } from '@/components/OneTimeDataMigration';
 import { SyncStatusIndicator } from '@/components/SyncStatusIndicator';
 
-
-
 const LayoutWrapper = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -38,10 +37,8 @@ const LayoutWrapper = () => {
   const hideMenuPaths = ['/auth', '/install'];
   const showMenu = !hideMenuPaths.includes(location.pathname);
   
-  // Run inventory migration on app load (after auth is ready)
   useMigrateInventory(user, loading);
 
-  // Redirect to auth if not logged in (except on auth page)
   useEffect(() => {
     if (!loading && !user && location.pathname !== '/auth') {
       navigate('/auth');
@@ -72,18 +69,17 @@ const LayoutWrapper = () => {
           )}
           {showMenu && isMobile && <MobileBottomTabs />}
           <Routes>
-            <Route path="/" element={<Index />} />
+            <Route path="/" element={<ErrorBoundary fallbackTitle="Dashboard error"><Index /></ErrorBoundary>} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/accept-invitation" element={<AcceptInvitation />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/properties" element={<PropertyManager />} />
-            <Route path="/inventory-setup" element={<InventorySetup />} />
-            <Route path="/inspections" element={<InspectionReport />} />
-            <Route path="/inventory" element={<InventoryReport />} />
-            <Route path="/damage" element={<DamageReport />} />
-            <Route path="/warranties" element={<WarrantyManager />} />
+            <Route path="/settings" element={<ErrorBoundary fallbackTitle="Settings error"><Settings /></ErrorBoundary>} />
+            <Route path="/properties" element={<ErrorBoundary fallbackTitle="Properties error"><PropertyManager /></ErrorBoundary>} />
+            <Route path="/inventory-setup" element={<ErrorBoundary fallbackTitle="Inventory setup error"><InventorySetup /></ErrorBoundary>} />
+            <Route path="/inspections" element={<ErrorBoundary fallbackTitle="Inspections error"><InspectionReport /></ErrorBoundary>} />
+            <Route path="/inventory" element={<ErrorBoundary fallbackTitle="Inventory error"><InventoryReport /></ErrorBoundary>} />
+            <Route path="/damage" element={<ErrorBoundary fallbackTitle="Damage reports error"><DamageReport /></ErrorBoundary>} />
+            <Route path="/warranties" element={<ErrorBoundary fallbackTitle="Warranties error"><WarrantyManager /></ErrorBoundary>} />
             <Route path="/install" element={<Install />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </main>
