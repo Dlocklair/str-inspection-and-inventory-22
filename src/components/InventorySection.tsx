@@ -461,7 +461,7 @@ export const InventorySection = () => {
                 <CardTitle>Add New Inventory Item</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Item Name *</label>
                     <Input value={newItem.name} onChange={e => setNewItem({
@@ -486,7 +486,7 @@ export const InventorySection = () => {
                     </Select>
                   </div>
                 </div>
-                <div className="grid grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Current Stock</label>
                     <Input type="number" min="0" value={newItem.currentStock} onChange={e => setNewItem({

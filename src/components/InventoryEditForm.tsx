@@ -75,9 +75,9 @@ export const InventoryEditForm = ({
       <CardHeader>
         <CardTitle className="text-cyan">Edit Inventory Item</CardTitle>
       </CardHeader>
-      <CardContent>
-        {/* Sticky Action Buttons at Top */}
-        <div className="flex gap-2 mb-6 flex-wrap sticky top-0 bg-card z-10 py-2 -mt-2">
+      <CardContent className="pb-20 md:pb-6">
+        {/* Desktop: Sticky Action Buttons at Top */}
+        <div className="hidden md:flex gap-2 mb-6 flex-wrap sticky top-0 bg-card z-10 py-2 -mt-2">
           <Button onClick={handleSave} className="flex items-center gap-2">
             <Save className="h-4 w-4" />
             Save Changes
@@ -98,6 +98,18 @@ export const InventoryEditForm = ({
               Delete Item
             </Button>
           )}
+        </div>
+
+        {/* Mobile: Sticky bottom save bar */}
+        <div className="md:hidden fixed bottom-14 left-0 right-0 z-50 bg-background border-t p-3 flex gap-2">
+          <Button onClick={handleSave} className="flex-1">
+            <Save className="h-4 w-4 mr-1" />
+            Save
+          </Button>
+          <Button onClick={onCancel} variant="outline" className="flex-1">
+            <X className="h-4 w-4 mr-1" />
+            Cancel
+          </Button>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

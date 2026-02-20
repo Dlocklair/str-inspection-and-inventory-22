@@ -118,3 +118,43 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* Mobile form overrides */
+@media (max-width: 767px) {
+  /* Force single-column grids */
+  .grid-cols-2,
+  .grid-cols-3,
+  .grid-cols-4,
+  .md\:grid-cols-2,
+  .md\:grid-cols-3,
+  .md\:grid-cols-4,
+  .lg\:grid-cols-4 {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Minimum 44px touch targets */
+  input,
+  select,
+  textarea,
+  [role="combobox"],
+  .select-trigger,
+  button {
+    min-height: 44px;
+  }
+
+  /* Full-width buttons */
+  button:not(.inline-btn) {
+    width: 100%;
+  }
+
+  /* Fix sidebar trigger and small icon buttons */
+  button[data-sidebar="trigger"],
+  button.h-5,
+  button.h-6,
+  button.h-8,
+  [role="tab"],
+  nav button,
+  .flex button {
+    width: auto;
+  }
+}

@@ -3,9 +3,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Edit, ChevronDown, ChevronRight, AlertTriangle, CheckCircle, Trash2 } from 'lucide-react';
+import { Edit, ChevronDown, ChevronRight, AlertTriangle, CheckCircle, Trash2, Plus, Minus } from 'lucide-react';
 import { InventoryItem } from '@/hooks/useInventory';
 import { toast } from 'sonner';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface PendingChange {
   itemId: string;
@@ -41,6 +42,8 @@ export const InventoryTable = ({
   const [restockValue, setRestockValue] = useState<string>('');
   const [pendingChanges, setPendingChanges] = useState<Map<string, PendingChange>>(new Map());
   const [restockRequired, setRestockRequired] = useState<Map<string, boolean>>(new Map());
+  const [expandedMobileItem, setExpandedMobileItem] = useState<string | null>(null);
+  const isMobile = useIsMobile();
 
   // Initialize restock required state based on stock levels
   useEffect(() => {
@@ -241,6 +244,117 @@ export const InventoryTable = ({
   const sortedCategories = Object.keys(groupedItems).sort();
   const hasPendingChanges = pendingChanges.size > 0;
 
+  // Mobile quick stock adjust
+  const handleMobileStockAdjust = (item: InventoryItem, delta: number) => {
+    const newQty = Math.max(0, item.current_quantity + delta);
+    onUpdateStock(item.id, newQty);
+    if (newQty <= item.restock_threshold) {
+      onUpdateItem({ id: item.id, restock_requested: true });
+    }
+  };
+
+  if (isMobile) {
+    return (
+      <div className="space-y-3">
+        {hasPendingChanges && (
+          <div className="flex gap-2">
+            <Button onClick={acceptAllChanges} variant="default" className="flex-1 gap-2 inline-btn">Accept All</Button>
+            <Button variant="outline" onClick={cancelAllChanges} className="flex-1 gap-2 inline-btn">Cancel All</Button>
+          </div>
+        )}
+        {sortedCategories.map(categoryName => {
+          const categoryItems = groupedItems[categoryName];
+          const isExpanded = expandedCategories.has(categoryName);
+          return (
+            <div key={categoryName}>
+              <button
+                onClick={() => toggleCategory(categoryName)}
+                className="flex items-center gap-2 w-full py-2 px-1 text-left"
+              >
+                {isExpanded ? <ChevronDown className="h-4 w-4 shrink-0 inline-btn" /> : <ChevronRight className="h-4 w-4 shrink-0 inline-btn" />}
+                <span className="font-semibold text-primary">{categoryName}</span>
+                <span className="text-xs text-muted-foreground">({categoryItems.length})</span>
+              </button>
+              {isExpanded && (
+                <div className="space-y-2 pl-1">
+                  {categoryItems.map(item => {
+                    const status = getStockStatus(item);
+                    const StatusIcon = status.icon;
+                    const isItemExpanded = expandedMobileItem === item.id;
+                    return (
+                      <div key={item.id} className="border rounded-lg bg-card overflow-hidden">
+                        <button
+                          onClick={() => setExpandedMobileItem(isItemExpanded ? null : item.id)}
+                          className="flex items-center justify-between w-full p-3 text-left"
+                        >
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            {item.amazon_image_url && <img src={item.amazon_image_url} alt={item.name} className="w-8 h-8 rounded object-cover shrink-0" />}
+                            <span className="font-medium text-sm truncate">{item.name}</span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0 ml-2">
+                            <Badge variant={status.color as any} className="text-[10px] px-1.5 py-0 inline-btn">
+                              <StatusIcon className="h-3 w-3 mr-0.5 inline-btn" />
+                              {item.current_quantity}
+                            </Badge>
+                            {isItemExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground inline-btn" /> : <ChevronRight className="h-4 w-4 text-muted-foreground inline-btn" />}
+                          </div>
+                        </button>
+                        {isItemExpanded && (
+                          <div className="px-3 pb-3 space-y-3 border-t pt-3">
+                            {/* Stock adjust */}
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-muted-foreground">Stock</span>
+                              <div className="flex items-center gap-3">
+                                <Button size="sm" variant="outline" className="h-9 w-9 p-0 inline-btn" onClick={() => handleMobileStockAdjust(item, -1)}>
+                                  <Minus className="h-4 w-4" />
+                                </Button>
+                                <span className="font-semibold text-lg min-w-[2ch] text-center">{formatNumber(item.current_quantity)}</span>
+                                <Button size="sm" variant="outline" className="h-9 w-9 p-0 inline-btn" onClick={() => handleMobileStockAdjust(item, 1)}>
+                                  <Plus className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-muted-foreground">Restock Level</span>
+                              <span className="font-medium">{formatNumber(item.restock_threshold)}</span>
+                            </div>
+                            {item.supplier && (
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-muted-foreground">Supplier</span>
+                                <span className="font-medium">{item.supplier}</span>
+                              </div>
+                            )}
+                            {item.unit && (
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-muted-foreground">Unit</span>
+                                <span className="font-medium">{item.unit}</span>
+                              </div>
+                            )}
+                            <div className="flex gap-2 pt-1">
+                              <Button size="sm" variant="outline" className="flex-1 inline-btn" onClick={() => { onEditItem(item); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
+                                <Edit className="h-3 w-3 mr-1" /> Edit
+                              </Button>
+                              {onDeleteItem && (
+                                <Button size="sm" variant="outline" className="text-destructive inline-btn" onClick={() => onDeleteItem(item.id)}>
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // Desktop table view
   return (
     <div className="space-y-4">
       {/* Global action buttons */}
@@ -280,7 +394,7 @@ export const InventoryTable = ({
                     <td colSpan={7} onClick={() => toggleCategory(categoryName)} className="p-2 py-[4px]">
                       <div className="flex items-center gap-2">
                         {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                        <span className="font-semibold text-cyan-400">{categoryName}</span>
+                        <span className="font-semibold text-primary">{categoryName}</span>
                         <span className="text-sm text-muted-foreground">({categoryItems.length})</span>
                       </div>
                     </td>
@@ -290,8 +404,8 @@ export const InventoryTable = ({
                   {isExpanded && categoryItems.map(item => {
                 const status = getStockStatus(item);
                 const StatusIcon = status.icon;
-                const isEditingStock = editingStock === item.id;
-                const isEditingRestock = editingRestock === item.id;
+                const isEditingStockItem = editingStock === item.id;
+                const isEditingRestockItem = editingRestock === item.id;
                 const stockChange = pendingChanges.get(`${item.id}-stock`);
                 const restockChange = pendingChanges.get(`${item.id}-restock`);
                 const displayStock = stockChange ? stockChange.value : item.current_quantity;
@@ -310,7 +424,7 @@ export const InventoryTable = ({
                         </td>
                         <td className={`px-2 py-1 w-[10%] ${stockChange ? 'bg-yellow-500/20' : ''}`}>
                           <div className="flex flex-col items-center gap-1">
-                            {isEditingStock ? (
+                            {isEditingStockItem ? (
                               <Input 
                                 type="text" 
                                 value={stockValue} 
@@ -337,7 +451,7 @@ export const InventoryTable = ({
                         </td>
                         <td className={`px-2 py-1 w-[12%] ${restockChange ? 'bg-yellow-500/20' : ''}`}>
                           <div className="flex flex-col items-center gap-1">
-                            {isEditingRestock ? (
+                            {isEditingRestockItem ? (
                               <Input 
                                 type="text" 
                                 value={restockValue} 
@@ -383,11 +497,7 @@ export const InventoryTable = ({
                           <div className="flex justify-center gap-1">
                             <Button size="sm" variant="ghost" onClick={() => {
                         onEditItem(item);
-                        // Scroll to top of page
-                        window.scrollTo({
-                          top: 0,
-                          behavior: 'smooth'
-                        });
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
                       }}>
                               <Edit className="h-4 w-4" />
                             </Button>
