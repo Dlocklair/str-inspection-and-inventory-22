@@ -10,11 +10,11 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Plus, Edit, Save, X, Trash2, AlertTriangle, Camera, FileText, CalendarIcon, DollarSign, Home, ClipboardList, Package, Settings, History, Upload, MapPin, Search, Image as ImageIcon, Building2 } from 'lucide-react';
+import { Plus, Edit, Save, X, Trash2, AlertTriangle, Camera, FileText, CalendarIcon, DollarSign, Home, ClipboardList, Package, Settings, History, Upload, MapPin, Search, Image as ImageIcon, Building2, FileDown, Columns2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { format } from 'date-fns';
+import { format, addDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { LocationManagerModal } from './LocationManagerModal';
 import DamageReportHistoryEnhanced from './DamageReportHistoryEnhanced';
@@ -23,6 +23,9 @@ import { usePropertyContext } from '@/contexts/PropertyContext';
 import { DamagePropertySelector } from './DamagePropertySelector';
 import { DamageReportCard } from './DamageReportCard';
 import { useDamageReports, type DamageReport as DamageReportType } from '@/hooks/useDamageReports';
+import { ClaimDeadlineTracker } from './ClaimDeadlineTracker';
+import { BeforeAfterComparison } from './BeforeAfterComparison';
+import { generateClaimPDF } from '@/lib/claimPdfGenerator';
 
 export const DamageReport = () => {
   const { toast } = useToast();
@@ -47,6 +50,19 @@ export const DamageReport = () => {
     responsibleParty: 'guest' as const,
     reportDate: new Date().toISOString().split('T')[0],
     photos: [] as File[],
+    // Claim fields
+    guestName: '',
+    reservationId: '',
+    bookingPlatform: '',
+    checkInDate: '',
+    checkOutDate: '',
+    dateDamageDiscovered: '',
+    beforePhotos: [] as File[],
+    receiptFiles: [] as File[],
+    resolutionSought: '',
+    claimStatus: 'not_filed',
+    claimReferenceNumber: '',
+    claimTimelineNotes: '',
   });
 
   const [showAddForm, setShowAddForm] = useState(false);
@@ -145,6 +161,27 @@ export const DamageReport = () => {
       if (url) photoUrls.push(url);
     }
 
+    // Calculate claim deadline if checkout date and platform are provided
+    let claimDeadline: string | null = null;
+    if (newReport.checkOutDate && newReport.bookingPlatform) {
+      const deadlineDays = newReport.bookingPlatform === 'airbnb' ? 14 : newReport.bookingPlatform === 'vrbo' ? 60 : 30;
+      claimDeadline = format(addDays(new Date(newReport.checkOutDate + 'T12:00:00'), deadlineDays), 'yyyy-MM-dd');
+    }
+
+    // Upload before photos
+    const beforePhotoUrls: string[] = [];
+    for (const file of newReport.beforePhotos) {
+      const url = await uploadPhoto(file, tempId);
+      if (url) beforePhotoUrls.push(url);
+    }
+
+    // Upload receipt files
+    const receiptUrls: string[] = [];
+    for (const file of newReport.receiptFiles) {
+      const url = await uploadPhoto(file, tempId);
+      if (url) receiptUrls.push(url);
+    }
+
     const success = await addReport({
       title: newReport.title.trim(),
       description: newReport.description.trim(),
@@ -159,6 +196,20 @@ export const DamageReport = () => {
       property_id: selectedProperty?.id || null,
       property_name: selectedProperty?.name || null,
       reported_by: profile.id,
+      // Claim fields
+      guest_name: newReport.guestName.trim() || null,
+      reservation_id: newReport.reservationId.trim() || null,
+      booking_platform: newReport.bookingPlatform || null,
+      check_in_date: newReport.checkInDate || null,
+      check_out_date: newReport.checkOutDate || null,
+      date_damage_discovered: newReport.dateDamageDiscovered || null,
+      before_photo_urls: beforePhotoUrls.length > 0 ? beforePhotoUrls : null,
+      receipt_urls: receiptUrls.length > 0 ? receiptUrls : null,
+      resolution_sought: newReport.resolutionSought || null,
+      claim_status: newReport.claimStatus || 'not_filed',
+      claim_reference_number: newReport.claimReferenceNumber.trim() || null,
+      claim_deadline: claimDeadline,
+      claim_timeline_notes: newReport.claimTimelineNotes.trim() || null,
     });
 
     if (success) {
@@ -172,6 +223,18 @@ export const DamageReport = () => {
         responsibleParty: 'guest',
         reportDate: new Date().toISOString().split('T')[0],
         photos: [],
+        guestName: '',
+        reservationId: '',
+        bookingPlatform: '',
+        checkInDate: '',
+        checkOutDate: '',
+        dateDamageDiscovered: '',
+        beforePhotos: [],
+        receiptFiles: [],
+        resolutionSought: '',
+        claimStatus: 'not_filed',
+        claimReferenceNumber: '',
+        claimTimelineNotes: '',
       });
       setShowAddForm(false);
     }
@@ -306,7 +369,24 @@ export const DamageReport = () => {
                   <X className="h-4 w-4" />
                   Back to History
                 </Button>
+                {(isOwner() || roles.includes('manager')) && (
+                  <Button onClick={() => generateClaimPDF(selectedHistoryReport, selectedProperty ? { name: selectedProperty.name, address: selectedProperty.address, city: selectedProperty.city, state: selectedProperty.state, zip: selectedProperty.zip } : null)} className="flex items-center gap-2">
+                    <FileDown className="h-4 w-4" />
+                    Generate Claim Report
+                  </Button>
+                )}
               </div>
+
+              {/* Claim Deadline Tracker */}
+              {(isOwner() || roles.includes('manager')) && selectedHistoryReport.check_out_date && (
+                <ClaimDeadlineTracker
+                  checkOutDate={selectedHistoryReport.check_out_date}
+                  bookingPlatform={selectedHistoryReport.booking_platform}
+                  claimStatus={selectedHistoryReport.claim_status}
+                  claimDeadline={selectedHistoryReport.claim_deadline}
+                />
+              )}
+
               <Card>
                 <CardHeader>
                   <CardTitle>{selectedHistoryReport.title || selectedHistoryReport.description}</CardTitle>
@@ -323,13 +403,65 @@ export const DamageReport = () => {
                     <div><strong>Report Date:</strong> {format(new Date(selectedHistoryReport.damage_date + 'T12:00:00'), 'PPP')}</div>
                     <div><strong>Est. Cost:</strong> ${(selectedHistoryReport.estimated_value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                   </div>
+
+                  {/* Claim Details - Owner/Manager Only */}
+                  {(isOwner() || roles.includes('manager')) && selectedHistoryReport.guest_name && (
+                    <div className="border-t pt-4 space-y-3">
+                      <h4 className="font-medium flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        Booking & Claim Details
+                      </h4>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        {selectedHistoryReport.guest_name && <div><strong>Guest:</strong> {selectedHistoryReport.guest_name}</div>}
+                        {selectedHistoryReport.reservation_id && <div><strong>Booking ID:</strong> {selectedHistoryReport.reservation_id}</div>}
+                        {selectedHistoryReport.booking_platform && <div><strong>Platform:</strong> {selectedHistoryReport.booking_platform.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</div>}
+                        {selectedHistoryReport.check_in_date && <div><strong>Check-in:</strong> {format(new Date(selectedHistoryReport.check_in_date + 'T12:00:00'), 'PPP')}</div>}
+                        {selectedHistoryReport.check_out_date && <div><strong>Check-out:</strong> {format(new Date(selectedHistoryReport.check_out_date + 'T12:00:00'), 'PPP')}</div>}
+                        {selectedHistoryReport.date_damage_discovered && <div><strong>Discovered:</strong> {format(new Date(selectedHistoryReport.date_damage_discovered + 'T12:00:00'), 'PPP')}</div>}
+                        {selectedHistoryReport.resolution_sought && <div><strong>Resolution:</strong> {selectedHistoryReport.resolution_sought.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</div>}
+                        {selectedHistoryReport.claim_status && <div><strong>Claim Status:</strong> <Badge variant="outline">{selectedHistoryReport.claim_status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</Badge></div>}
+                        {selectedHistoryReport.claim_reference_number && <div><strong>Ref #:</strong> {selectedHistoryReport.claim_reference_number}</div>}
+                      </div>
+                      {selectedHistoryReport.claim_timeline_notes && (
+                        <div><strong>Timeline Notes:</strong> {selectedHistoryReport.claim_timeline_notes}</div>
+                      )}
+                    </div>
+                  )}
+
                   {selectedHistoryReport.notes && (
                     <div><strong>Notes:</strong> {selectedHistoryReport.notes}</div>
                   )}
+
+                  {/* Before/After Photo Comparison */}
+                  {(isOwner() || roles.includes('manager')) && (
+                    (selectedHistoryReport.before_photo_urls?.length || 0) > 0 || (selectedHistoryReport.photo_urls?.length || 0) > 0
+                  ) && (
+                    <BeforeAfterComparison
+                      beforePhotos={selectedHistoryReport.before_photo_urls || []}
+                      afterPhotos={selectedHistoryReport.photo_urls || []}
+                      location={selectedHistoryReport.location}
+                    />
+                  )}
+
+                  {/* Receipts */}
+                  {(isOwner() || roles.includes('manager')) && (selectedHistoryReport.receipt_urls?.length || 0) > 0 && (
+                    <div className="space-y-2 border-t pt-4">
+                      <strong>Receipts & Quotes ({selectedHistoryReport.receipt_urls!.length}):</strong>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                        {selectedHistoryReport.receipt_urls!.map((url, index) => (
+                          <a key={index} href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-2 border rounded-lg hover:bg-muted/50 transition-colors">
+                            <FileText className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm truncate">Document {index + 1}</span>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Photos */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <strong>Photos ({(selectedHistoryReport.photo_urls || []).length}):</strong>
+                      <strong>Damage Photos ({(selectedHistoryReport.photo_urls || []).length}):</strong>
                       <div className="flex gap-2">
                         <Button
                           variant="outline"
@@ -712,6 +844,235 @@ export const DamageReport = () => {
                             rows={2}
                           />
                         </div>
+
+                        {/* Claim Information Section - Owner/Manager Only */}
+                        {(isOwner() || roles.includes('manager')) && (
+                          <div className="space-y-4 border-t pt-6">
+                            <h4 className="font-medium text-lg text-primary flex items-center gap-2">
+                              <FileText className="h-5 w-5" />
+                              Booking & Claim Information
+                            </h4>
+                            <p className="text-sm text-muted-foreground">For Airbnb/VRBO damage claims. These fields help generate a complete claim report.</p>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium">Guest Name</label>
+                                <Input
+                                  placeholder="Guest's full name"
+                                  value={newReport.guestName}
+                                  onChange={(e) => setNewReport(prev => ({ ...prev, guestName: e.target.value }))}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium">Reservation/Booking ID</label>
+                                <Input
+                                  placeholder="Confirmation number"
+                                  value={newReport.reservationId}
+                                  onChange={(e) => setNewReport(prev => ({ ...prev, reservationId: e.target.value }))}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium">Booking Platform</label>
+                                <Select value={newReport.bookingPlatform} onValueChange={(value) => setNewReport(prev => ({ ...prev, bookingPlatform: value }))}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select platform" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="airbnb">Airbnb</SelectItem>
+                                    <SelectItem value="vrbo">VRBO</SelectItem>
+                                    <SelectItem value="direct_booking">Direct Booking</SelectItem>
+                                    <SelectItem value="other">Other</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium">Date Damage Discovered</label>
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !newReport.dateDamageDiscovered && "text-muted-foreground")}>
+                                      <CalendarIcon className="mr-2 h-4 w-4" />
+                                      {newReport.dateDamageDiscovered ? format(new Date(newReport.dateDamageDiscovered + 'T12:00:00'), 'PPP') : 'Pick a date'}
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar
+                                      mode="single"
+                                      selected={newReport.dateDamageDiscovered ? new Date(newReport.dateDamageDiscovered + 'T12:00:00') : undefined}
+                                      onSelect={(date) => date && setNewReport(prev => ({ ...prev, dateDamageDiscovered: format(date, 'yyyy-MM-dd') }))}
+                                      initialFocus
+                                      className="p-3 pointer-events-auto"
+                                    />
+                                  </PopoverContent>
+                                </Popover>
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium">Check-in Date</label>
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !newReport.checkInDate && "text-muted-foreground")}>
+                                      <CalendarIcon className="mr-2 h-4 w-4" />
+                                      {newReport.checkInDate ? format(new Date(newReport.checkInDate + 'T12:00:00'), 'PPP') : 'Pick a date'}
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar
+                                      mode="single"
+                                      selected={newReport.checkInDate ? new Date(newReport.checkInDate + 'T12:00:00') : undefined}
+                                      onSelect={(date) => date && setNewReport(prev => ({ ...prev, checkInDate: format(date, 'yyyy-MM-dd') }))}
+                                      initialFocus
+                                      className="p-3 pointer-events-auto"
+                                    />
+                                  </PopoverContent>
+                                </Popover>
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium">Check-out Date</label>
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !newReport.checkOutDate && "text-muted-foreground")}>
+                                      <CalendarIcon className="mr-2 h-4 w-4" />
+                                      {newReport.checkOutDate ? format(new Date(newReport.checkOutDate + 'T12:00:00'), 'PPP') : 'Pick a date'}
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar
+                                      mode="single"
+                                      selected={newReport.checkOutDate ? new Date(newReport.checkOutDate + 'T12:00:00') : undefined}
+                                      onSelect={(date) => date && setNewReport(prev => ({ ...prev, checkOutDate: format(date, 'yyyy-MM-dd') }))}
+                                      initialFocus
+                                      className="p-3 pointer-events-auto"
+                                    />
+                                  </PopoverContent>
+                                </Popover>
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium">Resolution Sought</label>
+                                <Select value={newReport.resolutionSought} onValueChange={(value) => setNewReport(prev => ({ ...prev, resolutionSought: value }))}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select resolution type" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="full_replacement">Full Replacement</SelectItem>
+                                    <SelectItem value="partial_reimbursement">Partial Reimbursement</SelectItem>
+                                    <SelectItem value="repair_only">Repair Only</SelectItem>
+                                    <SelectItem value="insurance_claim">Insurance Claim</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium">Claim Status</label>
+                                <Select value={newReport.claimStatus} onValueChange={(value) => setNewReport(prev => ({ ...prev, claimStatus: value }))}>
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="not_filed">Not Filed</SelectItem>
+                                    <SelectItem value="filed_with_platform">Filed with Platform</SelectItem>
+                                    <SelectItem value="under_review">Under Review</SelectItem>
+                                    <SelectItem value="approved">Approved</SelectItem>
+                                    <SelectItem value="denied">Denied</SelectItem>
+                                    <SelectItem value="paid">Paid</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Claim Reference Number</label>
+                              <Input
+                                placeholder="Platform tracking/case number"
+                                value={newReport.claimReferenceNumber}
+                                onChange={(e) => setNewReport(prev => ({ ...prev, claimReferenceNumber: e.target.value }))}
+                              />
+                            </div>
+
+                            {/* Before Photos */}
+                            <div className="space-y-3">
+                              <h5 className="font-medium text-sm">Before Photos (from last inspection/turnover)</h5>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                {newReport.beforePhotos.map((file, index) => (
+                                  <div key={index} className="aspect-[4/3] border rounded-lg overflow-hidden relative group">
+                                    <img src={URL.createObjectURL(file)} alt={`Before ${index + 1}`} className="w-full h-full object-cover" />
+                                    <Button
+                                      variant="destructive"
+                                      size="sm"
+                                      onClick={() => setNewReport(prev => ({ ...prev, beforePhotos: prev.beforePhotos.filter((_, i) => i !== index) }))}
+                                      className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                ))}
+                                <label className="aspect-[4/3] border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 transition-colors">
+                                  <Camera className="h-6 w-6 text-muted-foreground mb-1" />
+                                  <span className="text-xs text-muted-foreground">Add Before Photo</span>
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) setNewReport(prev => ({ ...prev, beforePhotos: [...prev.beforePhotos, file] }));
+                                    }}
+                                  />
+                                </label>
+                              </div>
+                            </div>
+
+                            {/* Receipt/Quote Uploads */}
+                            <div className="space-y-3">
+                              <h5 className="font-medium text-sm">Receipts & Quotes</h5>
+                              <div className="space-y-2">
+                                {newReport.receiptFiles.map((file, index) => (
+                                  <div key={index} className="flex items-center gap-2 p-2 border rounded-lg">
+                                    <FileText className="h-4 w-4 text-muted-foreground" />
+                                    <span className="text-sm flex-1 truncate">{file.name}</span>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => setNewReport(prev => ({ ...prev, receiptFiles: prev.receiptFiles.filter((_, i) => i !== index) }))}
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                ))}
+                                <label className="flex items-center gap-2 p-3 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary/50 transition-colors">
+                                  <Upload className="h-4 w-4 text-muted-foreground" />
+                                  <span className="text-sm text-muted-foreground">Upload receipt or quote</span>
+                                  <input
+                                    type="file"
+                                    accept="image/*,.pdf"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) setNewReport(prev => ({ ...prev, receiptFiles: [...prev.receiptFiles, file] }));
+                                    }}
+                                  />
+                                </label>
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Timeline Notes</label>
+                              <Textarea
+                                placeholder="Key dates and actions taken (Airbnb requires filing within 14 days of checkout)"
+                                value={newReport.claimTimelineNotes}
+                                onChange={(e) => setNewReport(prev => ({ ...prev, claimTimelineNotes: e.target.value }))}
+                                rows={2}
+                              />
+                            </div>
+
+                            {/* Deadline Tracker Preview */}
+                            {newReport.checkOutDate && (
+                              <ClaimDeadlineTracker
+                                checkOutDate={newReport.checkOutDate}
+                                bookingPlatform={newReport.bookingPlatform}
+                                claimStatus={newReport.claimStatus}
+                                claimDeadline={null}
+                              />
+                            )}
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   )}

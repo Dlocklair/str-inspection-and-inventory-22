@@ -27,6 +27,20 @@ export interface DamageReport {
   reported_by: string;
   created_at: string;
   updated_at: string;
+  // Claim fields
+  guest_name: string | null;
+  reservation_id: string | null;
+  booking_platform: string | null;
+  check_in_date: string | null;
+  check_out_date: string | null;
+  date_damage_discovered: string | null;
+  before_photo_urls: string[] | null;
+  receipt_urls: string[] | null;
+  resolution_sought: string | null;
+  claim_status: string | null;
+  claim_reference_number: string | null;
+  claim_deadline: string | null;
+  claim_timeline_notes: string | null;
 }
 
 export type DamageReportInsert = {
@@ -50,6 +64,20 @@ export type DamageReportInsert = {
   property_id?: string | null;
   property_name?: string | null;
   reported_by: string;
+  // Claim fields
+  guest_name?: string | null;
+  reservation_id?: string | null;
+  booking_platform?: string | null;
+  check_in_date?: string | null;
+  check_out_date?: string | null;
+  date_damage_discovered?: string | null;
+  before_photo_urls?: string[] | null;
+  receipt_urls?: string[] | null;
+  resolution_sought?: string | null;
+  claim_status?: string | null;
+  claim_reference_number?: string | null;
+  claim_deadline?: string | null;
+  claim_timeline_notes?: string | null;
 };
 
 export function useDamageReports() {
