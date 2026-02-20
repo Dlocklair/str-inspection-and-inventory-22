@@ -5,10 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Mail, Settings, Trash2, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
-interface EmailSettings {
-  emails: string[];
-}
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 interface EmailNotificationSettingsProps {
   onEmailSettingsChange: (emails: string[]) => void;
@@ -16,21 +14,43 @@ interface EmailNotificationSettingsProps {
 
 export const EmailNotificationSettings = ({ onEmailSettingsChange }: EmailNotificationSettingsProps) => {
   const { toast } = useToast();
+  const { profile } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [emails, setEmails] = useState<string[]>(['']);
+  const [savedEmails, setSavedEmails] = useState<string[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // Load saved email settings on component mount
+  // Load saved email settings from Supabase on mount
   useEffect(() => {
-    const savedEmails = localStorage.getItem('inventory-email-notifications');
-    if (savedEmails) {
-      const emailSettings: EmailSettings = JSON.parse(savedEmails);
-      setEmails(emailSettings.emails.length > 0 ? emailSettings.emails : ['']);
-    }
-  }, []);
+    if (!profile?.id) return;
+    
+    const loadEmails = async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('notification_settings')
+        .select('notification_emails')
+        .eq('user_id', profile.id)
+        .maybeSingle();
 
-  // Save email settings to localStorage
-  const saveEmailSettings = () => {
+      if (!error && data?.notification_emails) {
+        const dbEmails = (data.notification_emails as string[]);
+        if (dbEmails.length > 0) {
+          setEmails(dbEmails);
+          setSavedEmails(dbEmails);
+          onEmailSettingsChange(dbEmails);
+        }
+      }
+      setLoading(false);
+    };
+
+    loadEmails();
+  }, [profile?.id]);
+
+  // Save email settings to Supabase
+  const saveEmailSettings = async () => {
+    if (!profile?.id) return;
+
     const validEmails = emails.filter(email => email.trim() && isValidEmail(email.trim()));
     
     if (validEmails.length === 0) {
@@ -42,8 +62,24 @@ export const EmailNotificationSettings = ({ onEmailSettingsChange }: EmailNotifi
       return;
     }
 
-    const emailSettings: EmailSettings = { emails: validEmails };
-    localStorage.setItem('inventory-email-notifications', JSON.stringify(emailSettings));
+    // Upsert notification_settings with the email list
+    const { error } = await supabase
+      .from('notification_settings')
+      .upsert({
+        user_id: profile.id,
+        notification_emails: validEmails as any,
+      }, { onConflict: 'user_id' });
+
+    if (error) {
+      toast({
+        title: "Error saving",
+        description: error.message,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setSavedEmails(validEmails);
     onEmailSettingsChange(validEmails);
     setHasChanges(false);
     setIsOpen(false);
@@ -82,13 +118,7 @@ export const EmailNotificationSettings = ({ onEmailSettingsChange }: EmailNotifi
   };
 
   const resetForm = () => {
-    const savedEmails = localStorage.getItem('inventory-email-notifications');
-    if (savedEmails) {
-      const emailSettings: EmailSettings = JSON.parse(savedEmails);
-      setEmails(emailSettings.emails.length > 0 ? emailSettings.emails : ['']);
-    } else {
-      setEmails(['']);
-    }
+    setEmails(savedEmails.length > 0 ? [...savedEmails] : ['']);
     setHasChanges(false);
   };
 

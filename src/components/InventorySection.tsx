@@ -62,14 +62,8 @@ export const InventorySection = () => {
   // Email recipients state
   const [emailRecipients, setEmailRecipients] = useState<string[]>([]);
 
-  // Load saved email settings on component mount
-  useEffect(() => {
-    const savedEmails = localStorage.getItem('inventory-email-notifications');
-    if (savedEmails) {
-      const emailSettings = JSON.parse(savedEmails);
-      setEmailRecipients(emailSettings.emails || []);
-    }
-  }, []);
+  // Email recipients are now loaded by EmailNotificationSettings via Supabase
+  // and passed back through onEmailSettingsChange callback
   const [searchTerm, setSearchTerm] = useState('');
   const [stockFilter, setStockFilter] = useState<'all' | 'low' | 'out' | 'low-out'>('all');
   const [expandAll, setExpandAll] = useState(false);
