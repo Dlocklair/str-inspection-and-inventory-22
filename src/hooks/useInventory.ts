@@ -26,6 +26,9 @@ export interface InventoryItem {
   property_id: string | null;
   created_at: string;
   updated_at: string;
+  last_counted_at: string | null;
+  image_url: string | null;
+  barcode: string | null;
 }
 
 export interface InventoryCategory {

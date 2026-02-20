@@ -8,6 +8,7 @@ import { Save, X, Plus, Copy, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { extractAsin } from '@/lib/amazon';
+import { ItemPhotoUpload } from './ItemPhotoUpload';
 interface InventoryItem {
   id: string;
   name: string;
@@ -342,9 +343,15 @@ export const InventoryEditForm = ({
         
         {/* Product Image Section */}
         <div className="mt-6">
-          <h4 className="text-sm font-semibold text-cyan mb-3">Product Image (Optional)</h4>
-          <div className="flex gap-4 items-start">
-            <div className="flex-1 space-y-2">
+          <h4 className="text-sm font-semibold text-cyan mb-3">Product Photo</h4>
+          <div className="flex gap-4 items-start flex-wrap">
+            <ItemPhotoUpload
+              itemId={editingData.id}
+              currentImageUrl={editingData.image_url ?? null}
+              amazonImageUrl={editingData.amazon_image_url ?? null}
+              onPhotoUploaded={(url) => setEditingData(prev => ({ ...prev, image_url: url }))}
+            />
+            <div className="flex-1 space-y-2 min-w-[200px]">
               <label className="text-sm font-medium text-cyan">Image URL</label>
               <Input placeholder="Paste image URL or copy/paste an image directly" value={editingData.image_url ?? ''} onFocus={e => e.target.select()} onChange={e => setEditingData(prev => ({
               ...prev,
@@ -369,29 +376,9 @@ export const InventoryEditForm = ({
               }
             }} />
               <p className="text-xs text-muted-foreground">
-                Paste image URL or copy/paste an image directly
+                Paste image URL, snap a photo, or upload from device
               </p>
             </div>
-
-            {/* Image Preview - 120x120px */}
-            {editingData.image_url && (
-              <div className="flex-shrink-0">
-                <label className="text-sm font-medium text-cyan block mb-2">Preview</label>
-                <img 
-                  src={editingData.image_url} 
-                  alt={editingData.name || 'Product image'} 
-                  className="w-[120px] h-[120px] rounded-md border object-contain bg-muted" 
-                  onError={e => {
-                    e.currentTarget.style.display = 'none';
-                    toast({
-                      title: "Image load failed",
-                      description: "The image URL may be invalid or inaccessible.",
-                      variant: "destructive"
-                    });
-                  }} 
-                />
-              </div>
-            )}
           </div>
         </div>
 
