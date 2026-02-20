@@ -26,10 +26,14 @@ interface PropertyContextType {
 const PropertyContext = createContext<PropertyContextType | undefined>(undefined);
 
 const STORAGE_KEY = 'selected_property_id';
+const MODE_STORAGE_KEY = 'selected_property_mode';
 
 export function PropertyProvider({ children }: { children: ReactNode }) {
   const [selectedProperty, setSelectedPropertyState] = useState<Property | null>(null);
-  const [propertyMode, setPropertyModeState] = useState<PropertyMode>('property');
+  const [propertyMode, setPropertyModeState] = useState<PropertyMode>(() => {
+    const stored = localStorage.getItem(MODE_STORAGE_KEY);
+    return (stored as PropertyMode) || 'property';
+  });
   const [userProperties, setUserProperties] = useState<Property[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
@@ -112,6 +116,7 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
 
   const setPropertyMode = (mode: PropertyMode, property?: Property | null) => {
     setPropertyModeState(mode);
+    localStorage.setItem(MODE_STORAGE_KEY, mode);
     if (mode === 'property' && property) {
       setSelectedPropertyState(property);
       localStorage.setItem(STORAGE_KEY, property.id);

@@ -1,7 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 export interface DamageReport {
   id: string;
@@ -81,66 +80,91 @@ export type DamageReportInsert = {
 };
 
 export function useDamageReports() {
-  const { profile } = useAuth();
-  const [reports, setReports] = useState<DamageReport[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const fetchReports = useCallback(async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('damage_reports')
-      .select('*')
-      .order('damage_date', { ascending: false });
+  const { data: reports = [], isLoading: loading } = useQuery({
+    queryKey: ['damage-reports'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('damage_reports')
+        .select('*')
+        .order('damage_date', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching damage reports:', error);
-      toast({ title: 'Error loading damage reports', variant: 'destructive' });
-      setLoading(false);
-      return;
-    }
+      if (error) throw error;
+      return (data || []) as unknown as DamageReport[];
+    },
+  });
 
-    setReports((data || []) as unknown as DamageReport[]);
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    fetchReports();
-  }, [fetchReports]);
-
-  const addReport = async (report: DamageReportInsert) => {
-    const { error } = await supabase.from('damage_reports').insert(report as any);
-    if (error) {
-      console.error('Error adding damage report:', error);
+  const addMutation = useMutation({
+    mutationFn: async (report: DamageReportInsert) => {
+      const { data, error } = await supabase.from('damage_reports').insert(report as any).select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['damage-reports'] });
+      toast({ title: 'Damage report created' });
+    },
+    onError: (error: any) => {
       toast({ title: 'Error adding damage report', description: error.message, variant: 'destructive' });
-      return false;
-    }
-    toast({ title: 'Damage report created' });
-    await fetchReports();
-    return true;
-  };
+    },
+  });
 
-  const updateReport = async (id: string, updates: Partial<DamageReportInsert>) => {
-    const { error } = await supabase.from('damage_reports').update(updates as any).eq('id', id);
-    if (error) {
-      console.error('Error updating damage report:', error);
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<DamageReportInsert> }) => {
+      const { data, error } = await supabase.from('damage_reports').update(updates as any).eq('id', id).select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['damage-reports'] });
+      toast({ title: 'Damage report updated' });
+    },
+    onError: (error: any) => {
       toast({ title: 'Error updating damage report', variant: 'destructive' });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('damage_reports').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['damage-reports'] });
+      toast({ title: 'Damage report deleted' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Error deleting damage report', variant: 'destructive' });
+    },
+  });
+
+  const addReport = async (report: DamageReportInsert): Promise<boolean> => {
+    try {
+      await addMutation.mutateAsync(report);
+      return true;
+    } catch {
       return false;
     }
-    toast({ title: 'Damage report updated' });
-    await fetchReports();
-    return true;
   };
 
-  const deleteReport = async (id: string) => {
-    const { error } = await supabase.from('damage_reports').delete().eq('id', id);
-    if (error) {
-      console.error('Error deleting damage report:', error);
-      toast({ title: 'Error deleting damage report', variant: 'destructive' });
+  const updateReport = async (id: string, updates: Partial<DamageReportInsert>): Promise<boolean> => {
+    try {
+      await updateMutation.mutateAsync({ id, updates });
+      return true;
+    } catch {
       return false;
     }
-    toast({ title: 'Damage report deleted' });
-    await fetchReports();
-    return true;
+  };
+
+  const deleteReport = async (id: string): Promise<boolean> => {
+    try {
+      await deleteMutation.mutateAsync(id);
+      return true;
+    } catch {
+      return false;
+    }
   };
 
   const uploadPhoto = async (file: File | Blob, reportId: string): Promise<string | null> => {
@@ -156,5 +180,13 @@ export function useDamageReports() {
     return urlData.publicUrl;
   };
 
-  return { reports, loading, addReport, updateReport, deleteReport, uploadPhoto, refetch: fetchReports };
+  return {
+    reports,
+    loading,
+    addReport,
+    updateReport,
+    deleteReport,
+    uploadPhoto,
+    refetch: () => queryClient.invalidateQueries({ queryKey: ['damage-reports'] }),
+  };
 }
