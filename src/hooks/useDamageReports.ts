@@ -79,17 +79,23 @@ export type DamageReportInsert = {
   claim_timeline_notes?: string | null;
 };
 
-export function useDamageReports() {
+export function useDamageReports(propertyId?: string | null) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: reports = [], isLoading: loading } = useQuery({
-    queryKey: ['damage-reports'],
+    queryKey: ['damage-reports', propertyId ?? 'all'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('damage_reports')
         .select('*')
         .order('damage_date', { ascending: false });
+
+      if (propertyId) {
+        query = query.eq('property_id', propertyId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       return (data || []) as unknown as DamageReport[];
