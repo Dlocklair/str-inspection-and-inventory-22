@@ -979,6 +979,7 @@ export type Database = {
           id: string
           inspection_reminders: boolean | null
           inventory_alerts: boolean | null
+          notification_emails: string[] | null
           overdue_delay_days: number | null
           overdue_inspections: boolean | null
           sms_notifications: boolean | null
@@ -992,6 +993,7 @@ export type Database = {
           id?: string
           inspection_reminders?: boolean | null
           inventory_alerts?: boolean | null
+          notification_emails?: string[] | null
           overdue_delay_days?: number | null
           overdue_inspections?: boolean | null
           sms_notifications?: boolean | null
@@ -1005,6 +1007,7 @@ export type Database = {
           id?: string
           inspection_reminders?: boolean | null
           inventory_alerts?: boolean | null
+          notification_emails?: string[] | null
           overdue_delay_days?: number | null
           overdue_inspections?: boolean | null
           sms_notifications?: boolean | null

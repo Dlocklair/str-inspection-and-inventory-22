@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useAllInspectionTemplates } from '@/hooks/useInspectionTemplates';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -63,22 +64,21 @@ export const ManageUsers = () => {
   const [selectedTemplates, setSelectedTemplates] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
+  const { data: supabaseTemplates = [] } = useAllInspectionTemplates();
+
   useEffect(() => {
     fetchData();
-    loadTemplatesFromLocalStorage();
   }, []);
 
-  const loadTemplatesFromLocalStorage = () => {
-    try {
-      const savedTemplates = localStorage.getItem('inspection-templates');
-      if (savedTemplates) {
-        const parsedTemplates = JSON.parse(savedTemplates);
-        setTemplates(parsedTemplates);
-      }
-    } catch (error) {
-      console.error('Error loading templates from localStorage:', error);
-    }
-  };
+  // Sync templates from Supabase hook
+  useEffect(() => {
+    setTemplates(supabaseTemplates.map(t => ({
+      id: t.id,
+      name: t.name,
+      propertyIds: t.property_id ? [t.property_id] : [],
+      isPredefined: t.is_predefined
+    })));
+  }, [supabaseTemplates]);
 
   const fetchData = async () => {
     setLoading(true);
