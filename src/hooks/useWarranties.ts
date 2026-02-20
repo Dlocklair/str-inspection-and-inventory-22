@@ -41,8 +41,10 @@ const DURATION_DAYS: Record<string, number> = {
 };
 
 export function calcExpirationDate(purchaseDate: string, durationType: string, customDays?: number | null): string {
+  if (!purchaseDate) return '';
   const days = durationType === 'custom' ? (customDays || 0) : (DURATION_DAYS[durationType] || 365);
   const d = new Date(purchaseDate);
+  if (isNaN(d.getTime())) return '';
   d.setDate(d.getDate() + days);
   return d.toISOString().split('T')[0];
 }
