@@ -70,11 +70,21 @@ export type Database = {
       }
       damage_reports: {
         Row: {
+          before_photo_urls: string[] | null
+          booking_platform: string | null
+          check_in_date: string | null
+          check_out_date: string | null
+          claim_deadline: string | null
           claim_number: string | null
+          claim_reference_number: string | null
+          claim_status: string | null
+          claim_timeline_notes: string | null
           created_at: string
           damage_date: string
+          date_damage_discovered: string | null
           description: string
           estimated_value: number | null
+          guest_name: string | null
           id: string
           insurance_claim_filed: boolean | null
           location: string
@@ -82,10 +92,13 @@ export type Database = {
           photo_urls: string[] | null
           property_id: string | null
           property_name: string | null
+          receipt_urls: string[] | null
           repair_completed: boolean | null
           repair_cost: number | null
           repair_date: string | null
           reported_by: string
+          reservation_id: string | null
+          resolution_sought: string | null
           responsible_party: string
           severity: string
           status: string
@@ -95,11 +108,21 @@ export type Database = {
           work_order_number: string | null
         }
         Insert: {
+          before_photo_urls?: string[] | null
+          booking_platform?: string | null
+          check_in_date?: string | null
+          check_out_date?: string | null
+          claim_deadline?: string | null
           claim_number?: string | null
+          claim_reference_number?: string | null
+          claim_status?: string | null
+          claim_timeline_notes?: string | null
           created_at?: string
           damage_date?: string
+          date_damage_discovered?: string | null
           description: string
           estimated_value?: number | null
+          guest_name?: string | null
           id?: string
           insurance_claim_filed?: boolean | null
           location: string
@@ -107,10 +130,13 @@ export type Database = {
           photo_urls?: string[] | null
           property_id?: string | null
           property_name?: string | null
+          receipt_urls?: string[] | null
           repair_completed?: boolean | null
           repair_cost?: number | null
           repair_date?: string | null
           reported_by: string
+          reservation_id?: string | null
+          resolution_sought?: string | null
           responsible_party?: string
           severity?: string
           status?: string
@@ -120,11 +146,21 @@ export type Database = {
           work_order_number?: string | null
         }
         Update: {
+          before_photo_urls?: string[] | null
+          booking_platform?: string | null
+          check_in_date?: string | null
+          check_out_date?: string | null
+          claim_deadline?: string | null
           claim_number?: string | null
+          claim_reference_number?: string | null
+          claim_status?: string | null
+          claim_timeline_notes?: string | null
           created_at?: string
           damage_date?: string
+          date_damage_discovered?: string | null
           description?: string
           estimated_value?: number | null
+          guest_name?: string | null
           id?: string
           insurance_claim_filed?: boolean | null
           location?: string
@@ -132,10 +168,13 @@ export type Database = {
           photo_urls?: string[] | null
           property_id?: string | null
           property_name?: string | null
+          receipt_urls?: string[] | null
           repair_completed?: boolean | null
           repair_cost?: number | null
           repair_date?: string | null
           reported_by?: string
+          reservation_id?: string | null
+          resolution_sought?: string | null
           responsible_party?: string
           severity?: string
           status?: string
