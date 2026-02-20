@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { ClipboardList, Package, AlertTriangle, Settings, User, Shield, Loader2, Building2, ShieldCheck, ChevronDown, ChevronUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useDashboardStats } from '@/hooks/useDashboardStats';
 import { LowStockTrendsWidget } from '@/components/LowStockTrendsWidget';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -21,6 +22,7 @@ const Index = () => {
     isManager,
     isInspector
   } = useAuth();
+  const { data: stats } = useDashboardStats();
   
   const [statusOpen, setStatusOpen] = useState(false);
 
@@ -60,6 +62,11 @@ const Index = () => {
       </div>
     );
   }
+
+  const openDamage = stats?.openDamageReports ?? 0;
+  const upcomingInsp = stats?.upcomingInspections ?? 0;
+  const lowStock = stats?.lowStockItems ?? 0;
+  const expiringWarr = stats?.expiringWarranties ?? 0;
 
   // Role-based access: owners see everything, managers see most, inspectors see limited
   const allQuickLinks = [
@@ -120,20 +127,20 @@ const Index = () => {
             </div>
           )}
 
-          {/* Collapsible system status */}
+          {/* Collapsible live stats */}
           <Collapsible open={statusOpen} onOpenChange={setStatusOpen} className="mt-4">
             <CollapsibleTrigger asChild>
               <button className="flex items-center justify-between w-full py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                <span>System Status</span>
+                <span>Live Stats</span>
                 {statusOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
               </button>
             </CollapsibleTrigger>
             <CollapsibleContent>
               <div className="grid grid-cols-2 gap-2 mt-1">
-                <StatusCard icon={ClipboardList} label="Inspections" value="Ready" color="text-primary" />
-                <StatusCard icon={Package} label="Inventory" value="Online" color="text-primary" />
-                <StatusCard icon={AlertTriangle} label="Damage" value="Ready" color="text-primary" />
-                <StatusCard icon={Shield} label="System" value="Secure" color="text-primary" />
+                <StatusCard icon={AlertTriangle} label="Open Damage" value={openDamage} warn={openDamage > 0} onClick={() => navigate('/damage')} />
+                <StatusCard icon={ClipboardList} label="Upcoming (7d)" value={upcomingInsp} warn={upcomingInsp > 0} onClick={() => navigate('/inspections')} />
+                <StatusCard icon={Package} label="Low Stock" value={lowStock} warn={lowStock > 0} onClick={() => navigate('/inventory')} />
+                <StatusCard icon={ShieldCheck} label="Expiring (30d)" value={expiringWarr} warn={expiringWarr > 0} onClick={() => navigate('/warranties')} />
               </div>
               <div className="mt-3">
                 <LowStockTrendsWidget />
@@ -145,7 +152,7 @@ const Index = () => {
     );
   }
 
-  // Desktop layout (original)
+  // Desktop layout
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
@@ -166,6 +173,48 @@ const Index = () => {
               ))}
             </div>
           )}
+        </div>
+
+        {/* Live Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <StatsCard
+            icon={AlertTriangle}
+            label="Open Damage Reports"
+            value={openDamage}
+            warn={openDamage > 0}
+            onClick={() => navigate('/damage')}
+            gradient="from-orange-50 to-orange-100 dark:from-orange-950 dark:to-orange-900"
+            accent="text-orange-600 dark:text-orange-400"
+          />
+          <StatsCard
+            icon={ClipboardList}
+            label="Upcoming Inspections"
+            subtitle="Next 7 days"
+            value={upcomingInsp}
+            warn={upcomingInsp > 0}
+            onClick={() => navigate('/inspections')}
+            gradient="from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900"
+            accent="text-blue-600 dark:text-blue-400"
+          />
+          <StatsCard
+            icon={Package}
+            label="Low Stock Items"
+            value={lowStock}
+            warn={lowStock > 0}
+            onClick={() => navigate('/inventory')}
+            gradient="from-red-50 to-red-100 dark:from-red-950 dark:to-red-900"
+            accent="text-red-600 dark:text-red-400"
+          />
+          <StatsCard
+            icon={ShieldCheck}
+            label="Expiring Warranties"
+            subtitle="Next 30 days"
+            value={expiringWarr}
+            warn={expiringWarr > 0}
+            onClick={() => navigate('/warranties')}
+            gradient="from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900"
+            accent="text-purple-600 dark:text-purple-400"
+          />
         </div>
 
         {/* Main Content - Report Cards */}
@@ -217,39 +266,8 @@ const Index = () => {
           </div>
         )}
 
-        {/* Quick Stats */}
+        {/* Low Stock Trends */}
         <div className="mb-12">
-          <h2 className="text-2xl font-semibold text-foreground mb-6">System Status</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900">
-              <CardContent className="p-4 text-center">
-                <ClipboardList className="h-8 w-8 mx-auto text-blue-600 mb-2" />
-                <p className="text-sm text-blue-600">Recent Inspections</p>
-                <p className="text-2xl font-bold text-blue-700">Ready</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900">
-              <CardContent className="p-4 text-center">
-                <Package className="h-8 w-8 mx-auto text-green-600 mb-2" />
-                <p className="text-sm text-green-600">Inventory System</p>
-                <p className="text-2xl font-bold text-green-700">Online</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950 dark:to-orange-900">
-              <CardContent className="p-4 text-center">
-                <AlertTriangle className="h-8 w-8 mx-auto text-orange-600 mb-2" />
-                <p className="text-sm text-orange-600">Damage Reports</p>
-                <p className="text-2xl font-bold text-orange-700">Ready</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900">
-              <CardContent className="p-4 text-center">
-                <Shield className="h-8 w-8 mx-auto text-purple-600 mb-2" />
-                <p className="text-sm text-purple-600">System Status</p>
-                <p className="text-2xl font-bold text-purple-700">Secure</p>
-              </CardContent>
-            </Card>
-          </div>
           <LowStockTrendsWidget />
         </div>
       </div>
@@ -258,15 +276,33 @@ const Index = () => {
 };
 
 // Helper components
-function StatusCard({ icon: Icon, label, value, color }: { icon: any; label: string; value: string; color: string }) {
+function StatusCard({ icon: Icon, label, value, warn, onClick }: { icon: any; label: string; value: number; warn: boolean; onClick: () => void }) {
   return (
-    <div className="flex items-center gap-2 p-2 rounded-lg border bg-card">
-      <Icon className={`h-4 w-4 ${color} shrink-0`} />
+    <button onClick={onClick} className="flex items-center gap-2 p-2 rounded-lg border bg-card hover:bg-accent/50 transition-colors text-left">
+      <Icon className={`h-4 w-4 shrink-0 ${warn ? 'text-destructive' : 'text-primary'}`} />
       <div>
         <p className="text-[10px] text-muted-foreground">{label}</p>
-        <p className="text-xs font-semibold text-foreground">{value}</p>
+        <p className={`text-sm font-bold ${warn ? 'text-destructive' : 'text-foreground'}`}>{value}</p>
       </div>
-    </div>
+    </button>
+  );
+}
+
+function StatsCard({ icon: Icon, label, subtitle, value, warn, onClick, gradient, accent }: { icon: any; label: string; subtitle?: string; value: number; warn: boolean; onClick: () => void; gradient: string; accent: string }) {
+  return (
+    <Card
+      className={`bg-gradient-to-br ${gradient} cursor-pointer hover:shadow-md transition-shadow`}
+      onClick={onClick}
+    >
+      <CardContent className="p-4 text-center">
+        <Icon className={`h-8 w-8 mx-auto mb-2 ${accent}`} />
+        <p className={`text-sm ${accent}`}>{label}</p>
+        {subtitle && <p className={`text-xs ${accent} opacity-70`}>{subtitle}</p>}
+        <p className={`text-3xl font-bold mt-1 ${warn ? 'text-destructive' : accent}`}>
+          {value}
+        </p>
+      </CardContent>
+    </Card>
   );
 }
 
