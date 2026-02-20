@@ -7,36 +7,19 @@ import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Edit, Save, X, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
-
-interface DamageItem {
-  id: string;
-  title: string;
-  description: string;
-  location: string;
-  severity: 'minor' | 'moderate' | 'severe';
-  reportedDate: string;
-  reportDate: string;
-  estimatedCost: number;
-  status: 'reported' | 'assessed' | 'approved' | 'in-repair' | 'completed';
-  photos: (File | string)[];
-  notes: string;
-  responsibleParty: 'guest' | 'owner' | 'other' | 'no-fault';
-  repairDate?: string;
-  propertyId?: string;
-  propertyName?: string;
-}
+import type { DamageReport } from '@/hooks/useDamageReports';
 
 interface DamageReportCardProps {
-  report: DamageItem;
+  report: DamageReport;
   isEditing: boolean;
-  editingData: Partial<DamageItem>;
+  editingData: Partial<DamageReport>;
   isOwner: boolean;
-  onStartEdit: (report: DamageItem) => void;
+  onStartEdit: (report: DamageReport) => void;
   onSaveEdit: () => void;
   onCancelEdit: () => void;
   onDelete: (id: string) => void;
   onMarkComplete: (id: string) => void;
-  onEditingDataChange: (data: Partial<DamageItem>) => void;
+  onEditingDataChange: (data: Partial<DamageReport>) => void;
   severityColors: Record<string, string>;
   statusColors: Record<string, string>;
 }
@@ -72,7 +55,7 @@ export function DamageReportCard({
             <div className="grid grid-cols-2 gap-4">
               <Select 
                 value={editingData.status} 
-                onValueChange={(value: any) => onEditingDataChange({ ...editingData, status: value })}
+                onValueChange={(value) => onEditingDataChange({ ...editingData, status: value })}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -88,8 +71,8 @@ export function DamageReportCard({
               <Input
                 type="number"
                 placeholder="Estimated cost"
-                value={editingData.estimatedCost || ''}
-                onChange={(e) => onEditingDataChange({ ...editingData, estimatedCost: Number(e.target.value) })}
+                value={editingData.estimated_value || ''}
+                onChange={(e) => onEditingDataChange({ ...editingData, estimated_value: Number(e.target.value) })}
               />
             </div>
             <div className="flex gap-2">
@@ -107,7 +90,7 @@ export function DamageReportCard({
           <div className="space-y-4">
             <div className="flex justify-between items-start">
               <div className="space-y-2">
-                <h3 className="text-lg font-semibold">{report.title}</h3>
+                <h3 className="text-lg font-semibold">{report.title || report.description}</h3>
                 <p className="text-muted-foreground">{report.description}</p>
                 <div className="flex flex-wrap gap-2">
                   <Badge variant="outline">{report.location}</Badge>
@@ -155,19 +138,31 @@ export function DamageReportCard({
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
               <div>
-                <span className="font-medium">Reported:</span> {format(new Date(report.reportedDate), 'PPP')}
+                <span className="font-medium">Reported:</span> {format(new Date(report.created_at), 'PPP')}
               </div>
               <div>
-                <span className="font-medium">Est. Cost:</span> ${report.estimatedCost.toFixed(2)}
+                <span className="font-medium">Est. Cost:</span> ${(report.estimated_value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <div>
-                <span className="font-medium">Responsible Party:</span> {report.responsibleParty === 'no-fault' ? 'No Fault' : 
-                  report.responsibleParty.charAt(0).toUpperCase() + report.responsibleParty.slice(1)}
+                <span className="font-medium">Responsible Party:</span> {report.responsible_party === 'no-fault' ? 'No Fault' : 
+                  report.responsible_party.charAt(0).toUpperCase() + report.responsible_party.slice(1)}
               </div>
               <div>
-                <span className="font-medium">Report Date:</span> {format(new Date(report.reportDate + 'T12:00:00'), 'PPP')}
+                <span className="font-medium">Report Date:</span> {format(new Date(report.damage_date + 'T12:00:00'), 'PPP')}
               </div>
             </div>
+            {report.photo_urls && report.photo_urls.length > 0 && (
+              <div className="space-y-2">
+                <span className="font-medium text-sm">Photos ({report.photo_urls.length}):</span>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {report.photo_urls.map((url, index) => (
+                    <div key={index} className="aspect-[4/3] border rounded-lg overflow-hidden">
+                      <img src={url} alt={`Damage photo ${index + 1}`} className="w-full h-full object-cover" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {report.notes && (
               <div className="pt-2 border-t">
                 <span className="font-medium">Notes:</span> {report.notes}

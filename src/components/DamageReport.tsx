@@ -22,37 +22,7 @@ import CameraCapture from './CameraCapture';
 import { usePropertyContext } from '@/contexts/PropertyContext';
 import { DamagePropertySelector } from './DamagePropertySelector';
 import { DamageReportCard } from './DamageReportCard';
-
-interface DamageItem {
-  id: string;
-  title: string;
-  description: string;
-  location: string;
-  severity: 'minor' | 'moderate' | 'severe';
-  reportedDate: string;
-  reportDate: string;
-  estimatedCost: number;
-  status: 'reported' | 'assessed' | 'approved' | 'in-repair' | 'completed';
-  photos: (File | string)[]; // Allow both File objects and base64 strings
-  photoUrls?: string[]; // For persisted photo URLs
-  notes: string;
-  responsibleParty: 'guest' | 'owner' | 'other' | 'no-fault';
-  repairDate?: string;
-  propertyId?: string;
-  propertyName?: string;
-}
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: 'owner' | 'agent';
-  permissions: {
-    inspections: boolean;
-    inventory: boolean;
-    damage: boolean;
-  };
-}
+import { useDamageReports, type DamageReport as DamageReportType } from '@/hooks/useDamageReports';
 
 export const DamageReport = () => {
   const { toast } = useToast();
@@ -60,23 +30,7 @@ export const DamageReport = () => {
   const [searchParams] = useSearchParams();
   const { profile, roles, isOwner } = useAuth();
   const { selectedProperty, propertyMode, userProperties, setSelectedProperty, setPropertyMode } = usePropertyContext();
-  
-  const [damageReports, setDamageReports] = useState<DamageItem[]>([
-    {
-      id: '1',
-      title: 'Cracked bathroom tile',
-      description: 'Large crack in bathroom floor tile near shower',
-      location: 'Main bathroom',
-      severity: 'moderate',
-      reportedDate: new Date().toISOString(),
-      reportDate: new Date().toISOString().split('T')[0],
-      estimatedCost: 150,
-      status: 'reported',
-      photos: [],
-      notes: 'Guest reported slipping hazard',
-      responsibleParty: 'guest',
-    }
-  ]);
+  const { reports: damageReports, loading, addReport, updateReport, deleteReport: deleteReportApi, uploadPhoto } = useDamageReports();
 
   const [locations, setLocations] = useState<string[]>([
     'Living Room', 'Kitchen', 'Main Bathroom', 'Guest Bathroom', 
@@ -92,28 +46,28 @@ export const DamageReport = () => {
     notes: '',
     responsibleParty: 'guest' as const,
     reportDate: new Date().toISOString().split('T')[0],
-    photos: [] as (File | string)[],
+    photos: [] as File[],
   });
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingReport, setEditingReport] = useState<string | null>(null);
-  const [editingData, setEditingData] = useState<Partial<DamageItem>>({});
-  const [selectedDate, setSelectedDate] = useState<Date>();
+  const [editingData, setEditingData] = useState<Partial<DamageReportType>>({});
   const [showLocationManager, setShowLocationManager] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  const [selectedHistoryReport, setSelectedHistoryReport] = useState<DamageItem | null>(null);
+  const [selectedHistoryReport, setSelectedHistoryReport] = useState<DamageReportType | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [captureMode, setCaptureMode] = useState(false);
   const [editingPhotoIndex, setEditingPhotoIndex] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<string>('active');
+  const [submitting, setSubmitting] = useState(false);
 
-  const severityColors = {
+  const severityColors: Record<string, string> = {
     minor: 'default',
     moderate: 'warning',
     severe: 'destructive'
   };
 
-  const statusColors = {
+  const statusColors: Record<string, string> = {
     reported: 'destructive',
     assessed: 'warning', 
     approved: 'secondary',
@@ -121,10 +75,9 @@ export const DamageReport = () => {
     completed: 'success'
   };
 
-  // Handle URL view parameter - only runs when searchParams changes
+  // Handle URL view parameter
   useEffect(() => {
     const view = searchParams.get('view');
-    
     if (view === 'new') {
       setShowHistory(false);
       setSelectedHistoryReport(null);
@@ -142,35 +95,26 @@ export const DamageReport = () => {
     }
   }, [searchParams]);
 
-  // Auto-select property if user only has one - separate effect
+  // Auto-select property if user only has one
   useEffect(() => {
     if (userProperties.length === 1 && !selectedProperty) {
       setSelectedProperty(userProperties[0]);
     }
   }, [userProperties.length, selectedProperty, setSelectedProperty]);
 
-  // Load saved data from localStorage
+  // Load saved locations from localStorage
   useEffect(() => {
-    const savedReports = localStorage.getItem('damage-reports');
-    if (savedReports) {
-      setDamageReports(JSON.parse(savedReports));
-    }
     const savedLocations = localStorage.getItem('damage-locations');
     if (savedLocations) {
       setLocations(JSON.parse(savedLocations));
     }
   }, []);
 
-  // Save reports and locations to localStorage
-  useEffect(() => {
-    localStorage.setItem('damage-reports', JSON.stringify(damageReports));
-  }, [damageReports]);
-
   useEffect(() => {
     localStorage.setItem('damage-locations', JSON.stringify(locations));
   }, [locations]);
 
-  const addNewReport = () => {
+  const addNewReport = async () => {
     if (!newReport.title.trim() || !newReport.description.trim()) {
       toast({
         title: "Required fields missing",
@@ -189,36 +133,52 @@ export const DamageReport = () => {
       return;
     }
 
-    const report: DamageItem = {
-      id: Date.now().toString(),
-      ...newReport,
-      reportedDate: new Date().toISOString(),
+    if (!profile?.id) return;
+
+    setSubmitting(true);
+
+    // Upload photos first
+    const tempId = crypto.randomUUID();
+    const photoUrls: string[] = [];
+    for (const file of newReport.photos) {
+      const url = await uploadPhoto(file, tempId);
+      if (url) photoUrls.push(url);
+    }
+
+    const success = await addReport({
+      title: newReport.title.trim(),
+      description: newReport.description.trim(),
+      location: newReport.location,
+      severity: newReport.severity,
       status: 'reported',
-      propertyId: selectedProperty?.id,
-      propertyName: selectedProperty?.name,
-    };
-
-    setDamageReports(prev => [...prev, report]);
-    setNewReport({
-      title: '',
-      description: '',
-      location: '',
-      severity: 'minor',
-      estimatedCost: 0,
-      notes: '',
-      responsibleParty: 'guest',
-      reportDate: new Date().toISOString().split('T')[0],
-      photos: [],
+      responsible_party: newReport.responsibleParty,
+      damage_date: newReport.reportDate,
+      estimated_value: newReport.estimatedCost || null,
+      photo_urls: photoUrls.length > 0 ? photoUrls : null,
+      notes: newReport.notes.trim() || null,
+      property_id: selectedProperty?.id || null,
+      property_name: selectedProperty?.name || null,
+      reported_by: profile.id,
     });
-    setShowAddForm(false);
 
-    toast({
-      title: "Damage report created",
-      description: `Report "${report.title}" has been added.`,
-    });
+    if (success) {
+      setNewReport({
+        title: '',
+        description: '',
+        location: '',
+        severity: 'minor',
+        estimatedCost: 0,
+        notes: '',
+        responsibleParty: 'guest',
+        reportDate: new Date().toISOString().split('T')[0],
+        photos: [],
+      });
+      setShowAddForm(false);
+    }
+    setSubmitting(false);
   };
 
-  const handlePhotoUpload = (index: number, file: File | string) => {
+  const handlePhotoUpload = (index: number, file: File) => {
     const newPhotos = [...newReport.photos];
     newPhotos[index] = file;
     setNewReport(prev => ({ ...prev, photos: newPhotos }));
@@ -238,104 +198,71 @@ export const DamageReport = () => {
     }
   };
 
-  const startEditing = (report: DamageItem) => {
+  const startEditing = (report: DamageReportType) => {
     setEditingReport(report.id);
     setEditingData({ ...report });
   };
 
-  const saveEdit = () => {
+  const saveEdit = async () => {
     if (editingReport && editingData) {
-      setDamageReports(prev => prev.map(report => 
-        report.id === editingReport 
-          ? { ...report, ...editingData }
-          : report
-      ));
+      await updateReport(editingReport, {
+        title: editingData.title,
+        description: editingData.description,
+        status: editingData.status,
+        estimated_value: editingData.estimated_value,
+        notes: editingData.notes,
+        severity: editingData.severity,
+        responsible_party: editingData.responsible_party,
+      });
       setEditingReport(null);
       setEditingData({});
-      
-      toast({
-        title: "Report updated",
-        description: "Damage report has been updated successfully.",
-      });
     }
   };
 
-  const deleteReport = (id: string) => {
-    setDamageReports(prev => prev.filter(report => report.id !== id));
-    toast({
-      title: "Report deleted",
-      description: "Damage report has been deleted.",
-    });
+  const handleDeleteReport = async (id: string) => {
+    await deleteReportApi(id);
   };
 
-  const updateStatus = (id: string, status: DamageItem['status']) => {
-    setDamageReports(prev => prev.map(report =>
-      report.id === id ? { ...report, status } : report
-    ));
-    toast({
-      title: "Status updated",
-      description: `Report status updated to ${status}.`,
-    });
+  const updateStatus = async (id: string, status: string) => {
+    await updateReport(id, { status });
   };
 
   const markAsComplete = (id: string) => {
     updateStatus(id, 'completed');
   };
 
-  const getUniqueCategories = () => {
-    // Category field has been removed
-    return [];
-  };
-
   // Filter reports based on property selection and search
   const filteredReports = damageReports.filter(report => {
     const matchesSearch = !searchTerm || 
-      report.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (report.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       report.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
       report.location.toLowerCase().includes(searchTerm.toLowerCase());
     
     if (propertyMode === 'all') {
       return matchesSearch;
     } else if (selectedProperty) {
-      return matchesSearch && report.propertyId === selectedProperty.id;
+      return matchesSearch && report.property_id === selectedProperty.id;
     }
     return matchesSearch;
   });
 
-  // Group reports by property and year for "all" mode
-  const groupedReports = () => {
-    const grouped: Record<string, Record<string, DamageItem[]>> = {};
-    
-    filteredReports.forEach(report => {
-      const propertyKey = report.propertyId || 'unassigned';
-      const year = new Date(report.reportDate).getFullYear().toString();
-      
-      if (!grouped[propertyKey]) {
-        grouped[propertyKey] = {};
-      }
-      if (!grouped[propertyKey][year]) {
-        grouped[propertyKey][year] = [];
-      }
-      grouped[propertyKey][year].push(report);
-    });
-    
-    return grouped;
-  };
-
   const getHistoryData = () => {
     return filteredReports.map(report => ({
-      ...report,
-      createdAt: report.reportDate,
-      updatedAt: report.reportedDate,
-      severity: report.severity as 'low' | 'medium' | 'high',
-      assignedTo: report.responsibleParty,
-      images: report.photos.map((_, index) => `photo-${index}`),
+      id: report.id,
+      title: report.title || report.description,
+      description: report.description,
+      severity: (report.severity === 'minor' ? 'low' : report.severity === 'moderate' ? 'medium' : 'high') as 'low' | 'medium' | 'high',
+      status: report.status as 'reported' | 'assessed' | 'approved' | 'in-repair' | 'completed',
+      location: report.location,
+      assignedTo: report.responsible_party,
+      estimatedCost: report.estimated_value || undefined,
+      images: report.photo_urls || [],
+      notes: report.notes || '',
+      createdAt: report.damage_date,
+      updatedAt: report.updated_at,
+      propertyId: report.property_id || undefined,
+      propertyName: report.property_name || undefined,
     }));
-  };
-
-  const hasAccess = (module: keyof User['permissions']) => {
-    // For now, return true since we're using profile-based access
-    return true;
   };
 
   return (
@@ -349,26 +276,14 @@ export const DamageReport = () => {
               Dashboard
             </Button>
             <div className="flex gap-2">
-              {hasAccess('inspections') && (
-                <Button 
-                  variant="outline" 
-                  onClick={() => navigate('/inspections')}
-                  className="flex items-center gap-2"
-                >
-                  <ClipboardList className="h-4 w-4" />
-                  Inspections
-                </Button>
-              )}
-              {hasAccess('inventory') && (
-                <Button 
-                  variant="outline" 
-                  onClick={() => navigate('/inventory')}
-                  className="flex items-center gap-2"
-                >
-                  <Package className="h-4 w-4" />
-                  Inventory
-                </Button>
-              )}
+              <Button variant="outline" onClick={() => navigate('/inspections')} className="flex items-center gap-2">
+                <ClipboardList className="h-4 w-4" />
+                Inspections
+              </Button>
+              <Button variant="outline" onClick={() => navigate('/inventory')} className="flex items-center gap-2">
+                <Package className="h-4 w-4" />
+                Inventory
+              </Button>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -391,40 +306,31 @@ export const DamageReport = () => {
 
         <div className="space-y-6">
           <div className="text-center">
-            <h1 className="text-3xl font-bold text-foreground mb-2">
-              Damage Reports
-            </h1>
-            <p className="text-muted-foreground">
-              Track and manage property damage reports and repairs
-            </p>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Damage Reports</h1>
+            <p className="text-muted-foreground">Track and manage property damage reports and repairs</p>
           </div>
 
           {/* Show History View */}
           {showHistory && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setShowHistory(false)}
-                  className="flex items-center gap-2"
-                >
+                <Button variant="outline" onClick={() => setShowHistory(false)} className="flex items-center gap-2">
                   <X className="h-4 w-4" />
                   Back to Reports
                 </Button>
               </div>
-               <DamageReportHistoryEnhanced
-                 reports={getHistoryData()}
-                 onViewReport={(report) => {
-                   const originalReport = damageReports.find(r => r.id === report.id);
-                   if (originalReport) {
-                     // Set selected history report to view
-                     setSelectedHistoryReport(originalReport);
-                     setShowHistory(false);
-                   }
-                 }}
-                 propertyMode={propertyMode}
-                 properties={userProperties}
-               />
+              <DamageReportHistoryEnhanced
+                reports={getHistoryData()}
+                onViewReport={(report) => {
+                  const originalReport = damageReports.find(r => r.id === report.id);
+                  if (originalReport) {
+                    setSelectedHistoryReport(originalReport);
+                    setShowHistory(false);
+                  }
+                }}
+                propertyMode={propertyMode}
+                properties={userProperties}
+              />
             </div>
           )}
 
@@ -432,21 +338,14 @@ export const DamageReport = () => {
           {selectedHistoryReport && !showHistory && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <Button 
-                  variant="outline" 
-                  onClick={() => {
-                    setSelectedHistoryReport(null);
-                    setShowHistory(true);
-                  }}
-                  className="flex items-center gap-2"
-                >
+                <Button variant="outline" onClick={() => { setSelectedHistoryReport(null); setShowHistory(true); }} className="flex items-center gap-2">
                   <X className="h-4 w-4" />
                   Back to History
                 </Button>
               </div>
               <Card>
                 <CardHeader>
-                  <CardTitle>{selectedHistoryReport.title}</CardTitle>
+                  <CardTitle>{selectedHistoryReport.title || selectedHistoryReport.description}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <p>{selectedHistoryReport.description}</p>
@@ -454,81 +353,77 @@ export const DamageReport = () => {
                     <div><strong>Location:</strong> {selectedHistoryReport.location}</div>
                     <div><strong>Severity:</strong> {selectedHistoryReport.severity}</div>
                     <div><strong>Status:</strong> {selectedHistoryReport.status}</div>
-                                     <div><strong>Responsible Party:</strong> {selectedHistoryReport.responsibleParty === 'no-fault' ? 'No Fault' :
-                                       selectedHistoryReport.responsibleParty.charAt(0).toUpperCase() + selectedHistoryReport.responsibleParty.slice(1)}
-                                     </div>
-                    <div><strong>Report Date:</strong> {format(new Date(selectedHistoryReport.reportDate + 'T12:00:00'), 'PPP')}</div>
-                    <div><strong>Est. Cost:</strong> ${selectedHistoryReport.estimatedCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                    <div><strong>Responsible Party:</strong> {selectedHistoryReport.responsible_party === 'no-fault' ? 'No Fault' :
+                      selectedHistoryReport.responsible_party.charAt(0).toUpperCase() + selectedHistoryReport.responsible_party.slice(1)}
+                    </div>
+                    <div><strong>Report Date:</strong> {format(new Date(selectedHistoryReport.damage_date + 'T12:00:00'), 'PPP')}</div>
+                    <div><strong>Est. Cost:</strong> ${(selectedHistoryReport.estimated_value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                   </div>
                   {selectedHistoryReport.notes && (
                     <div><strong>Notes:</strong> {selectedHistoryReport.notes}</div>
                   )}
-                                   <div className="space-y-2">
-                                     <div className="flex items-center justify-between">
-                                       <strong>Photos ({selectedHistoryReport.photos.length}):</strong>
-                                       <div className="flex gap-2">
-                                         <Button
-                                           variant="outline"
-                                           size="sm"
-                                           onClick={() => {
-                                             setCaptureMode(true);
-                                             setEditingReport(selectedHistoryReport.id);
-                                           }}
-                                         >
-                                           <Camera className="h-4 w-4 mr-1" />
-                                           Take Photo
-                                         </Button>
-                                         <Button
-                                           variant="outline"
-                                           size="sm"
-                                           onClick={() => {
-                                             const input = document.createElement('input');
-                                             input.type = 'file';
-                                             input.accept = 'image/*';
-                                             input.onchange = (e: any) => {
-                                               const file = e.target?.files?.[0];
-                                               if (file && editingReport) {
-                                                 const updatedPhotos = [...selectedHistoryReport.photos, file];
-                                                 setDamageReports(prev => prev.map(r => 
-                                                   r.id === selectedHistoryReport.id ? { ...r, photos: updatedPhotos } : r
-                                                 ));
-                                                 setSelectedHistoryReport({ ...selectedHistoryReport, photos: updatedPhotos });
-                                               }
-                                             };
-                                             input.click();
-                                           }}
-                                         >
-                                           <ImageIcon className="h-4 w-4 mr-1" />
-                                           Upload Photo
-                                         </Button>
-                                       </div>
-                                     </div>
-                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                                       {selectedHistoryReport.photos.map((photo, index) => (
-                                         <div key={index} className="aspect-[4/3] border rounded-lg overflow-hidden relative group">
-                                           <img 
-                                             src={typeof photo === 'string' ? photo : URL.createObjectURL(photo)} 
-                                             alt={`Damage photo ${index + 1}`}
-                                             className="w-full h-full object-cover" 
-                                           />
-                                           <Button
-                                             variant="destructive"
-                                             size="sm"
-                                             onClick={() => {
-                                               const updatedPhotos = selectedHistoryReport.photos.filter((_, i) => i !== index);
-                                               setDamageReports(prev => prev.map(r => 
-                                                 r.id === selectedHistoryReport.id ? { ...r, photos: updatedPhotos } : r
-                                               ));
-                                               setSelectedHistoryReport({ ...selectedHistoryReport, photos: updatedPhotos });
-                                             }}
-                                             className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                           >
-                                             <X className="h-3 w-3" />
-                                           </Button>
-                                         </div>
-                                       ))}
-                                     </div>
-                                   </div>
+                  {/* Photos */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <strong>Photos ({(selectedHistoryReport.photo_urls || []).length}):</strong>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setCaptureMode(true);
+                            setEditingReport(selectedHistoryReport.id);
+                          }}
+                        >
+                          <Camera className="h-4 w-4 mr-1" />
+                          Take Photo
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const input = document.createElement('input');
+                            input.type = 'file';
+                            input.accept = 'image/*';
+                            input.onchange = async (e: any) => {
+                              const file = e.target?.files?.[0];
+                              if (file) {
+                                const url = await uploadPhoto(file, selectedHistoryReport.id);
+                                if (url) {
+                                  const updatedUrls = [...(selectedHistoryReport.photo_urls || []), url];
+                                  await updateReport(selectedHistoryReport.id, { photo_urls: updatedUrls });
+                                  setSelectedHistoryReport({ ...selectedHistoryReport, photo_urls: updatedUrls });
+                                }
+                              }
+                            };
+                            input.click();
+                          }}
+                        >
+                          <ImageIcon className="h-4 w-4 mr-1" />
+                          Upload Photo
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      {(selectedHistoryReport.photo_urls || []).map((url, index) => (
+                        <div key={index} className="aspect-[4/3] border rounded-lg overflow-hidden relative group">
+                          <img src={url} alt={`Damage photo ${index + 1}`} className="w-full h-full object-cover" />
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={async () => {
+                              const updatedUrls = (selectedHistoryReport.photo_urls || []).filter((_, i) => i !== index);
+                              await updateReport(selectedHistoryReport.id, { photo_urls: updatedUrls.length > 0 ? updatedUrls : null });
+                              setSelectedHistoryReport({ ...selectedHistoryReport, photo_urls: updatedUrls });
+                            }}
+                            className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -543,11 +438,7 @@ export const DamageReport = () => {
                   <div className="flex items-center gap-4">
                     <h2 className="text-xl font-semibold text-sky-600">Active Reports</h2>
                     <div className="flex gap-2">
-                      <Button 
-                        variant="outline" 
-                        onClick={() => setShowHistory(true)}
-                        className="flex items-center gap-2"
-                      >
+                      <Button variant="outline" onClick={() => setShowHistory(true)} className="flex items-center gap-2">
                         <History className="h-4 w-4" />
                         Damage Report History
                       </Button>
@@ -561,7 +452,7 @@ export const DamageReport = () => {
                   )}
                 </div>
                 
-                {/* Property Selector - Only shows properties, required for damage reports */}
+                {/* Property Selector */}
                 <DamagePropertySelector />
                 
                 {/* Display Active/Pending Reports for Selected Property in Accordion */}
@@ -583,7 +474,7 @@ export const DamageReport = () => {
                                 <AccordionTrigger className="hover:no-underline">
                                   <div className="flex items-center gap-3">
                                     <AlertTriangle className="h-4 w-4 text-amber-500" />
-                                    <span className="font-medium">{report.title}</span>
+                                    <span className="font-medium">{report.title || report.description}</span>
                                     <Badge variant={statusColors[report.status] as any}>
                                       {report.status}
                                     </Badge>
@@ -593,20 +484,16 @@ export const DamageReport = () => {
                                   <div className="grid grid-cols-2 gap-4 text-sm">
                                     <div><strong>Location:</strong> {report.location}</div>
                                     <div><strong>Severity:</strong> {report.severity}</div>
-                                    <div><strong>Report Date:</strong> {format(new Date(report.reportDate + 'T12:00:00'), 'PPP')}</div>
-                                    <div><strong>Est. Cost:</strong> ${report.estimatedCost.toLocaleString()}</div>
-                                    <div><strong>Responsible Party:</strong> {report.responsibleParty}</div>
+                                    <div><strong>Report Date:</strong> {format(new Date(report.damage_date + 'T12:00:00'), 'PPP')}</div>
+                                    <div><strong>Est. Cost:</strong> ${(report.estimated_value || 0).toLocaleString()}</div>
+                                    <div><strong>Responsible Party:</strong> {report.responsible_party}</div>
                                     <div><strong>Status:</strong> {report.status}</div>
                                   </div>
                                   {report.description && (
-                                    <div className="mt-3">
-                                      <strong>Description:</strong> {report.description}
-                                    </div>
+                                    <div className="mt-3"><strong>Description:</strong> {report.description}</div>
                                   )}
                                   {report.notes && (
-                                    <div className="mt-2">
-                                      <strong>Notes:</strong> {report.notes}
-                                    </div>
+                                    <div className="mt-2"><strong>Notes:</strong> {report.notes}</div>
                                   )}
                                   <div className="mt-4 flex gap-2">
                                     <Button size="sm" variant="outline" onClick={() => startEditing(report)}>
@@ -648,27 +535,25 @@ export const DamageReport = () => {
                 </TabsList>
                 
                 <TabsContent value="active" className="space-y-6 mt-6">
-
-                {/* Add New Report Form */}
-                {showAddForm && (
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle>Create Damage Report</CardTitle>
-                        <div className="flex gap-2">
-                          <Button onClick={addNewReport} size="sm">
-                            <Save className="h-4 w-4 mr-2" />
-                            Save Report
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={() => setShowAddForm(false)}>
-                            <X className="h-4 w-4 mr-2" />
-                            Cancel
-                          </Button>
+                  {/* Add New Report Form */}
+                  {showAddForm && (
+                    <Card>
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <CardTitle>Create Damage Report</CardTitle>
+                          <div className="flex gap-2">
+                            <Button onClick={addNewReport} size="sm" disabled={submitting}>
+                              <Save className="h-4 w-4 mr-2" />
+                              {submitting ? 'Saving...' : 'Save Report'}
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => setShowAddForm(false)}>
+                              <X className="h-4 w-4 mr-2" />
+                              Cancel
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {/* Damage Information Section */}
+                      </CardHeader>
+                      <CardContent className="space-y-4">
                         <div className="space-y-4">
                           <h4 className="font-medium text-lg">Basic Information</h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -704,25 +589,24 @@ export const DamageReport = () => {
                             <div className="space-y-2">
                               <label className="text-sm font-medium text-cyan-600">Report Date</label>
                               <Popover>
-                                 <PopoverTrigger asChild>
-                                   <Button
-                                     variant="outline"
-                                     className={cn(
-                                       "justify-start text-left font-normal",
-                                       !newReport.reportDate && "text-muted-foreground"
-                                     )}
-                                   >
-                                     <CalendarIcon className="mr-2 h-4 w-4" />
-                                     {newReport.reportDate ? format(new Date(newReport.reportDate + 'T12:00:00'), 'PPP') : <span>Pick a date</span>}
-                                   </Button>
-                                 </PopoverTrigger>
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    className={cn(
+                                      "justify-start text-left font-normal",
+                                      !newReport.reportDate && "text-muted-foreground"
+                                    )}
+                                  >
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {newReport.reportDate ? format(new Date(newReport.reportDate + 'T12:00:00'), 'PPP') : <span>Pick a date</span>}
+                                  </Button>
+                                </PopoverTrigger>
                                 <PopoverContent className="w-auto p-0" align="start">
                                   <Calendar
                                     mode="single"
                                     selected={newReport.reportDate ? new Date(newReport.reportDate + 'T12:00:00') : undefined}
                                     onSelect={(date) => {
                                       if (date) {
-                                        // Use local date to avoid timezone issues
                                         const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
                                         setNewReport(prev => ({ ...prev, reportDate: format(localDate, 'yyyy-MM-dd') }));
                                       }
@@ -791,11 +675,11 @@ export const DamageReport = () => {
                           </div>
                         </div>
 
-                        {/* Description Section */}
-                        <div className="space-y-3">
-                          <h4 className="font-medium text-lg text-cyan-600">Detailed Description</h4>
+                        {/* Description */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-cyan-600">Description</label>
                           <Textarea
-                            placeholder="Detailed description of the damage..."
+                            placeholder="Describe the damage in detail"
                             value={newReport.description}
                             onChange={(e) => setNewReport(prev => ({ ...prev, description: e.target.value }))}
                             rows={3}
@@ -811,13 +695,10 @@ export const DamageReport = () => {
                                 key={index} 
                                 className="aspect-[4/3] border-2 border-dashed border-border rounded-lg p-2 flex flex-col items-center justify-center hover:border-primary/50 transition-colors relative"
                               >
-                                 {newReport.photos[index] ? (
+                                {newReport.photos[index] ? (
                                   <>
                                     <img 
-                                      src={typeof newReport.photos[index] === 'string' 
-                                        ? newReport.photos[index] as string
-                                        : URL.createObjectURL(newReport.photos[index] as File)
-                                      } 
+                                      src={URL.createObjectURL(newReport.photos[index])}
                                       alt={`Damage photo ${index + 1}`}
                                       className="w-full h-full object-cover rounded"
                                     />
@@ -871,17 +752,16 @@ export const DamageReport = () => {
                     </Card>
                   )}
 
-                  {/* Reports List - Only show when not adding new report */}
+                  {/* Reports List */}
                   {!showAddForm && (
                     <div className="space-y-4">
                       {(() => {
                         const activeReports = filteredReports.filter(report => report.status !== 'completed');
                         if (propertyMode === 'all') {
-                          // Group by property and year
-                          const grouped: Record<string, Record<string, DamageItem[]>> = {};
+                          const grouped: Record<string, Record<string, DamageReportType[]>> = {};
                           activeReports.forEach(report => {
-                            const propertyKey = report.propertyId || 'unassigned';
-                            const year = new Date(report.reportDate).getFullYear().toString();
+                            const propertyKey = report.property_id || 'unassigned';
+                            const year = new Date(report.damage_date).getFullYear().toString();
                             if (!grouped[propertyKey]) grouped[propertyKey] = {};
                             if (!grouped[propertyKey][year]) grouped[propertyKey][year] = [];
                             grouped[propertyKey][year].push(report);
@@ -918,7 +798,7 @@ export const DamageReport = () => {
                                           onStartEdit={startEditing}
                                           onSaveEdit={saveEdit}
                                           onCancelEdit={() => setEditingReport(null)}
-                                          onDelete={deleteReport}
+                                          onDelete={handleDeleteReport}
                                           onMarkComplete={markAsComplete}
                                           onEditingDataChange={setEditingData}
                                           severityColors={severityColors}
@@ -932,7 +812,6 @@ export const DamageReport = () => {
                             );
                           });
                         } else {
-                          // Single property mode - simple list
                           return activeReports.map(report => (
                             <DamageReportCard
                               key={report.id}
@@ -943,7 +822,7 @@ export const DamageReport = () => {
                               onStartEdit={startEditing}
                               onSaveEdit={saveEdit}
                               onCancelEdit={() => setEditingReport(null)}
-                              onDelete={deleteReport}
+                              onDelete={handleDeleteReport}
                               onMarkComplete={markAsComplete}
                               onEditingDataChange={setEditingData}
                               severityColors={severityColors}
@@ -956,49 +835,12 @@ export const DamageReport = () => {
                   )}
                 </TabsContent>
 
-                <TabsContent value="analytics" className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Total Reports</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-3xl font-bold">{damageReports.length}</div>
-                      </CardContent>
-                    </Card>
-                    
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Total Estimated Cost</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-3xl font-bold">
-                          ${damageReports.reduce((sum, report) => sum + report.estimatedCost, 0).toFixed(2)}
-                        </div>
-                      </CardContent>
-                    </Card>
-                    
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Open Reports</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-3xl font-bold">
-                          {damageReports.filter(report => report.status !== 'completed').length}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </TabsContent>
-                
                 {/* Pending Reports Tab */}
                 <TabsContent value="pending" className="space-y-6 mt-6">
                   <Card>
                     <CardHeader>
                       <CardTitle>Pending Damage Reports</CardTitle>
-                      <p className="text-sm text-muted-foreground">
-                        Reports that have not been closed or resolved
-                      </p>
+                      <p className="text-sm text-muted-foreground">Reports that have not been closed or resolved</p>
                     </CardHeader>
                     <CardContent>
                       {filteredReports.filter(report => 
@@ -1014,7 +856,7 @@ export const DamageReport = () => {
                                     <div className="flex items-start justify-between">
                                       <div className="flex-1">
                                         <div className="flex items-center gap-3 mb-2">
-                                          <h4 className="font-semibold text-lg">{report.title}</h4>
+                                          <h4 className="font-semibold text-lg">{report.title || report.description}</h4>
                                           <Badge 
                                             variant={
                                               report.severity === 'minor' ? 'default' :
@@ -1024,9 +866,7 @@ export const DamageReport = () => {
                                           >
                                             {report.severity}
                                           </Badge>
-                                          <Badge variant="outline">
-                                            {report.status}
-                                          </Badge>
+                                          <Badge variant="outline">{report.status}</Badge>
                                         </div>
                                         <p className="text-muted-foreground mb-3">{report.description}</p>
                                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
@@ -1036,24 +876,20 @@ export const DamageReport = () => {
                                           </div>
                                           <div className="flex items-center gap-2">
                                             <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                                            <span>{format(new Date(report.reportDate + 'T12:00:00'), 'MMM d, yyyy')}</span>
+                                            <span>{format(new Date(report.damage_date + 'T12:00:00'), 'MMM d, yyyy')}</span>
                                           </div>
                                           <div className="flex items-center gap-2">
                                             <DollarSign className="h-4 w-4 text-muted-foreground" />
-                                            <span>${report.estimatedCost.toFixed(2)}</span>
+                                            <span>${(report.estimated_value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                           </div>
                                           <div className="text-muted-foreground">
-                                            Responsible: {report.responsibleParty === 'no-fault' ? 'No Fault' :
-                                              report.responsibleParty.charAt(0).toUpperCase() + report.responsibleParty.slice(1)}
+                                            Responsible: {report.responsible_party === 'no-fault' ? 'No Fault' :
+                                              report.responsible_party.charAt(0).toUpperCase() + report.responsible_party.slice(1)}
                                           </div>
                                         </div>
                                       </div>
                                       <div className="flex gap-2">
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          onClick={() => startEditing(report)}
-                                        >
+                                        <Button variant="outline" size="sm" onClick={() => startEditing(report)}>
                                           <Edit className="h-4 w-4 mr-1" />
                                           Edit
                                         </Button>
@@ -1072,7 +908,7 @@ export const DamageReport = () => {
                                             </AlertDialogHeader>
                                             <AlertDialogFooter>
                                               <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                              <AlertDialogAction onClick={() => deleteReport(report.id)}>
+                                              <AlertDialogAction onClick={() => handleDeleteReport(report.id)}>
                                                 Delete
                                               </AlertDialogAction>
                                             </AlertDialogFooter>
@@ -1083,35 +919,16 @@ export const DamageReport = () => {
                                     
                                     {/* Status Update Buttons */}
                                     <div className="flex gap-2 pt-2 border-t">
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => updateStatus(report.id, 'assessed')}
-                                        disabled={report.status === 'assessed'}
-                                      >
+                                      <Button variant="outline" size="sm" onClick={() => updateStatus(report.id, 'assessed')} disabled={report.status === 'assessed'}>
                                         Mark as Assessed
                                       </Button>
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => updateStatus(report.id, 'approved')}
-                                        disabled={report.status === 'approved'}
-                                      >
+                                      <Button variant="outline" size="sm" onClick={() => updateStatus(report.id, 'approved')} disabled={report.status === 'approved'}>
                                         Approve
                                       </Button>
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => updateStatus(report.id, 'in-repair')}
-                                        disabled={report.status === 'in-repair'}
-                                      >
+                                      <Button variant="outline" size="sm" onClick={() => updateStatus(report.id, 'in-repair')} disabled={report.status === 'in-repair'}>
                                         In Repair
                                       </Button>
-                                      <Button
-                                        variant="default"
-                                        size="sm"
-                                        onClick={() => markAsComplete(report.id)}
-                                      >
+                                      <Button variant="default" size="sm" onClick={() => markAsComplete(report.id)}>
                                         Mark Complete
                                       </Button>
                                     </div>
@@ -1127,41 +944,6 @@ export const DamageReport = () => {
                       )}
                     </CardContent>
                   </Card>
-                </TabsContent>
-
-                <TabsContent value="analytics" className="space-y-6 mt-0">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Total Reports</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-3xl font-bold">{damageReports.length}</div>
-                      </CardContent>
-                    </Card>
-                    
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Total Estimated Cost</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-3xl font-bold">
-                          ${damageReports.reduce((sum, report) => sum + report.estimatedCost, 0).toFixed(2)}
-                        </div>
-                      </CardContent>
-                    </Card>
-                    
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Open Reports</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-3xl font-bold">
-                          {damageReports.filter(report => report.status !== 'completed').length}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
                 </TabsContent>
               </Tabs>
             </div>
@@ -1179,24 +961,24 @@ export const DamageReport = () => {
         {/* Camera Capture Modal */}
         <CameraCapture
           isOpen={captureMode}
-          onCapture={(imageSrc) => {
+          onCapture={async (imageSrc) => {
             if (editingReport) {
-              const report = damageReports.find(r => r.id === editingReport);
-              if (report) {
-                const updatedPhotos = [...report.photos, imageSrc];
-                setDamageReports(prev => prev.map(r => 
-                  r.id === editingReport ? { ...r, photos: updatedPhotos } : r
-                ));
-                if (selectedHistoryReport?.id === editingReport) {
-                  setSelectedHistoryReport({ ...report, photos: updatedPhotos });
+              // Convert base64 to blob and upload
+              const response = await fetch(imageSrc);
+              const blob = await response.blob();
+              const url = await uploadPhoto(blob, editingReport);
+              if (url) {
+                const report = damageReports.find(r => r.id === editingReport);
+                if (report) {
+                  const updatedUrls = [...(report.photo_urls || []), url];
+                  await updateReport(editingReport, { photo_urls: updatedUrls });
+                  if (selectedHistoryReport?.id === editingReport) {
+                    setSelectedHistoryReport({ ...report, photo_urls: updatedUrls });
+                  }
                 }
               }
             }
             setCaptureMode(false);
-            toast({
-              title: "Photo captured",
-              description: "Photo added to damage report.",
-            });
           }}
           onClose={() => {
             setCaptureMode(false);
