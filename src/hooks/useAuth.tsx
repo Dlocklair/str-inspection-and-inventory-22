@@ -440,6 +440,21 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         return { error: new Error('No user logged in') };
       }
 
+      // Client-side guard: verify no owner exists before attempting claim
+      const { data: ownerExists, error: checkError } = await supabase.rpc('has_any_owner');
+      if (checkError) {
+        console.error('Error checking for existing owners:', checkError);
+        return { error: checkError };
+      }
+      if (ownerExists) {
+        toast({
+          title: "Cannot claim owner role",
+          description: "An owner already exists. Contact your administrator for role assignment.",
+          variant: "destructive"
+        });
+        return { error: new Error('Owner already exists') };
+      }
+
       const { error } = await supabase
         .from('user_roles')
         .insert({

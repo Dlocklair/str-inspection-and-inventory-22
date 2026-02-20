@@ -62,13 +62,18 @@ const Index = () => {
     );
   }
 
-  const quickLinks = [
-    { title: 'Properties', url: '/properties', icon: Building2, color: 'text-primary' },
-    { title: 'Inspections', url: '/inspections', icon: ClipboardList, color: 'text-primary' },
-    { title: 'Inventory', url: '/inventory', icon: Package, color: 'text-primary' },
-    { title: 'Damage Reports', url: '/damage', icon: AlertTriangle, color: 'text-primary' },
-    { title: 'Warranties', url: '/warranties', icon: ShieldCheck, color: 'text-primary' },
+  // Role-based access: owners see everything, managers see most, inspectors see limited
+  const allQuickLinks = [
+    { title: 'Properties', url: '/properties', icon: Building2, color: 'text-primary', roles: ['owner', 'manager'] as string[] },
+    { title: 'Inspections', url: '/inspections', icon: ClipboardList, color: 'text-primary', roles: ['owner', 'manager', 'inspector'] as string[] },
+    { title: 'Inventory', url: '/inventory', icon: Package, color: 'text-primary', roles: ['owner', 'manager', 'inspector'] as string[] },
+    { title: 'Damage Reports', url: '/damage', icon: AlertTriangle, color: 'text-primary', roles: ['owner', 'manager'] as string[] },
+    { title: 'Warranties', url: '/warranties', icon: ShieldCheck, color: 'text-primary', roles: ['owner', 'manager'] as string[] },
   ];
+
+  const quickLinks = allQuickLinks.filter(link =>
+    link.roles.some(role => roles.includes(role as any))
+  );
 
   // Mobile: native-app-style list
   if (isMobile) {
@@ -183,10 +188,10 @@ const Index = () => {
 
         {/* Main Content - Report Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-          <DashboardCard icon={Building2} title="Properties" description="Manage all your property locations and details in one place." onClick={() => navigate('/properties')} buttonLabel="Manage Properties" />
+          {(isOwner() || isManager()) && <DashboardCard icon={Building2} title="Properties" description="Manage all your property locations and details in one place." onClick={() => navigate('/properties')} buttonLabel="Manage Properties" />}
           <DashboardCard icon={ClipboardList} title="Inspections" description="Manage property inspections with customizable templates and automated notifications." onClick={() => navigate('/inspections')} buttonLabel="Open Inspections" />
           <DashboardCard icon={Package} title="Inventory" description="Track stock levels, manage categories, and get automated reorder notifications." onClick={() => navigate('/inventory')} buttonLabel="Open Inventory" />
-          <DashboardCard icon={AlertTriangle} title="Damage Reports" description="Document damage with photos, track repairs, and generate insurance claims." onClick={() => navigate('/damage')} buttonLabel="Open Damage Reports" />
+          {(isOwner() || isManager()) && <DashboardCard icon={AlertTriangle} title="Damage Reports" description="Document damage with photos, track repairs, and generate insurance claims." onClick={() => navigate('/damage')} buttonLabel="Open Damage Reports" />}
         </div>
 
         {/* Owner Features */}
