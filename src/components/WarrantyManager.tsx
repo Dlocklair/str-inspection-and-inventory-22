@@ -1,13 +1,20 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ShieldCheck, Plus } from 'lucide-react';
+import { ShieldCheck, Plus, Bell } from 'lucide-react';
 import { useWarranties } from '@/hooks/useWarranties';
 import { WarrantyForm } from './WarrantyForm';
 import { WarrantyList } from './WarrantyList';
 
 export function WarrantyManager() {
-  const { warranties, loading, addWarranty, deleteWarranty } = useWarranties();
+  const { warranties, loading, addWarranty, deleteWarranty, sendExpirationAlerts } = useWarranties();
   const [showForm, setShowForm] = useState(false);
+  const [sendingAlerts, setSendingAlerts] = useState(false);
+
+  const handleSendAlerts = async () => {
+    setSendingAlerts(true);
+    await sendExpirationAlerts();
+    setSendingAlerts(false);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -23,7 +30,11 @@ export function WarrantyManager() {
             </p>
           </div>
 
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={handleSendAlerts} disabled={sendingAlerts}>
+              <Bell className="h-4 w-4 mr-1" />
+              {sendingAlerts ? 'Sending...' : 'Send Expiration Alerts'}
+            </Button>
             <Button onClick={() => setShowForm(!showForm)}>
               <Plus className="h-4 w-4 mr-1" />
               {showForm ? 'Hide Form' : 'Add Warranty'}

@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Camera, Upload, X, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { compressImage } from '@/lib/imageCompression';
 
 interface ItemPhotoUploadProps {
   itemId: string;
@@ -24,19 +25,15 @@ export const ItemPhotoUpload = ({ itemId, currentImageUrl, amazonImageUrl, onPho
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast({ title: 'File too large', description: 'Maximum file size is 5MB.', variant: 'destructive' });
-      return;
-    }
-
     setUploading(true);
     try {
-      const fileExt = file.name.split('.').pop();
-      const filePath = `${itemId}/${Date.now()}.${fileExt}`;
+      // Compress before upload
+      const compressed = await compressImage(file, 1200, 0.8);
+      const filePath = `${itemId}/${Date.now()}.jpg`;
 
       const { error: uploadError } = await supabase.storage
         .from('inventory-photos')
-        .upload(filePath, file, { upsert: true });
+        .upload(filePath, compressed, { upsert: true, contentType: 'image/jpeg' });
 
       if (uploadError) throw uploadError;
 

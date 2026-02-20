@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
+import { compressImage } from '@/lib/imageCompression';
 
 export interface Warranty {
   id: string;
@@ -139,16 +140,53 @@ export function useWarranties() {
   };
 
   const uploadAttachment = async (file: File, warrantyId: string): Promise<string | null> => {
-    const path = `${warrantyId}/${Date.now()}_${file.name}`;
-    const { error } = await supabase.storage.from('warranty-attachments').upload(path, file);
-    if (error) {
-      console.error('Upload error:', error);
+    try {
+      let uploadFile: File | Blob = file;
+      let contentType = file.type;
+      let ext = file.name.split('.').pop() || 'bin';
+
+      // Compress images before upload
+      if (file.type.startsWith('image/')) {
+        uploadFile = await compressImage(file, 1200, 0.8);
+        contentType = 'image/jpeg';
+        ext = 'jpg';
+      }
+
+      const path = `${warrantyId}/${Date.now()}_${file.name.replace(/\.[^.]+$/, '')}.${ext}`;
+      const { error } = await supabase.storage.from('warranty-attachments').upload(path, uploadFile, { contentType });
+      if (error) {
+        console.error('Upload error:', error);
+        toast({ title: 'Error uploading file', variant: 'destructive' });
+        return null;
+      }
+      const { data: urlData } = supabase.storage.from('warranty-attachments').getPublicUrl(path);
+      return urlData.publicUrl;
+    } catch (err) {
+      console.error('Upload error:', err);
       toast({ title: 'Error uploading file', variant: 'destructive' });
       return null;
     }
-    const { data: urlData } = supabase.storage.from('warranty-attachments').getPublicUrl(path);
-    return urlData.publicUrl;
   };
 
-  return { warranties, loading, addWarranty, updateWarranty, deleteWarranty, uploadAttachment, refetch: fetchWarranties };
+  const sendExpirationAlerts = async (recipients?: string[]) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('send-warranty-expiration-emails', {
+        body: recipients ? { recipients } : {},
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Expiration alerts sent',
+        description: data.message || `Sent alert for ${data.count} warranties`,
+      });
+      return true;
+    } catch (err: any) {
+      console.error('Error sending warranty alerts:', err);
+      toast({ title: 'Error sending alerts', description: err.message, variant: 'destructive' });
+      return false;
+    }
+  };
+
+  return { warranties, loading, addWarranty, updateWarranty, deleteWarranty, uploadAttachment, sendExpirationAlerts, refetch: fetchWarranties };
 }

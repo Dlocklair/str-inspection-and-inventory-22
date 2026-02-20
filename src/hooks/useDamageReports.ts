@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { compressImage } from '@/lib/imageCompression';
 
 export interface DamageReport {
   id: string;
@@ -83,8 +84,10 @@ export function useDamageReports(propertyId?: string | null) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const queryKey = ['damage-reports', propertyId ?? 'all'];
+
   const { data: reports = [], isLoading: loading } = useQuery({
-    queryKey: ['damage-reports', propertyId ?? 'all'],
+    queryKey,
     queryFn: async () => {
       let query = supabase
         .from('damage_reports')
@@ -106,14 +109,67 @@ export function useDamageReports(propertyId?: string | null) {
     mutationFn: async (report: DamageReportInsert) => {
       const { data, error } = await supabase.from('damage_reports').insert(report as any).select().single();
       if (error) throw error;
-      return data;
+      return data as unknown as DamageReport;
+    },
+    // Optimistic update: instantly show the new report in the list
+    onMutate: async (newReport) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<DamageReport[]>(queryKey);
+
+      const optimistic: DamageReport = {
+        id: `temp-${Date.now()}`,
+        title: newReport.title || null,
+        description: newReport.description,
+        location: newReport.location,
+        severity: newReport.severity || 'minor',
+        status: newReport.status || 'reported',
+        responsible_party: newReport.responsible_party || 'guest',
+        damage_date: newReport.damage_date || new Date().toISOString().split('T')[0],
+        estimated_value: newReport.estimated_value || null,
+        repair_cost: newReport.repair_cost || null,
+        repair_date: newReport.repair_date || null,
+        repair_completed: newReport.repair_completed || null,
+        insurance_claim_filed: newReport.insurance_claim_filed || null,
+        claim_number: newReport.claim_number || null,
+        work_order_issued: newReport.work_order_issued || null,
+        work_order_number: newReport.work_order_number || null,
+        photo_urls: newReport.photo_urls || null,
+        notes: newReport.notes || null,
+        property_id: newReport.property_id || null,
+        property_name: newReport.property_name || null,
+        reported_by: newReport.reported_by,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        guest_name: newReport.guest_name || null,
+        reservation_id: newReport.reservation_id || null,
+        booking_platform: newReport.booking_platform || null,
+        check_in_date: newReport.check_in_date || null,
+        check_out_date: newReport.check_out_date || null,
+        date_damage_discovered: newReport.date_damage_discovered || null,
+        before_photo_urls: newReport.before_photo_urls || null,
+        receipt_urls: newReport.receipt_urls || null,
+        resolution_sought: newReport.resolution_sought || null,
+        claim_status: newReport.claim_status || null,
+        claim_reference_number: newReport.claim_reference_number || null,
+        claim_deadline: newReport.claim_deadline || null,
+        claim_timeline_notes: newReport.claim_timeline_notes || null,
+      };
+
+      queryClient.setQueryData<DamageReport[]>(queryKey, (old = []) => [optimistic, ...old]);
+      return { previous };
+    },
+    onError: (_err, _newReport, context) => {
+      // Rollback on error
+      if (context?.previous) {
+        queryClient.setQueryData(queryKey, context.previous);
+      }
+      toast({ title: 'Error adding damage report', variant: 'destructive' });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['damage-reports'] });
       toast({ title: 'Damage report created' });
     },
-    onError: (error: any) => {
-      toast({ title: 'Error adding damage report', description: error.message, variant: 'destructive' });
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['damage-reports'] });
     },
   });
 
@@ -123,12 +179,26 @@ export function useDamageReports(propertyId?: string | null) {
       if (error) throw error;
       return data;
     },
+    onMutate: async ({ id, updates }) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<DamageReport[]>(queryKey);
+
+      queryClient.setQueryData<DamageReport[]>(queryKey, (old = []) =>
+        old.map(r => r.id === id ? { ...r, ...updates, updated_at: new Date().toISOString() } as DamageReport : r)
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(queryKey, context.previous);
+      }
+      toast({ title: 'Error updating damage report', variant: 'destructive' });
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['damage-reports'] });
       toast({ title: 'Damage report updated' });
     },
-    onError: (error: any) => {
-      toast({ title: 'Error updating damage report', variant: 'destructive' });
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['damage-reports'] });
     },
   });
 
@@ -137,12 +207,26 @@ export function useDamageReports(propertyId?: string | null) {
       const { error } = await supabase.from('damage_reports').delete().eq('id', id);
       if (error) throw error;
     },
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<DamageReport[]>(queryKey);
+
+      queryClient.setQueryData<DamageReport[]>(queryKey, (old = []) =>
+        old.filter(r => r.id !== id)
+      );
+      return { previous };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(queryKey, context.previous);
+      }
+      toast({ title: 'Error deleting damage report', variant: 'destructive' });
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['damage-reports'] });
       toast({ title: 'Damage report deleted' });
     },
-    onError: (error: any) => {
-      toast({ title: 'Error deleting damage report', variant: 'destructive' });
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['damage-reports'] });
     },
   });
 
@@ -174,16 +258,26 @@ export function useDamageReports(propertyId?: string | null) {
   };
 
   const uploadPhoto = async (file: File | Blob, reportId: string): Promise<string | null> => {
-    const ext = file instanceof File ? file.name.split('.').pop() : 'jpg';
-    const path = `${reportId}/${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from('damage-report-photos').upload(path, file);
-    if (error) {
-      console.error('Photo upload error:', error);
+    try {
+      // Compress image before upload (1200px wide, 80% quality)
+      const compressed = await compressImage(file, 1200, 0.8);
+      const ext = 'jpg'; // Always JPEG after compression
+      const path = `${reportId}/${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from('damage-report-photos').upload(path, compressed, {
+        contentType: 'image/jpeg',
+      });
+      if (error) {
+        console.error('Photo upload error:', error);
+        toast({ title: 'Error uploading photo', variant: 'destructive' });
+        return null;
+      }
+      const { data: urlData } = supabase.storage.from('damage-report-photos').getPublicUrl(path);
+      return urlData.publicUrl;
+    } catch (err) {
+      console.error('Photo compression/upload error:', err);
       toast({ title: 'Error uploading photo', variant: 'destructive' });
       return null;
     }
-    const { data: urlData } = supabase.storage.from('damage-report-photos').getPublicUrl(path);
-    return urlData.publicUrl;
   };
 
   return {
