@@ -149,7 +149,7 @@ export const ImprovedInspectionTemplateManager = () => {
   const [editingItem, setEditingItem] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
   const [newTemplateName, setNewTemplateName] = useState('');
-  const [newTemplatePropertyId, setNewTemplatePropertyId] = useState('');
+  const [newTemplatePropertyIds, setNewTemplatePropertyIds] = useState<string[]>([]);
   const [editingTemplateName, setEditingTemplateName] = useState('');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isAssignPropertyDialogOpen, setIsAssignPropertyDialogOpen] = useState(false);
@@ -165,6 +165,7 @@ export const ImprovedInspectionTemplateManager = () => {
   const [tempNotificationMethod, setTempNotificationMethod] = useState<string>('both');
   const [tempNotificationDaysAhead, setTempNotificationDaysAhead] = useState<number>(7);
   const [tempNextOccurrence, setTempNextOccurrence] = useState<Date | undefined>(undefined);
+  const [tempDateMode, setTempDateMode] = useState<'next' | 'last'>('next');
   
   // Delete confirmation
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -343,31 +344,38 @@ export const ImprovedInspectionTemplateManager = () => {
       return;
     }
 
-    if (!newTemplatePropertyId) {
+    if (newTemplatePropertyIds.length === 0) {
       toast({
         title: "Property required",
-        description: "Please select a property or 'Unassigned'.",
+        description: "Please select at least one property or 'Unassigned'.",
         variant: "destructive"
       });
       return;
     }
 
-    createTemplate.mutate({
-      name: newTemplateName,
-      property_id: newTemplatePropertyId === 'unassigned' ? undefined : newTemplatePropertyId,
-      is_predefined: false,
-      items: [{
-        id: Date.now().toString(),
-        description: newTemplateName,
-        notes: ''
-      }]
-    }, {
-      onSuccess: (data) => {
-        setSelectedTemplateId(data.id);
-        setNewTemplateName('');
-        setNewTemplatePropertyId('');
-        setIsCreateDialogOpen(false);
+    const defaultItem = [{
+      id: Date.now().toString(),
+      description: newTemplateName,
+      notes: ''
+    }];
+
+    // Create a template for each selected property
+    const promises = newTemplatePropertyIds.map((propId) =>
+      createTemplate.mutateAsync({
+        name: newTemplateName,
+        property_id: propId === 'unassigned' ? undefined : propId,
+        is_predefined: false,
+        items: defaultItem.map(i => ({ ...i, id: (Date.now() + Math.random()).toString() }))
+      })
+    );
+
+    Promise.all(promises).then((results) => {
+      if (results.length > 0) {
+        setSelectedTemplateId(results[0].id);
       }
+      setNewTemplateName('');
+      setNewTemplatePropertyIds([]);
+      setIsCreateDialogOpen(false);
     });
   };
 
@@ -473,12 +481,28 @@ export const ImprovedInspectionTemplateManager = () => {
   const saveFrequencySettings = () => {
     if (!selectedTemplate) return;
 
-    // Format next occurrence date if provided
+    // Calculate next occurrence date
     let nextOccurrenceString: string | undefined;
     if (tempNextOccurrence) {
-      const year = tempNextOccurrence.getFullYear();
-      const month = String(tempNextOccurrence.getMonth() + 1).padStart(2, '0');
-      const day = String(tempNextOccurrence.getDate()).padStart(2, '0');
+      let effectiveDate = tempNextOccurrence;
+      
+      // If "last occurrence" mode, calculate next from last + frequency
+      if (tempDateMode === 'last') {
+        const frequencyDaysMap: Record<string, number> = {
+          'monthly': 30,
+          'quarterly': 90,
+          'semi-annual': 180,
+          'annually': 365,
+          'custom': tempFrequencyDays,
+        };
+        const days = frequencyDaysMap[tempFrequencyType] || 30;
+        effectiveDate = new Date(tempNextOccurrence);
+        effectiveDate.setDate(effectiveDate.getDate() + days);
+      }
+      
+      const year = effectiveDate.getFullYear();
+      const month = String(effectiveDate.getMonth() + 1).padStart(2, '0');
+      const day = String(effectiveDate.getDate()).padStart(2, '0');
       nextOccurrenceString = `${year}-${month}-${day}`;
     }
 
@@ -572,29 +596,47 @@ export const ImprovedInspectionTemplateManager = () => {
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>Property *</Label>
-                <Select value={newTemplatePropertyId} onValueChange={setNewTemplatePropertyId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a property or unassigned" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="unassigned">
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4" />
-                        Unassigned (available to all properties)
-                      </div>
-                    </SelectItem>
-                    {properties.map(property => (
-                      <SelectItem key={property.id} value={property.id}>
-                        <div className="flex items-center gap-2">
-                          <Building2 className="h-4 w-4" />
-                          {property.name} - {property.address}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">Select a property or leave as unassigned</p>
+                <Label>Properties *</Label>
+                <div className="space-y-2 max-h-[250px] overflow-y-auto border rounded-md p-2">
+                  <div 
+                    className={cn(
+                      "flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50",
+                    )}
+                  >
+                    <Checkbox
+                      checked={newTemplatePropertyIds.includes('unassigned')}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setNewTemplatePropertyIds(prev => [...prev, 'unassigned']);
+                        } else {
+                          setNewTemplatePropertyIds(prev => prev.filter(id => id !== 'unassigned'));
+                        }
+                      }}
+                    />
+                    <FileText className="h-4 w-4" />
+                    <span className="text-sm">Unassigned (available to all properties)</span>
+                  </div>
+                  {properties.map(property => (
+                    <div 
+                      key={property.id}
+                      className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50"
+                    >
+                      <Checkbox
+                        checked={newTemplatePropertyIds.includes(property.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setNewTemplatePropertyIds(prev => [...prev, property.id]);
+                          } else {
+                            setNewTemplatePropertyIds(prev => prev.filter(id => id !== property.id));
+                          }
+                        }}
+                      />
+                      <Building2 className="h-4 w-4" />
+                      <span className="text-sm">{property.name} - {property.address}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">Select one or more properties</p>
               </div>
               <div className="space-y-2">
                 <Label>Template Name *</Label>
@@ -606,7 +648,7 @@ export const ImprovedInspectionTemplateManager = () => {
                 />
               </div>
               <div className="flex gap-2">
-                <Button onClick={createCustomTemplate} disabled={!newTemplatePropertyId || !newTemplateName}>Create</Button>
+                <Button onClick={createCustomTemplate} disabled={newTemplatePropertyIds.length === 0 || !newTemplateName}>Create</Button>
                 <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>Cancel</Button>
               </div>
             </div>
@@ -657,7 +699,7 @@ export const ImprovedInspectionTemplateManager = () => {
                         <div className="flex-1 text-left">
                           <div className="text-sm font-medium">{template.name}</div>
                           <div className="text-xs opacity-70">
-                            {template.items.length} item{template.items.length !== 1 ? 's' : ''}
+                            {template.items.length} step{template.items.length !== 1 ? 's' : ''}
                           </div>
                         </div>
                         {template.is_predefined && (
@@ -761,7 +803,7 @@ export const ImprovedInspectionTemplateManager = () => {
 
                 <div className="flex gap-2 pt-4 border-t">
                   <Input
-                    placeholder="Add new inspection item"
+                    placeholder="Add new inspection step"
                     value={newItemText}
                     onChange={(e) => setNewItemText(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && addNewItem()}
@@ -889,7 +931,23 @@ export const ImprovedInspectionTemplateManager = () => {
                         {tempFrequencyType && tempFrequencyType !== 'none' && (
                           <>
                             <div className="space-y-2">
-                              <Label>Next Occurrence Date</Label>
+                              <Label>Date Type</Label>
+                              <Select value={tempDateMode} onValueChange={(v) => {
+                                setTempDateMode(v as 'next' | 'last');
+                                setTempNextOccurrence(undefined);
+                              }}>
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="next">Next Occurrence</SelectItem>
+                                  <SelectItem value="last">Last Occurrence</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label>{tempDateMode === 'next' ? 'Next Occurrence Date' : 'Last Occurrence Date'}</Label>
                               <Popover>
                                 <PopoverTrigger asChild>
                                   <Button
@@ -908,14 +966,16 @@ export const ImprovedInspectionTemplateManager = () => {
                                     mode="single"
                                     selected={tempNextOccurrence}
                                     onSelect={setTempNextOccurrence}
-                                    disabled={(date) => date < new Date()}
+                                    disabled={tempDateMode === 'next' ? (date) => date < new Date() : undefined}
                                     initialFocus
                                     className="p-3 pointer-events-auto"
                                   />
                                 </PopoverContent>
                               </Popover>
                               <p className="text-xs text-muted-foreground">
-                                Set when the next inspection of this type should occur
+                                {tempDateMode === 'next' 
+                                  ? 'Set when the next inspection should occur'
+                                  : 'Set when the last inspection occurred — the next occurrence will be calculated from the frequency'}
                               </p>
                             </div>
 
