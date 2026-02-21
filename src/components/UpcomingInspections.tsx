@@ -6,6 +6,8 @@ import { PropertySelector } from './PropertySelector';
 import { usePropertyContext } from '@/contexts/PropertyContext';
 import { useAllInspectionTemplates } from '@/hooks/useInspectionTemplates';
 import { useInspectionRecords } from '@/hooks/useInspectionRecords';
+import { useAllAssignments } from '@/hooks/useInspectionAssignments';
+import { useAuth } from '@/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { differenceInDays, parseISO, format } from 'date-fns';
@@ -23,8 +25,10 @@ interface UpcomingInspection {
 
 export const UpcomingInspections = () => {
   const { selectedProperty, propertyMode } = usePropertyContext();
+  const { profile } = useAuth();
   const { data: templates = [] } = useAllInspectionTemplates();
   const { data: records = [] } = useInspectionRecords();
+  const { data: assignments = [] } = useAllAssignments();
 
   // Fetch properties
   const { data: properties = [] } = useQuery({
@@ -92,11 +96,32 @@ export const UpcomingInspections = () => {
       filtered = inspections.filter(i => i.propertyId === selectedProperty.id);
     }
 
-    // Sort by due date ascending
+    // Filter by current user's assignments if they have any
+    if (profile && assignments.length > 0) {
+      const myAssignedTemplateIds = assignments
+        .filter(a => a.assigned_to === profile.id)
+        .map(a => a.template_id);
+      
+      // If user has assignments, only show those. Otherwise show all (for owners).
+      if (myAssignedTemplateIds.length > 0) {
+        filtered = filtered.filter(i => {
+          const templateId = i.id.replace('template-', '').replace('record-', '');
+          // Check by source
+          if (i.source === 'template') {
+            return myAssignedTemplateIds.includes(i.id.replace('template-', ''));
+          }
+          // For records, check if the record's template is assigned
+          const record = records.find(r => `record-${r.id}` === i.id);
+          return record?.template_id ? myAssignedTemplateIds.includes(record.template_id) : true;
+        });
+      }
+    }
+
+    // Sort by due date ascending (overdue first, then upcoming)
     filtered.sort((a, b) => a.daysUntilDue - b.daysUntilDue);
 
     return filtered;
-  }, [templates, records, properties, selectedProperty, propertyMode]);
+  }, [templates, records, properties, selectedProperty, propertyMode, profile, assignments]);
 
   const getStatusBadge = (daysUntilDue: number) => {
     if (daysUntilDue < 0) {
@@ -133,7 +158,7 @@ export const UpcomingInspections = () => {
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold flex items-center gap-2">
           <CalendarDays className="h-6 w-6" />
-          Upcoming Inspections
+          Upcoming & Overdue Inspections
         </h2>
         <div className="flex gap-2">
           {overdueCount > 0 && (

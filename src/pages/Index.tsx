@@ -138,7 +138,7 @@ const Index = () => {
             <CollapsibleContent>
               <div className="grid grid-cols-2 gap-2 mt-1">
                 <StatusCard icon={AlertTriangle} label="Open Damage" value={openDamage} warn={openDamage > 0} onClick={() => navigate('/damage')} />
-                <StatusCard icon={ClipboardList} label="Upcoming (7d)" value={upcomingInsp} warn={upcomingInsp > 0} onClick={() => navigate('/inspections')} />
+                <StatusCard icon={ClipboardList} label="Upcoming (7d)" value={upcomingInsp} warn={upcomingInsp > 0} onClick={() => navigate('/inspections?view=upcoming')} />
                 <StatusCard icon={Package} label="Low Stock" value={lowStock} warn={lowStock > 0} onClick={() => navigate('/inventory')} />
                 <StatusCard icon={ShieldCheck} label="Expiring (30d)" value={expiringWarr} warn={expiringWarr > 0} onClick={() => navigate('/warranties')} />
               </div>
@@ -192,7 +192,7 @@ const Index = () => {
             subtitle="Next 7 days"
             value={upcomingInsp}
             warn={upcomingInsp > 0}
-            onClick={() => navigate('/inspections')}
+            onClick={() => navigate('/inspections?view=upcoming')}
             gradient="from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900"
             accent="text-blue-600 dark:text-blue-400"
           />
