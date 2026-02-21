@@ -25,6 +25,8 @@ interface AuthContextType {
   roles: AppRole[];
   loading: boolean;
   rolesLoaded: boolean;
+  simulatedRole: AppRole | null;
+  setSimulatedRole: (role: AppRole | null) => void;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error?: any }>;
   signIn: (email: string, password: string) => Promise<{ error?: any }>;
   signInWithOAuth: (provider: 'google' | 'apple') => Promise<{ error?: any }>;
@@ -38,6 +40,7 @@ interface AuthContextType {
   isManager: () => boolean;
   isInspector: () => boolean;
   hasAnyRole: () => boolean;
+  actualRoles: AppRole[];
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -61,6 +64,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [rolesLoaded, setRolesLoaded] = useState(false);
+  const [simulatedRole, setSimulatedRole] = useState<AppRole | null>(null);
   const { toast } = useToast();
 
   const fetchProfile = async (userId: string): Promise<Profile | null> => {
@@ -490,18 +494,24 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  const isOwner = () => roles.includes('owner');
-  const isManager = () => roles.includes('manager');
-  const isInspector = () => roles.includes('inspector');
-  const hasAnyRole = () => roles.length > 0;
+  const actualRoles = roles;
+  // When simulating, override the effective roles
+  const effectiveRoles = simulatedRole ? [simulatedRole] : roles;
+
+  const isOwner = () => effectiveRoles.includes('owner');
+  const isManager = () => effectiveRoles.includes('manager') || effectiveRoles.includes('owner');
+  const isInspector = () => effectiveRoles.includes('inspector') || effectiveRoles.includes('owner') || effectiveRoles.includes('manager');
+  const hasAnyRole = () => effectiveRoles.length > 0;
 
   const value = {
     user,
     session,
     profile,
-    roles,
-    loading, // Only wait for auth, not roles
+    roles: effectiveRoles,
+    loading,
     rolesLoaded,
+    simulatedRole,
+    setSimulatedRole,
     signUp,
     signIn,
     signInWithOAuth,
@@ -514,7 +524,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     isOwner,
     isManager,
     isInspector,
-    hasAnyRole
+    hasAnyRole,
+    actualRoles,
   };
 
   return (
