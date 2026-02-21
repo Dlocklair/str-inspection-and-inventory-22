@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Home, Package, ClipboardList, AlertTriangle, Settings, Settings2, Building2, UserCog, UserPlus, Clock, User, FileEdit, History, FilePlus, AlertCircle, ClipboardCheck, ShieldCheck, ChevronDown } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { NavLink } from 'react-router-dom';
 import {
   Sidebar,
@@ -59,17 +61,17 @@ const mainMenuItems: MenuItem[] = [
 ];
 
 const settingsMenuItems = [
-  { title: 'Manage Current Users', url: '/settings?view=manage-users', icon: UserCog },
-  { title: 'Invite New User', url: '/settings?view=invite-user', icon: UserPlus },
-  { title: 'Pending Invitations', url: '/settings?view=pending-invitations', icon: Clock },
-  { title: 'Owner Profile', url: '/settings?view=owner-profile', icon: User },
+  { title: 'Manage Current Users', url: '/settings?view=users', icon: UserCog },
+  { title: 'Invite New User', url: '/settings?view=invite', icon: UserPlus },
+  { title: 'Pending Invitations', url: '/settings?view=invitations', icon: Clock },
+  { title: 'Owner Profile', url: '/settings?view=owner', icon: User },
 ];
 
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
   const isMobile = useIsMobile();
-  const { isOwner, isManager, isInspector } = useAuth();
+  const { isOwner, isManager, isInspector, actualRoles, simulatedRole, setSimulatedRole } = useAuth();
 
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
 
@@ -81,6 +83,7 @@ export function AppSidebar() {
     isActive ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted/50';
 
   const showMainNav = !isMobile;
+  const isActualOwner = actualRoles.includes('owner');
   const showSettings = isOwner() || isManager();
 
   const filteredMainMenuItems = mainMenuItems.filter(item => {
@@ -153,6 +156,7 @@ export function AppSidebar() {
 
         {showSettings && (
           <SidebarGroup>
+            <Separator className="mb-2" />
             <SidebarGroupLabel>
               <Settings className="h-3 w-3 mr-1 inline" />
               {!collapsed && 'Settings & Admin'}
@@ -170,6 +174,34 @@ export function AppSidebar() {
                   </SidebarMenuItem>
                 ))}
               </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {/* Role Simulation - only for actual owners */}
+        {isActualOwner && !collapsed && (
+          <SidebarGroup>
+            <Separator className="mb-2" />
+            <SidebarGroupLabel>Role Simulation</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <div className="px-2 pb-2">
+                <Select
+                  value={simulatedRole || 'owner'}
+                  onValueChange={(value) => setSimulatedRole(value === 'owner' ? null : value as any)}
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="owner">Owner (default)</SelectItem>
+                    <SelectItem value="manager">Manager</SelectItem>
+                    <SelectItem value="inspector">Inspector</SelectItem>
+                  </SelectContent>
+                </Select>
+                {simulatedRole && (
+                  <p className="text-[10px] text-destructive mt-1">Simulating {simulatedRole} role</p>
+                )}
+              </div>
             </SidebarGroupContent>
           </SidebarGroup>
         )}

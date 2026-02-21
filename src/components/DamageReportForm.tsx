@@ -25,7 +25,7 @@ interface DamageReportFormProps {
 export const DamageReportForm = ({ onClose, locations, onUpdateLocations }: DamageReportFormProps) => {
   const { toast } = useToast();
   const { profile, isOwner, roles } = useAuth();
-  const { selectedProperty, propertyMode } = usePropertyContext();
+  const { selectedProperty, propertyMode, userProperties, setSelectedProperty } = usePropertyContext();
   const { addReport, uploadPhoto } = useDamageReports(
     propertyMode === 'property' ? selectedProperty?.id : undefined
   );
@@ -168,6 +168,34 @@ export const DamageReportForm = ({ onClose, locations, onUpdateLocations }: Dama
         <CardContent className="space-y-4">
           <div className="space-y-4">
             <h4 className="font-medium text-lg">Basic Information</h4>
+
+            {/* Property Selector */}
+            {userProperties.length > 1 && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-primary">Property</label>
+                <Select
+                  value={selectedProperty?.id || ''}
+                  onValueChange={(value) => {
+                    const prop = userProperties.find(p => p.id === value);
+                    if (prop) setSelectedProperty(prop);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select property" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {userProperties.map(prop => (
+                      <SelectItem key={prop.id} value={prop.id}>{prop.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {userProperties.length === 1 && selectedProperty && (
+              <div className="text-sm text-muted-foreground">
+                Property: <span className="font-medium text-foreground">{selectedProperty.name}</span>
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-primary">Damage Title</label>

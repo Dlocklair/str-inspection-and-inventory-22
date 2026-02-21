@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { compressImage } from '@/lib/imageCompression';
+import { useQueryClient } from '@tanstack/react-query';
 
 export interface Warranty {
   id: string;
@@ -52,6 +53,7 @@ export function calcExpirationDate(purchaseDate: string, durationType: string, c
 
 export function useWarranties() {
   const { profile } = useAuth();
+  const queryClient = useQueryClient();
   const [warranties, setWarranties] = useState<Warranty[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -112,6 +114,7 @@ export function useWarranties() {
     }
     toast({ title: 'Warranty added successfully' });
     await fetchWarranties();
+    queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
     return true;
   };
 
@@ -136,6 +139,7 @@ export function useWarranties() {
     }
     toast({ title: 'Warranty deleted' });
     await fetchWarranties();
+    queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
     return true;
   };
 
