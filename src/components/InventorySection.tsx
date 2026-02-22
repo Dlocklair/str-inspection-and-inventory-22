@@ -411,36 +411,57 @@ export const InventorySection = () => {
         </Card>
       </div>
       
-      {/* Summary Cards - Reduced Height */}
+      {/* Summary Cards - Half Height, Clickable Filters */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="py-px my-px">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-            <CardTitle className="text-xs font-medium">Total Items</CardTitle>
-            <Package2 className="h-3 w-3 text-muted-foreground" />
-          </CardHeader>
-          <CardContent className="pb-2">
-            <div className="text-xl font-bold">{filteredItems.length}</div>
+        <Card 
+          className={`py-0 cursor-pointer transition-colors hover:bg-primary/10 ${stockFilter === 'all' ? 'ring-2 ring-primary' : ''}`}
+          onClick={() => setStockFilter(stockFilter === 'all' ? 'all' : 'all')}
+        >
+          <CardContent className="py-2 px-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Package2 className="h-3 w-3 text-muted-foreground" />
+              <span className="text-xs font-medium">Total Items</span>
+            </div>
+            <span className="text-lg font-bold">{filteredItems.length}</span>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-            <CardTitle className="text-xs font-medium">Low Stock</CardTitle>
-            <AlertTriangle className="h-3 w-3 text-yellow-500" />
-          </CardHeader>
-          <CardContent className="pb-2">
-            <div className="text-xl font-bold">{lowStockItems.length}</div>
+        <Card 
+          className={`py-0 cursor-pointer transition-colors hover:bg-warning/10 ${stockFilter === 'low' ? 'ring-2 ring-warning' : ''}`}
+          onClick={() => setStockFilter(stockFilter === 'low' ? 'all' : 'low')}
+        >
+          <CardContent className="py-2 px-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-3 w-3 text-yellow-500" />
+              <span className="text-xs font-medium">Low Stock</span>
+            </div>
+            <span className="text-lg font-bold">{lowStockItems.length}</span>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-            <CardTitle className="text-xs font-medium">Out of Stock</CardTitle>
-            <AlertTriangle className="h-3 w-3 text-destructive" />
-          </CardHeader>
-          <CardContent className="pb-2">
-            <div className="text-xl font-bold">{outOfStockItems.length}</div>
+        <Card 
+          className={`py-0 cursor-pointer transition-colors hover:bg-destructive/10 ${stockFilter === 'out' ? 'ring-2 ring-destructive' : ''}`}
+          onClick={() => setStockFilter(stockFilter === 'out' ? 'all' : 'out')}
+        >
+          <CardContent className="py-2 px-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-3 w-3 text-destructive" />
+              <span className="text-xs font-medium">Out of Stock</span>
+            </div>
+            <span className="text-lg font-bold">{outOfStockItems.length}</span>
           </CardContent>
         </Card>
       </div>
+
+      {/* Active Filter Indicator */}
+      {stockFilter !== 'all' && (
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary">
+            Showing: {stockFilter === 'low' ? 'Low Stock' : stockFilter === 'out' ? 'Out of Stock' : stockFilter === 'low-out' ? 'Low & Out of Stock' : 'All'} Items
+          </Badge>
+          <Button variant="outline" size="sm" onClick={() => setStockFilter('all')} className="inline-btn">
+            Display All
+          </Button>
+        </div>
+      )}
 
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>

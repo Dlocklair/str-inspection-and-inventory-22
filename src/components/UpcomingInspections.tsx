@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -11,7 +12,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { differenceInDays, parseISO, format } from 'date-fns';
-import { Clock, AlertTriangle, CheckCircle, CalendarDays, Building2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Clock, AlertTriangle, CheckCircle, CalendarDays, Building2, ChevronDown, ChevronRight, Pencil } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface UpcomingInspection {
@@ -27,6 +29,7 @@ interface UpcomingInspection {
 export const UpcomingInspections = () => {
   const { selectedProperty, propertyMode } = usePropertyContext();
   const [collapsedProperties, setCollapsedProperties] = useState<Set<string>>(new Set());
+  const [, setSearchParams] = useSearchParams();
   const { profile } = useAuth();
   const { data: templates = [] } = useAllInspectionTemplates();
   const { data: records = [] } = useInspectionRecords();
@@ -175,6 +178,10 @@ export const UpcomingInspections = () => {
     });
   };
 
+  const handleEditInspection = (inspection: UpcomingInspection) => {
+    setSearchParams({ view: 'manage-templates' });
+  };
+
   return (
     <div className="space-y-6">
       <PropertySelector />
@@ -230,14 +237,20 @@ export const UpcomingInspections = () => {
                             <TableHead>Inspection Type</TableHead>
                             <TableHead>Due Date</TableHead>
                             <TableHead>Status</TableHead>
+                            <TableHead className="w-[60px]"></TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {group.inspections.map(inspection => (
-                            <TableRow key={inspection.id}>
+                            <TableRow key={inspection.id} className="cursor-pointer" onDoubleClick={() => handleEditInspection(inspection)}>
                               <TableCell className="font-medium text-sm">{inspection.templateName}</TableCell>
                               <TableCell className="text-sm">{format(parseISO(inspection.dueDate), 'MMM d, yyyy')}</TableCell>
                               <TableCell>{getStatusBadge(inspection.daysUntilDue)}</TableCell>
+                              <TableCell>
+                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 inline-btn" onClick={() => handleEditInspection(inspection)}>
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                              </TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -255,14 +268,20 @@ export const UpcomingInspections = () => {
                   <TableHead>Inspection Type</TableHead>
                   <TableHead>Due Date</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="w-[60px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {upcomingInspections.map(inspection => (
-                  <TableRow key={inspection.id}>
+                  <TableRow key={inspection.id} className="cursor-pointer" onDoubleClick={() => handleEditInspection(inspection)}>
                     <TableCell className="font-medium text-sm">{inspection.templateName}</TableCell>
                     <TableCell className="text-sm">{format(parseISO(inspection.dueDate), 'MMM d, yyyy')}</TableCell>
                     <TableCell>{getStatusBadge(inspection.daysUntilDue)}</TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 inline-btn" onClick={() => handleEditInspection(inspection)}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
