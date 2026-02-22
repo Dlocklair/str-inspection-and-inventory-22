@@ -1,103 +1,107 @@
+# Plan: Damage Report Simplification, Inspector Access, Sidebar Collapse, History Filters, and Warranty Fix
 
-# Plan: Open Damage Reports View + Pre-Filing Damage Claim Worksheet
+## 1. Inspector Access to Damage Reports (without Pre-Filing Worksheet)
 
-This plan covers two main features: (1) making the "Open Damage Reports" dashboard card navigate to a dedicated view showing unresolved reports grouped by property, with edit buttons that open the full form; and (2) adding a "Pre-Filing Damage Claim Worksheet" section to the damage report form.
+Currently, the Pre-Filing Damage Claim Worksheet (Sections 1-6) in `DamageReportForm.tsx` is gated behind `isOwner() || roles.includes('manager')` (line 448). Inspectors who have damage report permission should be able to create/view damage reports but NOT see the worksheet.
 
----
+**Changes:**
 
-## Part 1: Open Damage Reports -- Grouped by Property View
+- In `AppSidebar.tsx`, update the inspector filter (line 103-104) so inspectors with `damage` permission in `agent_permissions` can also see "Damage Reports" in the sidebar
+- The worksheet gating on line 448 already excludes inspectors -- no change needed there
+- Need to verify RLS: currently damage_reports INSERT/SELECT policies only allow owners and managers. A new RLS policy will be needed to allow inspectors with damage permission to create and view damage reports for their assigned properties.
 
-### Changes to `src/pages/Index.tsx`
-- Update the "Open Damage Reports" stats card `onClick` to navigate to `/damage?view=open` instead of `/damage`.
+**Database migration needed:**
 
-### Changes to `src/components/DamageReport.tsx`
-- Handle the new `view=open` URL parameter:
-  - Set `showAddForm=false`, `showHistory=false`, `selectedHistoryReport=null`
-  - Set a new state like `showOpenReports=true`
-- When `showOpenReports` is true, render a new `<OpenDamageReportsView>` component.
+- Add SELECT policy for inspectors on `damage_reports`: allow inspectors to view reports for properties they are assigned to via `user_properties`
+- Add INSERT policy for inspectors on `damage_reports`: allow inspectors to create reports for their assigned properties
 
-### New Component: `src/components/OpenDamageReportsView.tsx`
-- Fetches all damage reports (no property filter) via `useDamageReports()`.
-- Filters to only non-completed/non-resolved reports.
-- Groups reports by `property_id`, displaying each property as a Card with the property name as a heading (using `usePropertyContext` to resolve names).
-- Each report shows a summary row (title, severity badge, status badge, date, estimated cost).
-- Each row has an **Edit** button that navigates to `/damage?view=new&edit={reportId}` (or triggers a callback to open the full form pre-populated with that report's data).
+**Code changes:**
 
-### Changes to `src/components/DamageReport.tsx` (edit mode)
-- Support a `view=new&edit={id}` URL param combination:
-  - When detected, open `DamageReportForm` pre-populated with the existing report data.
-  - The form's save action calls `updateReport` instead of `addReport`.
+- `AppSidebar.tsx`: Update inspector filtering to check `agent_permissions.damage` and conditionally show "Damage Reports"
+- This requires fetching agent permissions in the sidebar or passing them via auth context
 
-### Changes to `src/components/DamageReportForm.tsx`
-- Accept an optional `existingReport` prop of type `DamageReportType`.
-- If provided, pre-populate all fields from the existing report.
-- Change the save button to call `updateReport(existingReport.id, ...)` when editing, and `addReport(...)` when creating new.
-- Update the card title to "Edit Damage Report" vs "Create Damage Report" accordingly.
+**Simpler approach:** Add a flag or check in the sidebar filter. Since agent_permissions are already fetched elsewhere, we can add a lightweight check. For the sidebar, we'll check if the user is an inspector and has damage permissions by querying `agent_permissions` in the auth hook or sidebar component.
 
----
+## 2. Collapse Settings & Admin by Default
 
-## Part 2: Pre-Filing Damage Claim Worksheet
+**Changes to `AppSidebar.tsx`:**
 
-### Changes to `src/components/DamageReportForm.tsx`
-Replace the current "Booking & Claim Details (Optional)" section with a clearly labeled and boxed **"Pre-Filing Damage Claim Worksheet"**. This will be structured into 6 sections matching the user's specification:
+- Wrap the Settings & Admin section in a `Collapsible` component, collapsed by default
+- Add a toggle chevron icon next to "Settings & Admin" label
 
-**Section 1 -- Booking Information**
-- Platform (Airbnb / VRBO) -- already exists as `bookingPlatform`
-- Guest Full Name -- already exists as `guestName`
-- Reservation / Booking ID -- already exists as `reservationId`
-- Check-In Date -- already exists as `checkInDate`
-- Check-Out Date -- already exists as `checkOutDate`
-- Property Address -- auto-filled from selected property
-- Date Damage Discovered -- already exists as `dateDamageDiscovered`
-- Who Discovered It -- new field (`discoveredBy`)
+## 3. Role Simulation Safety (Your Question)
 
-**Section 2 -- Damage Description**
-- A repeatable table/rows: Item/Area Damaged, Description of Damage, Pre-Existing (Y/N), Repair or Replace?
-- New state array `damageItems` with add/remove row capability.
-- This supplements the main damage description; stored in `notes` or a new JSON structure within `claim_timeline_notes` (or just displayed in the PDF).
+You asked: "If I assign myself the role of Inspector for testing, will I still be able to get back to the owner role?"
 
-**Section 3 -- Cost Documentation**
-- A repeatable table: Item, Repair/Replacement Cost, Source
-- With a calculated total row.
-- New state array `costItems`.
+**Answer:** Yes -- assigning yourself the Inspector role adds it alongside your existing Owner role. The `user_roles` table supports multiple roles per user. Your Owner role is never removed. However, to simulate the inspector experience without modifying real roles, you can use the **Role Simulation** dropdown already in the sidebar (bottom section). This lets you temporarily view the app as an inspector, manager, etc., and switch back to Owner at any time. No actual role changes are made.
 
-**Section 4 -- Evidence Checklist**
-- A list of checkboxes for each evidence type (before-stay photos, after-stay photos, video walkthrough, cleaning staff statement, repair estimates, receipts, replacement item links, police report, guest message screenshots).
-- New state object `evidenceChecklist`.
+## 4. Simplify Damage Report Types: Active vs Closed
 
-**Section 5 -- Guest Communication Log**
-- Date contacted guest -- new field
-- Method (platform messaging) -- new field
-- Guest response -- new field (agreed/declined/no response)
-- Date of response -- new field
+Currently there are tabs for "Active Reports" and "Pending Reports" with multiple statuses (reported, assessed, approved, in-repair, completed).
 
-**Section 6 -- Income Loss**
-- Bookings canceled due to damage (Y/N) -- new field
-- Canceled reservation dates -- new field
-- Lost income amount -- new field
-- Screenshot of canceled reservation -- file upload
+**Changes to `DamageReportList.tsx`:**
 
-All new worksheet fields will be stored by serializing them into the existing `claim_timeline_notes` text field as a structured JSON string, keeping the database schema unchanged. This data can be parsed back when editing.
+- Replace the two tabs ("Active Reports" / "Pending Reports") with a single view
+- Remove the `TabsList` with Active/Pending tabs
+- Show all reports in one list, categorized as:
+  - **Active** = any status except "completed"
+  - **Closed** = status is "completed"
+- Keep the existing status badges on individual reports for detail
+- Remove the Pending tab content entirely
+- The status workflow buttons (Mark as Assessed, Approve, In Repair, Mark Complete) remain on individual report cards
 
-### Visual Design
-- The entire worksheet is wrapped in a bordered Card with a distinct header: "Pre-Filing Damage Claim Worksheet"
-- Subtitle: "Use this to gather everything before you log on. Both platforms will ask for this information."
-- Each section has a numbered heading with a separator line
-- Repeatable rows (Sections 2 and 3) have "Add Row" / remove buttons
-- The checklist (Section 4) uses Checkbox components
+## 5. Damage Report History -- Replace Toggle with Dropdown + Status Filter
+
+**Changes to `DamageReportHistoryEnhanced.tsx`:**
+
+- Remove the "Current Property" / "All Properties" toggle group (ToggleGroup)
+- Replace with a single `Select` dropdown containing:
+  - "All Properties" option
+  - Each individual property listed
+  - Default to the currently selected property from PropertyContext
+- Add a status filter with checkboxes or toggle for "Active", "Closed", or "Both" (default: Both)
+- When a status filter is applied, group reports by status (Active group / Closed group) instead of by property/year
+- When "Both" is selected with grouping by status, show two collapsible sections: "Active" and "Closed"
+
+## 6. Warranties Under Asset Library -- Fix to Use Warranty Database
+
+The user reports that entering warranties under Asset Library should write to the warranty database. Looking at the code:
+
+- `WarrantyManager.tsx` already uses `useWarranties()` hook which writes to the `warranties` table -- this is correct
+- The `/warranties` route renders `WarrantyManager` which uses `addWarranty` from `useWarranties` hook
+- This already writes to the warranty database table
+
+The issue may be that the `WarrantyManager` page is not properly connected. Let me verify the route exists in `App.tsx`. Based on the earlier conversation, the route was added. The warranty form at `/warranties` already saves to the `warranties` table via `useWarranties().addWarranty()`. No code change needed here -- it already works correctly.
+
+If the concern is about warranties created from the Asset Library form (AssetLibraryForm), that also writes to the warranties table directly via `supabase.from('warranties').insert()` in `AssetLibraryManager.tsx` (line 19-24). This is also correct.
 
 ---
 
-## Technical Details
+## Technical Summary
 
-### Files to Create
-1. `src/components/OpenDamageReportsView.tsx` -- grouped-by-property open reports view
+### Database Migration
+
+- Add RLS policy on `damage_reports` for inspectors with damage permission to SELECT and INSERT reports on their assigned properties
 
 ### Files to Modify
-1. `src/pages/Index.tsx` -- change Open Damage Reports click to `/damage?view=open`
-2. `src/components/DamageReport.tsx` -- handle `view=open` and `view=new&edit={id}` URL params
-3. `src/components/DamageReportForm.tsx` -- accept `existingReport` prop for edit mode; replace claim section with the 6-section Pre-Filing Damage Claim Worksheet
-4. `src/hooks/useDamageReports.ts` -- no schema changes needed; worksheet data serialized into `claim_timeline_notes`
 
-### No Database Changes Required
-All new worksheet data is serialized into the existing `claim_timeline_notes` text column as JSON.
+1. `**src/components/AppSidebar.tsx**`
+  - Update inspector sidebar filtering to conditionally show "Damage Reports" based on agent_permissions
+  - Wrap "Settings & Admin" section in a Collapsible, defaulting to collapsed
+2. `**src/components/DamageReportList.tsx**`
+  - Remove Active/Pending tabs
+  - Show single list with all reports
+  - Reports are simply "Active" (not completed) or "Closed" (completed)
+3. `**src/components/DamageReportHistoryEnhanced.tsx**`
+  - Replace Current Property / All Properties toggle with a single property dropdown (including "All Properties" option)
+  - Add status filter (Active / Closed / Both) with default "Both"
+  - When status filter is active, group by status instead of property/year
+4. `**src/hooks/useAuth.tsx**` (or new hook)
+  - May need to expose agent_permissions (specifically damage permission) so the sidebar can conditionally show Damage Reports for inspectors
+
+### No Changes Needed
+
+- Warranty entry under Asset Library already writes to the warranties database -- confirmed working
+- Role simulation already exists in the sidebar for testing different roles safely  
+  
+When entering a purchase date or warranty period, the warranty expiration date should immediately update when both entries are present.
