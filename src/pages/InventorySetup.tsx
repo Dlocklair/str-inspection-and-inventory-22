@@ -405,7 +405,7 @@ const InventorySetup = () => {
                               )}
                             </Button>
                           </CollapsibleTrigger>
-                          <span className="font-semibold text-base text-cyan-600 dark:text-cyan-400">
+                          <span className="text-base text-primary">
                             {category.name} ({category.items.length})
                           </span>
                           {category.description && (
@@ -413,26 +413,22 @@ const InventorySetup = () => {
                           )}
                         </div>
                         <div className="flex items-center gap-1">
-                          {!category.is_predefined && (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setEditingCategory(category)}
-                                className="hover:text-primary"
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setDeletingCategory(category)}
-                                className="hover:text-destructive"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </>
-                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEditingCategory(category)}
+                            className="hover:text-primary"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setDeletingCategory(category)}
+                            className="hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </div>
 
@@ -450,7 +446,7 @@ const InventorySetup = () => {
                                 className="flex items-center justify-between p-2 border rounded hover:bg-muted/30 transition-colors"
                               >
                                 <div className="flex-1">
-                                  <p className="font-medium">{item.name}</p>
+                                  <p>{item.name}</p>
                                   <p className="text-sm text-muted-foreground">
                                     Stock: {item.current_quantity} | Restock: {item.restock_threshold} | 
                                     {item.cost_per_package ? ` $${item.cost_per_package.toFixed(2)}/pkg` : 

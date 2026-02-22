@@ -273,7 +273,7 @@ export const InventoryTable = ({
                 className="flex items-center gap-2 w-full py-2 px-1 text-left"
               >
                 {isExpanded ? <ChevronDown className="h-4 w-4 shrink-0 inline-btn" /> : <ChevronRight className="h-4 w-4 shrink-0 inline-btn" />}
-                <span className="font-semibold text-primary">{categoryName}</span>
+                        <span className="text-primary">{categoryName}</span>
                 <span className="text-xs text-muted-foreground">({categoryItems.length})</span>
               </button>
               {isExpanded && (
@@ -290,7 +290,7 @@ export const InventoryTable = ({
                         >
                           <div className="flex items-center gap-2 min-w-0 flex-1">
                             {(item.image_url || item.amazon_image_url) && <img src={item.image_url || item.amazon_image_url!} alt={item.name} className="w-8 h-8 rounded object-cover shrink-0" />}
-                            <span className="font-medium text-sm truncate">{item.name}</span>
+                            <span className="text-sm truncate">{item.name}</span>
                           </div>
                           <div className="flex items-center gap-2 shrink-0 ml-2">
                             <Badge variant={status.color as any} className="text-[10px] px-1.5 py-0 inline-btn">
@@ -401,7 +401,7 @@ export const InventoryTable = ({
                     <td colSpan={7} onClick={() => toggleCategory(categoryName)} className="p-2 py-[4px]">
                       <div className="flex items-center gap-2">
                         {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                        <span className="font-semibold text-primary">{categoryName}</span>
+                        <span className="text-primary">{categoryName}</span>
                         <span className="text-sm text-muted-foreground">({categoryItems.length})</span>
                       </div>
                     </td>
@@ -424,7 +424,7 @@ export const InventoryTable = ({
                           <div className="flex items-center gap-3">
                             {(item.image_url || item.amazon_image_url) && <img src={item.image_url || item.amazon_image_url!} alt={item.name} className="w-10 h-10 object-cover rounded" />}
                             <div>
-                              <div className="font-medium py-0 my-0 px-0 mx-[40px]">{item.name}</div>
+                              <div className="py-0 my-0 px-0 mx-[40px]">{item.name}</div>
                               {item.unit && <div className="text-sm text-muted-foreground">{item.unit}</div>}
                             </div>
                           </div>

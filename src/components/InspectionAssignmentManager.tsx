@@ -24,6 +24,7 @@ export const InspectionAssignmentManager = () => {
 
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [selectedUserId, setSelectedUserId] = useState('');
+  const [filterPropertyId, setFilterPropertyId] = useState<string>('all');
 
   // Fetch users with roles
   const { data: users = [] } = useQuery({
@@ -45,10 +46,10 @@ export const InspectionAssignmentManager = () => {
     },
   });
 
-  // Filter templates by selected property
-  const filteredTemplates = selectedProperty
-    ? templates.filter(t => t.property_id === selectedProperty.id)
-    : templates;
+  // Filter templates by selected property dropdown
+  const filteredTemplates = filterPropertyId === 'all'
+    ? templates
+    : templates.filter(t => t.property_id === filterPropertyId);
 
   const handleAssign = () => {
     if (!selectedTemplateId || !selectedUserId || !profile) {
@@ -89,7 +90,21 @@ export const InspectionAssignmentManager = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <Label>Property</Label>
+              <Select value={filterPropertyId} onValueChange={(v) => { setFilterPropertyId(v); setSelectedTemplateId(''); }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select property" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Properties</SelectItem>
+                  {properties.map(p => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div>
               <Label>Inspection Template</Label>
               <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
