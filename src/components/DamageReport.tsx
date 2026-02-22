@@ -1,21 +1,28 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { usePropertyContext } from '@/contexts/PropertyContext';
 import { useDamageReports, type DamageReport as DamageReportType } from '@/hooks/useDamageReports';
 import DamageReportHistoryEnhanced from './DamageReportHistoryEnhanced';
 import { DamageReportForm } from './DamageReportForm';
 import { DamageReportDetail } from './DamageReportDetail';
 import { DamageReportList } from './DamageReportList';
+import { OpenDamageReportsView } from './OpenDamageReportsView';
 
 export const DamageReport = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { selectedProperty, propertyMode, userProperties, setSelectedProperty } = usePropertyContext();
 
   // Pass propertyId to scope queries
   const propertyId = propertyMode === 'property' ? selectedProperty?.id : undefined;
   const { reports: damageReports, updateReport, deleteReport: deleteReportApi } = useDamageReports(propertyId);
 
+  // Also fetch all reports for open view and edit lookups
+  const { reports: allReports, updateReport: updateReportAll } = useDamageReports();
+
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showOpenReports, setShowOpenReports] = useState(false);
+  const [editingReportData, setEditingReportData] = useState<DamageReportType | null>(null);
   const [editingReport, setEditingReport] = useState<string | null>(null);
   const [editingData, setEditingData] = useState<Partial<DamageReportType>>({});
   const [showHistory, setShowHistory] = useState(false);
@@ -29,23 +36,46 @@ export const DamageReport = () => {
   // URL view parameter
   useEffect(() => {
     const view = searchParams.get('view');
-    if (view === 'new') {
+    const editId = searchParams.get('edit');
+
+    if (view === 'open') {
+      setShowAddForm(false);
+      setShowHistory(false);
+      setSelectedHistoryReport(null);
+      setEditingReportData(null);
+      setShowOpenReports(true);
+    } else if (view === 'new' && editId) {
+      // Edit mode: find the report from allReports
+      const report = allReports.find(r => r.id === editId);
+      if (report) {
+        setEditingReportData(report);
+        setShowAddForm(true);
+        setShowHistory(false);
+        setSelectedHistoryReport(null);
+        setShowOpenReports(false);
+      }
+    } else if (view === 'new') {
       setShowHistory(false);
       setSelectedHistoryReport(null);
       setShowAddForm(true);
+      setShowOpenReports(false);
+      setEditingReportData(null);
       setActiveTab('active');
     } else if (view === 'pending') {
       setShowHistory(false);
       setSelectedHistoryReport(null);
       setShowAddForm(false);
+      setShowOpenReports(false);
+      setEditingReportData(null);
       setActiveTab('pending');
     } else if (view === 'history') {
       setShowAddForm(false);
       setSelectedHistoryReport(null);
       setShowHistory(true);
+      setShowOpenReports(false);
+      setEditingReportData(null);
     }
-  }, [searchParams]);
-
+  }, [searchParams, allReports]);
   // Auto-select property if user only has one
   useEffect(() => {
     if (userProperties.length === 1 && !selectedProperty) {
@@ -145,14 +175,24 @@ export const DamageReport = () => {
             />
           )}
 
+          {/* Open Reports View */}
+          {showOpenReports && !showHistory && !selectedHistoryReport && (
+            <OpenDamageReportsView
+              onBack={() => { setShowOpenReports(false); navigate('/damage'); }}
+              onEditReport={(reportId) => navigate(`/damage?view=new&edit=${reportId}`)}
+            />
+          )}
+
           {/* Main View */}
-          {!showHistory && !selectedHistoryReport && (
+          {!showHistory && !selectedHistoryReport && !showOpenReports && (
             <>
               {showAddForm ? (
                 <DamageReportForm
-                  onClose={() => setShowAddForm(false)}
+                  onClose={() => { setShowAddForm(false); setEditingReportData(null); navigate('/damage'); }}
                   locations={locations}
                   onUpdateLocations={setLocations}
+                  existingReport={editingReportData || undefined}
+                  onSaveExisting={updateReportAll}
                 />
               ) : (
                 <DamageReportList
