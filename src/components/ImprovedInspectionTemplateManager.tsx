@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -134,7 +135,8 @@ const SortableItem = ({ item, templateId, isEditing, editingText, onEdit, onSave
 export const ImprovedInspectionTemplateManager = () => {
   const { toast } = useToast();
   const { profile } = useAuth();
-  const { selectedProperty, propertyMode } = usePropertyContext();
+  const { selectedProperty, propertyMode, userProperties, setSelectedProperty } = usePropertyContext();
+  const [searchParams, setSearchParams] = useSearchParams();
   
   // Database hooks
   const { data: templates = [], isLoading: templatesLoading } = useAllInspectionTemplates();
@@ -197,6 +199,32 @@ export const ImprovedInspectionTemplateManager = () => {
   useEffect(() => {
     setUserHasSelected(false);
   }, [selectedProperty?.id]);
+
+  // Handle URL params from Upcoming Inspections (propertyId & templateId)
+  useEffect(() => {
+    const urlPropertyId = searchParams.get('propertyId');
+    const urlTemplateId = searchParams.get('templateId');
+    if (urlPropertyId && templates.length > 0 && properties.length > 0) {
+      // Select the property
+      const prop = userProperties.find(p => p.id === urlPropertyId) || properties.find(p => p.id === urlPropertyId);
+      if (prop) {
+        setSelectedProperty(prop as any);
+      }
+      // Select the template
+      if (urlTemplateId) {
+        const template = templates.find(t => t.id === urlTemplateId);
+        if (template) {
+          setSelectedTemplateId(urlTemplateId);
+          setUserHasSelected(true);
+        }
+      }
+      // Clean up URL params
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('propertyId');
+      newParams.delete('templateId');
+      setSearchParams(newParams, { replace: true });
+    }
+  }, [searchParams, templates, properties, userProperties]);
 
   // Set initial selected template when templates load or when property changes
   useEffect(() => {
