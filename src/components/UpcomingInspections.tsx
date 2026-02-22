@@ -179,7 +179,19 @@ export const UpcomingInspections = () => {
   };
 
   const handleEditInspection = (inspection: UpcomingInspection) => {
-    setSearchParams({ view: 'manage-templates' });
+    // Resolve the actual template ID
+    let templateId = '';
+    if (inspection.source === 'template') {
+      templateId = inspection.id.replace('template-', '');
+    } else {
+      const record = records.find(r => `record-${r.id}` === inspection.id);
+      templateId = record?.template_id || '';
+    }
+    setSearchParams({ 
+      view: 'manage-templates',
+      propertyId: inspection.propertyId,
+      templateId,
+    });
   };
 
   return (

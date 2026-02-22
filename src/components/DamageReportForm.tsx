@@ -422,7 +422,7 @@ export const DamageReportForm = ({ onClose, locations, onUpdateLocations, existi
 
             {/* Photo Upload */}
             <div className="space-y-3">
-              <h5 className="font-medium text-sm">Damage Photos</h5>
+              <h5 className="font-medium text-sm">Damage Photos ({newReport.photos.length}/3)</h5>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {newReport.photos.map((file, index) => (
                   <div key={index} className="aspect-[4/3] border rounded-lg overflow-hidden relative group">
@@ -432,11 +432,13 @@ export const DamageReportForm = ({ onClose, locations, onUpdateLocations, existi
                     </Button>
                   </div>
                 ))}
-                <label className="aspect-[4/3] border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 transition-colors">
-                  <Camera className="h-6 w-6 text-muted-foreground mb-1" />
-                  <span className="text-xs text-muted-foreground">Add Photo</span>
-                  <input type="file" accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) setNewReport(prev => ({ ...prev, photos: [...prev.photos, file] })); }} />
-                </label>
+                {newReport.photos.length < 3 && (
+                  <label className="aspect-[4/3] border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 transition-colors">
+                    <Camera className="h-6 w-6 text-muted-foreground mb-1" />
+                    <span className="text-xs text-muted-foreground">Add Photo</span>
+                    <input type="file" accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file && newReport.photos.length < 3) setNewReport(prev => ({ ...prev, photos: [...prev.photos, file] })); }} />
+                  </label>
+                )}
               </div>
             </div>
 
@@ -754,7 +756,7 @@ export const DamageReportForm = ({ onClose, locations, onUpdateLocations, existi
 
                     {/* Before Photos */}
                     <div className="space-y-3">
-                      <h5 className="font-medium text-sm">Before Photos (from last inspection/turnover)</h5>
+                      <h5 className="font-medium text-sm">Before Photos ({newReport.beforePhotos.length}/3)</h5>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         {newReport.beforePhotos.map((file, index) => (
                           <div key={index} className="aspect-[4/3] border rounded-lg overflow-hidden relative group">
@@ -764,11 +766,13 @@ export const DamageReportForm = ({ onClose, locations, onUpdateLocations, existi
                             </Button>
                           </div>
                         ))}
-                        <label className="aspect-[4/3] border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 transition-colors">
-                          <Camera className="h-6 w-6 text-muted-foreground mb-1" />
-                          <span className="text-xs text-muted-foreground">Add Before Photo</span>
-                          <input type="file" accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) setNewReport(prev => ({ ...prev, beforePhotos: [...prev.beforePhotos, file] })); }} />
-                        </label>
+                        {newReport.beforePhotos.length < 3 && (
+                          <label className="aspect-[4/3] border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 transition-colors">
+                            <Camera className="h-6 w-6 text-muted-foreground mb-1" />
+                            <span className="text-xs text-muted-foreground">Add Before Photo</span>
+                            <input type="file" accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file && newReport.beforePhotos.length < 3) setNewReport(prev => ({ ...prev, beforePhotos: [...prev.beforePhotos, file] })); }} />
+                          </label>
+                        )}
                       </div>
                     </div>
 

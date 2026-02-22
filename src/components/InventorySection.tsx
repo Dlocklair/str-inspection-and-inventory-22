@@ -25,6 +25,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { QuickCountMode } from './QuickCountMode';
 import { BarcodeScanner } from './BarcodeScanner';
 import { CleanerInventoryView } from './CleanerInventoryView';
+import { AssignInventory } from './AssignInventory';
 export const InventorySection = () => {
   const {
     toast
@@ -472,6 +473,7 @@ export const InventorySection = () => {
             Quick Count
           </TabsTrigger>
           <TabsTrigger value="requests">Restock Requests</TabsTrigger>
+          <TabsTrigger value="assign">Assign Inventory</TabsTrigger>
           <TabsTrigger value="notifications">Email Notifications</TabsTrigger>
         </TabsList>
 
@@ -656,6 +658,10 @@ export const InventorySection = () => {
 
         <TabsContent value="requests">
           <RestockRequestsManager items={items.filter(item => !selectedProperty || item.property_id === selectedProperty.id)} onUpdateItem={updateItem} />
+        </TabsContent>
+
+        <TabsContent value="assign">
+          <AssignInventory />
         </TabsContent>
 
         <TabsContent value="notifications">

@@ -44,8 +44,9 @@ const mainMenuItems: MenuItem[] = [
     subItems: [
       { title: 'Current Inventory', url: '/inventory?tab=inventory' },
       { title: 'Restock Requests', url: '/inventory?tab=requests' },
+      { title: 'Assign Inventory', url: '/inventory?tab=assign' },
       { title: 'Email Notifications', url: '/inventory?tab=notifications' },
-      { title: 'Setup & Updates', url: '/inventory-setup', icon: Settings2 },
+      { title: 'Manage Inventory', url: '/inventory-setup', icon: Settings2 },
     ]
   },
   {
