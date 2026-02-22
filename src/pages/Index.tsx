@@ -298,7 +298,7 @@ function StatsCard({ icon: Icon, label, subtitle, value, warn, onClick, gradient
         <Icon className={`h-8 w-8 mx-auto mb-2 ${accent}`} />
         <p className={`text-sm ${accent}`}>{label}</p>
         {subtitle && <p className={`text-xs ${accent} opacity-70`}>{subtitle}</p>}
-        <p className={`text-3xl font-bold mt-1 ${warn ? 'text-destructive' : 'text-foreground/90'}`}>
+        <p className={`text-3xl font-bold mt-1 ${warn ? 'text-destructive' : 'text-white/90'}`}>
           {value}
         </p>
       </CardContent>
