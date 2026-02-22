@@ -758,7 +758,7 @@ export const ImprovedInspectionTemplateManager = () => {
                       onClick={() => openAssignPropertyDialog(selectedTemplate.id)}
                     >
                       <Copy className="h-4 w-4 mr-1" />
-                      Copy to Other Properties
+                      Assign to Other Properties
                     </Button>
                     {(!selectedTemplate.is_predefined || selectedTemplate.property_id) && (
                       <Button 
