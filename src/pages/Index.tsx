@@ -137,7 +137,7 @@ const Index = () => {
             </CollapsibleTrigger>
             <CollapsibleContent>
               <div className="grid grid-cols-2 gap-2 mt-1">
-                <StatusCard icon={AlertTriangle} label="Open Damage" value={openDamage} warn={openDamage > 0} onClick={() => navigate('/damage')} />
+                <StatusCard icon={AlertTriangle} label="Open Damage" value={openDamage} warn={openDamage > 0} onClick={() => navigate('/damage?view=open')} />
                 <StatusCard icon={ClipboardList} label="Upcoming (7d)" value={upcomingInsp} warn={upcomingInsp > 0} onClick={() => navigate('/inspections?view=upcoming')} />
                 <StatusCard icon={Package} label="Low Stock" value={lowStock} warn={lowStock > 0} onClick={() => navigate('/inventory')} />
                 <StatusCard icon={ShieldCheck} label="Expiring (30d)" value={expiringWarr} warn={expiringWarr > 0} onClick={() => navigate('/warranties')} />
@@ -182,7 +182,7 @@ const Index = () => {
             label="Open Damage Reports"
             value={openDamage}
             warn={openDamage > 0}
-            onClick={() => navigate('/damage')}
+            onClick={() => navigate('/damage?view=open')}
             gradient="from-orange-50 to-orange-100 dark:from-orange-950 dark:to-orange-900"
             accent="text-orange-600 dark:text-orange-400"
           />
