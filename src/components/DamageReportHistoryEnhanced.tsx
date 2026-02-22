@@ -62,7 +62,8 @@ const DamageReportHistoryEnhanced: React.FC<DamageReportHistoryEnhancedProps> = 
   const [dateFilter, setDateFilter] = useState<'all' | 'this-year' | 'past-12' | 'custom'>('all');
   const [customStartDate, setCustomStartDate] = useState<Date>();
   const [customEndDate, setCustomEndDate] = useState<Date>();
-  const [viewMode, setViewMode] = useState<'current' | 'all'>(initialPropertyMode === 'all' ? 'all' : 'current');
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string>(selectedProperty?.id || 'all');
+  const [statusFilter, setStatusFilter] = useState<'active' | 'closed' | 'both'>('both');
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
@@ -106,7 +107,6 @@ const DamageReportHistoryEnhanced: React.FC<DamageReportHistoryEnhancedProps> = 
   const getDateFilteredReports = () => {
     let filtered = reports;
 
-    // Apply date filter
     if (dateFilter !== 'all') {
       const now = new Date();
       let startDate: Date;
@@ -120,7 +120,7 @@ const DamageReportHistoryEnhanced: React.FC<DamageReportHistoryEnhancedProps> = 
         startDate = startOfDay(customStartDate);
         endDate = endOfDay(customEndDate);
       } else {
-        startDate = new Date(0); // Beginning of time
+        startDate = new Date(0);
       }
 
       filtered = filtered.filter(report => {
@@ -132,7 +132,7 @@ const DamageReportHistoryEnhanced: React.FC<DamageReportHistoryEnhancedProps> = 
     return filtered;
   };
 
-  // Filter reports by search and property selection
+  // Filter reports by search, property, and status
   const filteredReports = getDateFilteredReports().filter(report => {
     // Search filter
     if (searchTerm) {
@@ -147,34 +147,24 @@ const DamageReportHistoryEnhanced: React.FC<DamageReportHistoryEnhancedProps> = 
     }
     
     // Property filter
-    if (viewMode === 'current' && selectedProperty) {
-      return report.propertyId === selectedProperty.id;
+    if (selectedPropertyId !== 'all') {
+      if (report.propertyId !== selectedPropertyId) return false;
     }
+
+    // Status filter
+    if (statusFilter === 'active' && report.status === 'completed') return false;
+    if (statusFilter === 'closed' && report.status !== 'completed') return false;
     
     return true;
   });
 
-  // Group by property and year if "all" mode
-  const groupedByProperty: Record<string, Record<string, DamageItem[]>> = {};
-  
-  if (viewMode === 'all') {
-    filteredReports.forEach(report => {
-      const propertyKey = report.propertyId || 'unassigned';
-      const year = new Date(report.createdAt).getFullYear().toString();
-      
-      if (!groupedByProperty[propertyKey]) {
-        groupedByProperty[propertyKey] = {};
-      }
-      if (!groupedByProperty[propertyKey][year]) {
-        groupedByProperty[propertyKey][year] = [];
-      }
-      groupedByProperty[propertyKey][year].push(report);
-    });
-  }
-
   const sortedReports = [...filteredReports].sort((a, b) => 
     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
+
+  // Group by status when status filter is "both"
+  const activeReports = sortedReports.filter(r => r.status !== 'completed');
+  const closedReports = sortedReports.filter(r => r.status === 'completed');
 
   const renderReport = (report: DamageItem) => (
     <div 
@@ -243,6 +233,54 @@ const DamageReportHistoryEnhanced: React.FC<DamageReportHistoryEnhancedProps> = 
     </div>
   );
 
+  const renderGroupedByStatus = () => (
+    <div className="space-y-6">
+      {/* Active group */}
+      {(statusFilter === 'both' || statusFilter === 'active') && (
+        <Collapsible
+          open={!collapsedGroups['status-active']}
+          onOpenChange={() => toggleGroup('status-active')}
+        >
+          <CollapsibleTrigger asChild>
+            <div className="flex items-center gap-2 cursor-pointer hover:bg-muted/30 p-2 rounded transition-colors">
+              {collapsedGroups['status-active'] ? <ChevronRight className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+              <AlertTriangle className="h-5 w-5 text-warning" />
+              <h3 className="text-lg font-bold">Active</h3>
+              <Badge variant="secondary">{activeReports.length} report(s)</Badge>
+            </div>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-2 space-y-2">
+            {activeReports.length > 0 ? activeReports.map(renderReport) : (
+              <p className="text-muted-foreground text-center py-4">No active reports.</p>
+            )}
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+
+      {/* Closed group */}
+      {(statusFilter === 'both' || statusFilter === 'closed') && (
+        <Collapsible
+          open={!collapsedGroups['status-closed']}
+          onOpenChange={() => toggleGroup('status-closed')}
+        >
+          <CollapsibleTrigger asChild>
+            <div className="flex items-center gap-2 cursor-pointer hover:bg-muted/30 p-2 rounded transition-colors">
+              {collapsedGroups['status-closed'] ? <ChevronRight className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+              <Filter className="h-5 w-5 text-muted-foreground" />
+              <h3 className="text-lg font-bold">Closed</h3>
+              <Badge variant="outline">{closedReports.length} report(s)</Badge>
+            </div>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-2 space-y-2">
+            {closedReports.length > 0 ? closedReports.map(renderReport) : (
+              <p className="text-muted-foreground text-center py-4">No closed reports.</p>
+            )}
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+    </div>
+  );
+
   return (
     <Card>
       <CardHeader>
@@ -252,39 +290,27 @@ const DamageReportHistoryEnhanced: React.FC<DamageReportHistoryEnhancedProps> = 
             Damage Report History
           </CardTitle>
           <div className="flex items-center gap-2 flex-wrap">
-            {/* View Mode Toggle */}
-            <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value as 'current' | 'all')}>
-              <ToggleGroupItem value="current" aria-label="Current property">
-                <Building2 className="h-4 w-4 mr-1" />
-                Current Property
-              </ToggleGroupItem>
-              <ToggleGroupItem value="all" aria-label="All properties">
-                <Filter className="h-4 w-4 mr-1" />
-                All Properties
-              </ToggleGroupItem>
-            </ToggleGroup>
+            {/* Property Dropdown */}
+            <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Select property" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Properties</SelectItem>
+                {properties.map((property) => (
+                  <SelectItem key={property.id} value={property.id}>
+                    {property.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-            {/* Property Selector for current mode */}
-            {viewMode === 'current' && (
-              <Select 
-                value={selectedProperty?.id || ''} 
-                onValueChange={(value) => {
-                  const property = properties.find(p => p.id === value);
-                  if (property) setSelectedProperty(property);
-                }}
-              >
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="Select property" />
-                </SelectTrigger>
-                <SelectContent>
-                  {properties.map((property) => (
-                    <SelectItem key={property.id} value={property.id}>
-                      {property.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+            {/* Status Filter */}
+            <ToggleGroup type="single" value={statusFilter} onValueChange={(value) => value && setStatusFilter(value as 'active' | 'closed' | 'both')}>
+              <ToggleGroupItem value="both" aria-label="Both">Both</ToggleGroupItem>
+              <ToggleGroupItem value="active" aria-label="Active">Active</ToggleGroupItem>
+              <ToggleGroupItem value="closed" aria-label="Closed">Closed</ToggleGroupItem>
+            </ToggleGroup>
 
             {/* Date Range Filter */}
             <Select value={dateFilter} onValueChange={(value: any) => setDateFilter(value)}>
@@ -383,85 +409,7 @@ const DamageReportHistoryEnhanced: React.FC<DamageReportHistoryEnhancedProps> = 
       </CardHeader>
       <CardContent>
         {filteredReports.length > 0 ? (
-          <div className="space-y-4">
-            {viewMode === 'all' ? (
-              // Grouped view by property and year
-              Object.entries(groupedByProperty).map(([propertyId, yearGroups]) => {
-                const property = properties.find(p => p.id === propertyId);
-                const propertyName = property?.name || 'Unassigned';
-                const propertyKey = `property-${propertyId}`;
-                
-                return (
-                  <Collapsible
-                    key={propertyKey}
-                    open={!collapsedGroups[propertyKey]}
-                    onOpenChange={() => toggleGroup(propertyKey)}
-                  >
-                    <Card>
-                      <CollapsibleTrigger asChild>
-                        <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-                          <div className="flex items-center gap-2">
-                            {collapsedGroups[propertyKey] ? (
-                              <ChevronRight className="h-5 w-5" />
-                            ) : (
-                              <ChevronDown className="h-5 w-5" />
-                            )}
-                            <Building2 className="h-5 w-5 text-primary" />
-                            <h3 className="text-lg font-bold">{propertyName}</h3>
-                            <Badge variant="secondary">
-                              {Object.values(yearGroups).reduce((sum, reports) => sum + reports.length, 0)} report(s)
-                            </Badge>
-                          </div>
-                        </CardHeader>
-                      </CollapsibleTrigger>
-                      
-                      <CollapsibleContent>
-                        <CardContent className="space-y-4">
-                          {Object.entries(yearGroups)
-                            .sort(([a], [b]) => parseInt(b) - parseInt(a))
-                            .map(([year, yearReports]) => {
-                              const yearKey = `${propertyKey}-year-${year}`;
-                              
-                              return (
-                                <Collapsible
-                                  key={yearKey}
-                                  open={!collapsedGroups[yearKey]}
-                                  onOpenChange={() => toggleGroup(yearKey)}
-                                >
-                                  <CollapsibleTrigger asChild>
-                                    <div className="flex items-center gap-2 cursor-pointer hover:bg-muted/30 p-2 rounded transition-colors">
-                                      {collapsedGroups[yearKey] ? (
-                                        <ChevronRight className="h-4 w-4" />
-                                      ) : (
-                                        <ChevronDown className="h-4 w-4" />
-                                      )}
-                                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                                      <span className="font-semibold">{year}</span>
-                                      <Badge variant="outline" className="ml-auto">
-                                        {yearReports.length} report(s)
-                                      </Badge>
-                                    </div>
-                                  </CollapsibleTrigger>
-                                  
-                                  <CollapsibleContent className="pt-2 space-y-2">
-                                    {yearReports
-                                      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                                      .map(renderReport)}
-                                  </CollapsibleContent>
-                                </Collapsible>
-                              );
-                            })}
-                        </CardContent>
-                      </CollapsibleContent>
-                    </Card>
-                  </Collapsible>
-                );
-              })
-            ) : (
-              // Simple list view for single property
-              sortedReports.map(renderReport)
-            )}
-          </div>
+          renderGroupedByStatus()
         ) : (
           <p className="text-muted-foreground text-center py-8">
             {searchTerm ? 'No reports match your search.' : 'No damage reports found.'}

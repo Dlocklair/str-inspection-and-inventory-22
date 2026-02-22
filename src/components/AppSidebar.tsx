@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Home, Package, ClipboardList, AlertTriangle, Settings, Settings2, Building2, UserCog, UserPlus, Clock, User, FileEdit, History, FilePlus, AlertCircle, ClipboardCheck, ShieldCheck, ChevronDown, Layers } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -17,6 +17,7 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
 interface MenuItem {
   title: string;
@@ -81,9 +82,25 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
   const isMobile = useIsMobile();
-  const { isOwner, isManager, isInspector, actualRoles, simulatedRole, setSimulatedRole } = useAuth();
+  const { isOwner, isManager, isInspector, actualRoles, simulatedRole, setSimulatedRole, profile } = useAuth();
 
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [hasDamagePermission, setHasDamagePermission] = useState(false);
+
+  // Check if inspector has damage permission
+  useEffect(() => {
+    const checkDamagePermission = async () => {
+      if (!profile?.id) return;
+      const { data } = await supabase
+        .from('agent_permissions')
+        .select('damage')
+        .eq('agent_id', profile.id)
+        .maybeSingle();
+      setHasDamagePermission(data?.damage === true);
+    };
+    checkDamagePermission();
+  }, [profile?.id]);
 
   const toggleMenu = (title: string) => {
     setOpenMenus(prev => ({ ...prev, [title]: !prev[title] }));
@@ -99,9 +116,11 @@ export function AppSidebar() {
   const filteredMainMenuItems = mainMenuItems.filter(item => {
     // Owner-only items
     if (item.ownerOnly && !isOwner()) return false;
-    // Inspector limited view
+    // Inspector limited view - allow Damage Reports if they have damage permission
     if (isInspector() && !isOwner() && !isManager()) {
-      return ['Dashboard', 'Inspections', 'Inventory'].includes(item.title);
+      const allowedItems = ['Dashboard', 'Inspections', 'Inventory'];
+      if (hasDamagePermission) allowedItems.push('Damage Reports');
+      return allowedItems.includes(item.title);
     }
     return true;
   });
@@ -170,24 +189,35 @@ export function AppSidebar() {
         {showSettings && (
           <SidebarGroup>
             <Separator className="mb-2" />
-            <SidebarGroupLabel>
-              <Settings className="h-3 w-3 mr-1 inline" />
-              {!collapsed && 'Settings & Admin'}
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {settingsMenuItems.map((item) => (
-                  <SidebarMenuItem key={item.url}>
-                    <SidebarMenuButton asChild>
-                      <NavLink to={item.url} className={getNavCls}>
-                        <item.icon className="h-4 w-4 text-primary" />
-                        {!collapsed && <span>{item.title}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
+            <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
+              <CollapsibleTrigger asChild>
+                <SidebarGroupLabel className="cursor-pointer hover:bg-muted/50 rounded-md flex items-center justify-between w-full">
+                  <span className="flex items-center gap-1">
+                    <Settings className="h-3 w-3" />
+                    {!collapsed && 'Settings & Admin'}
+                  </span>
+                  {!collapsed && (
+                    <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${settingsOpen ? 'rotate-180' : ''}`} />
+                  )}
+                </SidebarGroupLabel>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {settingsMenuItems.map((item) => (
+                      <SidebarMenuItem key={item.url}>
+                        <SidebarMenuButton asChild>
+                          <NavLink to={item.url} className={getNavCls}>
+                            <item.icon className="h-4 w-4 text-primary" />
+                            {!collapsed && <span>{item.title}</span>}
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </CollapsibleContent>
+            </Collapsible>
           </SidebarGroup>
         )}
 
