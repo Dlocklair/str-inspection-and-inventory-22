@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -151,6 +151,12 @@ export const EditableInspectionHistoryView = () => {
       outerGroup.records?.sort((a: InspectionRecord, b: InspectionRecord) => new Date(b.inspection_date).getTime() - new Date(a.inspection_date).getTime());
     }
   });
+
+  // Auto-expand all groups by default
+  useEffect(() => {
+    expandAll();
+  }, [selectedProperty?.id, JSON.stringify(Object.keys(groupedRecords))]);
+
   const toggleGroup = (key: string) => {
     setExpandedGroups(prev => ({
       ...prev,
@@ -411,11 +417,11 @@ export const EditableInspectionHistoryView = () => {
         </Card> : <div className="space-y-1.5 py-0">
           {!selectedProperty ? <>
               {/* All Properties mode: Property -> Template -> Records */}
-              {(Object.entries(groupedRecords) as [string, any][]).map(([propertyId, propertyGroup]) => <Card key={propertyId}>
-                <CardHeader className="cursor-pointer hover:bg-accent/50 transition-colors bg-muted" onClick={() => toggleGroup(`property-${propertyId}`)}>
-                  <div className="flex items-center gap-2">
-                    {expandedGroups[`property-${propertyId}`] ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
-                    <CardTitle>{propertyGroup.propertyName}</CardTitle>
+               {(Object.entries(groupedRecords) as [string, any][]).map(([propertyId, propertyGroup]) => <Card key={propertyId}>
+                <CardHeader className="cursor-pointer hover:bg-accent/50 transition-colors bg-muted py-2 px-3" onClick={() => toggleGroup(`property-${propertyId}`)}>
+                  <div className="flex items-center gap-1.5">
+                    {expandedGroups[`property-${propertyId}`] ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    <CardTitle className="text-sm">{propertyGroup.propertyName}</CardTitle>
                   </div>
                 </CardHeader>
                 

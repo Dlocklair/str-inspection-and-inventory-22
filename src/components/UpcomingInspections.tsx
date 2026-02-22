@@ -11,7 +11,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { differenceInDays, parseISO, format } from 'date-fns';
-import { Clock, AlertTriangle, CheckCircle, CalendarDays, Building2 } from 'lucide-react';
+import { Clock, AlertTriangle, CheckCircle, CalendarDays, Building2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface UpcomingInspection {
   id: string;
@@ -25,6 +26,7 @@ interface UpcomingInspection {
 
 export const UpcomingInspections = () => {
   const { selectedProperty, propertyMode } = usePropertyContext();
+  const [collapsedProperties, setCollapsedProperties] = useState<Set<string>>(new Set());
   const { profile } = useAuth();
   const { data: templates = [] } = useAllInspectionTemplates();
   const { data: records = [] } = useInspectionRecords();
@@ -151,6 +153,28 @@ export const UpcomingInspections = () => {
   const overdueCount = upcomingInspections.filter(i => i.daysUntilDue < 0).length;
   const dueSoonCount = upcomingInspections.filter(i => i.daysUntilDue >= 0 && i.daysUntilDue <= 7).length;
 
+  // Group by property for "all properties" mode
+  const groupedByProperty = useMemo(() => {
+    const groups: Record<string, { propertyName: string; inspections: UpcomingInspection[] }> = {};
+    upcomingInspections.forEach(inspection => {
+      const key = inspection.propertyId;
+      if (!groups[key]) {
+        groups[key] = { propertyName: inspection.propertyName, inspections: [] };
+      }
+      groups[key].inspections.push(inspection);
+    });
+    return groups;
+  }, [upcomingInspections]);
+
+  const togglePropertyCollapse = (propertyId: string) => {
+    setCollapsedProperties(prev => {
+      const next = new Set(prev);
+      if (next.has(propertyId)) next.delete(propertyId);
+      else next.add(propertyId);
+      return next;
+    });
+  };
+
   return (
     <div className="space-y-6">
       <PropertySelector />
@@ -183,11 +207,51 @@ export const UpcomingInspections = () => {
                 Set up inspection frequencies in Manage Inspection Templates to see upcoming inspections here.
               </p>
             </div>
+          ) : propertyMode !== 'property' || !selectedProperty ? (
+            // All properties mode — group by property with collapsible sections
+            <div className="space-y-2">
+              {Object.entries(groupedByProperty).map(([propertyId, group]) => {
+                const isCollapsed = collapsedProperties.has(propertyId);
+                return (
+                  <div key={propertyId} className="border rounded-lg overflow-hidden">
+                    <button
+                      className="w-full flex items-center gap-2 px-3 py-2 bg-muted hover:bg-accent/50 transition-colors text-left"
+                      onClick={() => togglePropertyCollapse(propertyId)}
+                    >
+                      {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                      <Building2 className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium text-sm">{group.propertyName}</span>
+                      <Badge variant="outline" className="ml-auto text-xs">{group.inspections.length}</Badge>
+                    </button>
+                    {!isCollapsed && (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Inspection Type</TableHead>
+                            <TableHead>Due Date</TableHead>
+                            <TableHead>Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {group.inspections.map(inspection => (
+                            <TableRow key={inspection.id}>
+                              <TableCell className="font-medium text-sm">{inspection.templateName}</TableCell>
+                              <TableCell className="text-sm">{format(parseISO(inspection.dueDate), 'MMM d, yyyy')}</TableCell>
+                              <TableCell>{getStatusBadge(inspection.daysUntilDue)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           ) : (
+            // Single property mode — flat table
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Property</TableHead>
                   <TableHead>Inspection Type</TableHead>
                   <TableHead>Due Date</TableHead>
                   <TableHead>Status</TableHead>
@@ -196,21 +260,9 @@ export const UpcomingInspections = () => {
               <TableBody>
                 {upcomingInspections.map(inspection => (
                   <TableRow key={inspection.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4 text-muted-foreground" />
-                        {inspection.propertyName}
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {inspection.templateName}
-                    </TableCell>
-                    <TableCell>
-                      {format(parseISO(inspection.dueDate), 'MMM d, yyyy')}
-                    </TableCell>
-                    <TableCell>
-                      {getStatusBadge(inspection.daysUntilDue)}
-                    </TableCell>
+                    <TableCell className="font-medium text-sm">{inspection.templateName}</TableCell>
+                    <TableCell className="text-sm">{format(parseISO(inspection.dueDate), 'MMM d, yyyy')}</TableCell>
+                    <TableCell>{getStatusBadge(inspection.daysUntilDue)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
