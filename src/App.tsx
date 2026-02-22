@@ -18,6 +18,7 @@ import Settings from "./pages/Settings";
 import InventorySetup from "./pages/InventorySetup";
 import { InspectionReport } from "./components/InspectionReport";
 import { WarrantyManager } from "./components/WarrantyManager";
+import { AssetLibraryManager } from "./components/AssetLibraryManager";
 import { InventoryReport } from "./components/InventoryReport";
 import { DamageReport } from "./components/DamageReport";
 import { PropertyManager } from "./components/PropertyManager";
@@ -79,6 +80,7 @@ const LayoutWrapper = () => {
             <Route path="/inventory" element={<ErrorBoundary fallbackTitle="Inventory error"><InventoryReport /></ErrorBoundary>} />
             <Route path="/damage" element={<ErrorBoundary fallbackTitle="Damage reports error"><DamageReport /></ErrorBoundary>} />
             <Route path="/warranties" element={<ErrorBoundary fallbackTitle="Warranties error"><WarrantyManager /></ErrorBoundary>} />
+            <Route path="/asset-library" element={<ErrorBoundary fallbackTitle="Asset Library error"><AssetLibraryManager /></ErrorBoundary>} />
             <Route path="/install" element={<Install />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

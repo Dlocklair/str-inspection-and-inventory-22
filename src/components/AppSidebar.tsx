@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Home, Package, ClipboardList, AlertTriangle, Settings, Settings2, Building2, UserCog, UserPlus, Clock, User, FileEdit, History, FilePlus, AlertCircle, ClipboardCheck, ShieldCheck, ChevronDown } from 'lucide-react';
+import { Home, Package, ClipboardList, AlertTriangle, Settings, Settings2, Building2, UserCog, UserPlus, Clock, User, FileEdit, History, FilePlus, AlertCircle, ClipboardCheck, ShieldCheck, ChevronDown, Layers } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { NavLink } from 'react-router-dom';
@@ -22,6 +22,7 @@ interface MenuItem {
   title: string;
   url?: string;
   icon: any;
+  ownerOnly?: boolean;
   subItems?: { title: string; url: string; icon?: any }[];
 }
 
@@ -58,7 +59,15 @@ const mainMenuItems: MenuItem[] = [
       { title: 'Report History', url: '/damage?view=history', icon: ClipboardCheck },
     ]
   },
-  { title: 'Warranties', url: '/warranties', icon: ShieldCheck },
+  {
+    title: 'Asset Library',
+    icon: Layers,
+    ownerOnly: true,
+    subItems: [
+      { title: 'Assets', url: '/asset-library' },
+      { title: 'Warranties', url: '/warranties', icon: ShieldCheck },
+    ]
+  },
 ];
 
 const settingsMenuItems = [
@@ -81,13 +90,16 @@ export function AppSidebar() {
   };
 
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
-    isActive ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted/50';
+    isActive ? 'bg-primary/10 text-primary font-medium' : 'text-primary/80 hover:bg-muted/50';
 
   const showMainNav = !isMobile;
   const isActualOwner = actualRoles.includes('owner');
   const showSettings = isOwner() || isManager();
 
   const filteredMainMenuItems = mainMenuItems.filter(item => {
+    // Owner-only items
+    if (item.ownerOnly && !isOwner()) return false;
+    // Inspector limited view
     if (isInspector() && !isOwner() && !isManager()) {
       return ['Dashboard', 'Inspections', 'Inventory'].includes(item.title);
     }
@@ -107,9 +119,9 @@ export function AppSidebar() {
                     <SidebarMenuItem key={item.title}>
                       <Collapsible open={openMenus[item.title] ?? false} onOpenChange={() => toggleMenu(item.title)}>
                         <CollapsibleTrigger asChild>
-                          <SidebarMenuButton className="w-full justify-between">
+                          <SidebarMenuButton className="w-full justify-between text-primary/80 hover:bg-muted/50">
                             <span className="flex items-center gap-2">
-                              <item.icon className="h-4 w-4" />
+                              <item.icon className="h-4 w-4 text-primary" />
                               {!collapsed && <span>{item.title}</span>}
                             </span>
                             {!collapsed && (
@@ -127,7 +139,7 @@ export function AppSidebar() {
                                   `flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors ${
                                     isActive
                                       ? 'bg-primary/10 text-primary font-medium'
-                                      : 'hover:bg-muted/50 text-muted-foreground'
+                                      : 'text-primary/70 hover:bg-muted/50'
                                   }`
                                 }
                               >
@@ -143,7 +155,7 @@ export function AppSidebar() {
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton asChild>
                         <NavLink to={item.url!} end className={getNavCls}>
-                          <item.icon className="h-4 w-4" />
+                          <item.icon className="h-4 w-4 text-primary" />
                           {!collapsed && <span>{item.title}</span>}
                         </NavLink>
                       </SidebarMenuButton>
@@ -168,7 +180,7 @@ export function AppSidebar() {
                   <SidebarMenuItem key={item.url}>
                     <SidebarMenuButton asChild>
                       <NavLink to={item.url} className={getNavCls}>
-                        <item.icon className="h-4 w-4" />
+                        <item.icon className="h-4 w-4 text-primary" />
                         {!collapsed && <span>{item.title}</span>}
                       </NavLink>
                     </SidebarMenuButton>

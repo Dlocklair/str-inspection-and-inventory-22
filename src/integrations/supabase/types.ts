@@ -68,6 +68,100 @@ export type Database = {
           },
         ]
       }
+      assets: {
+        Row: {
+          brand: string | null
+          category: string | null
+          color_finish: string | null
+          condition: string | null
+          cost: number | null
+          created_at: string
+          created_by: string
+          description: string | null
+          dimensions: string | null
+          id: string
+          location_in_property: string | null
+          material_type: string | null
+          model_number: string | null
+          name: string
+          photo_urls: string[] | null
+          property_id: string | null
+          purchase_date: string | null
+          serial_number: string | null
+          supplier: string | null
+          updated_at: string
+          warranty_id: string | null
+        }
+        Insert: {
+          brand?: string | null
+          category?: string | null
+          color_finish?: string | null
+          condition?: string | null
+          cost?: number | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          dimensions?: string | null
+          id?: string
+          location_in_property?: string | null
+          material_type?: string | null
+          model_number?: string | null
+          name: string
+          photo_urls?: string[] | null
+          property_id?: string | null
+          purchase_date?: string | null
+          serial_number?: string | null
+          supplier?: string | null
+          updated_at?: string
+          warranty_id?: string | null
+        }
+        Update: {
+          brand?: string | null
+          category?: string | null
+          color_finish?: string | null
+          condition?: string | null
+          cost?: number | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          dimensions?: string | null
+          id?: string
+          location_in_property?: string | null
+          material_type?: string | null
+          model_number?: string | null
+          name?: string
+          photo_urls?: string[] | null
+          property_id?: string | null
+          purchase_date?: string | null
+          serial_number?: string | null
+          supplier?: string | null
+          updated_at?: string
+          warranty_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assets_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assets_warranty_id_fkey"
+            columns: ["warranty_id"]
+            isOneToOne: false
+            referencedRelation: "warranties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       damage_reports: {
         Row: {
           before_photo_urls: string[] | null
