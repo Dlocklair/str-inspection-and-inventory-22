@@ -312,12 +312,10 @@ export const NewInspectionForm = ({ onNavigateToTemplateManager }: NewInspection
                 <X className="h-4 w-4 mr-2" />
                 Cancel
               </Button>
-              {canSave && (
-                <Button onClick={saveInspection} size="sm">
-                  <Save className="h-4 w-4 mr-2" />
-                  Save Inspection
-                </Button>
-              )}
+              <Button onClick={saveInspection} size="sm" disabled={!canSave}>
+                <Save className="h-4 w-4 mr-2" />
+                Save Inspection
+              </Button>
             </div>
           </CardTitle>
         </CardHeader>
